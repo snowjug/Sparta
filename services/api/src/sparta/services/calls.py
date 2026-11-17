@@ -634,30 +634,41 @@ class CallService:
         async with self._locked(rt):
             if rt.playback_id != playback_id:
                 return
-            turn_id = rt.speaking_turn_id
-            rt.playback_id, rt.speaking_until = None, 0.0
-            async with self.db.uow() as repo:
-                row = await repo.get_call_row(rt.user_id, call_id)
-                if row is None or row.status != CallStatus.ACTIVE.value:
-                    return
-                ctx = repo.context_of(row)
-                ctx.assistant_speaking = False
-                await repo.update_call(call_id, context=ctx.model_dump(mode="json"))
-                ev = self._buffer(repo, call_id, rt.simulated)
-                await ev.emit(EventType.ASSISTANT_FINISHED, {"turn_id": turn_id})
-                if not rt.pending_finalize:
-                    await ev.emit(EventType.CALL_LISTENING, {})
-            await self._publish(rt.user_id, ev.items)
+            if not await self._finish_playback_locked(rt, announce_listening=True):
+                return
             if rt.pending_finalize:
                 await self._finalize_locked(rt)
             else:
                 self._arm_silence(rt)
 
+    async def _finish_playback_locked(self, rt: CallRuntime, *, announce_listening: bool) -> bool:
+        """Mark the current playback as over and tell listeners. ``False`` when the call is no longer active."""
+        turn_id = rt.speaking_turn_id
+        rt.playback_id, rt.speaking_until = None, 0.0
+        async with self.db.uow() as repo:
+            row = await repo.get_call_row(rt.user_id, rt.call_id)
+            if row is None or row.status != CallStatus.ACTIVE.value:
+                return False
+            ctx = repo.context_of(row)
+            ctx.assistant_speaking = False
+            await repo.update_call(rt.call_id, context=ctx.model_dump(mode="json"))
+            ev = self._buffer(repo, rt.call_id, rt.simulated)
+            await ev.emit(EventType.ASSISTANT_FINISHED, {"turn_id": turn_id})
+            if announce_listening and not rt.pending_finalize:
+                await ev.emit(EventType.CALL_LISTENING, {})
+        await self._publish(rt.user_id, ev.items)
+        return True
+
     async def _barge_in_locked(
         self, rt: CallRuntime, *, spoken_fraction: float | None = None, force: bool = False
     ) -> InterruptResult:
         now = self.clock.monotonic()
-        if not rt.playback_id or (not force and rt.speaking_until <= now):
+        if rt.playback_id and not force and rt.speaking_until <= now:
+            # The speech is over but its completion has not been delivered yet (timer or provider event in flight):
+            # settle it now so listeners always see `assistant.finished` before whatever the caller says next.
+            await self._finish_playback_locked(rt, announce_listening=False)
+            return InterruptResult(interrupted=False)
+        if not rt.playback_id:
             return InterruptResult(interrupted=False)
         started = time.perf_counter()
         est = rt.speaking_est_ms / 1000.0
@@ -1389,6 +1400,9 @@ class CallService:
         detail.capabilities = self._capabilities_for(
             detail.provider.value, ended=detail.status != CallStatus.ACTIVE, call_id=call_id
         )
+        rt = self._runtimes.get(call_id)  # the live runtime knows whether speech is still playing right now
+        if rt is not None and rt.playback_id and rt.speaking_until > self.clock.monotonic():
+            detail.assistant_speaking, detail.speaking_turn_id = True, rt.speaking_turn_id
         detail.timeline = build_timeline(detail, await repo.risk_history(call_id))
         return detail, int(row.event_seq)
 

@@ -91,6 +91,12 @@ CallSummary / FeedbackRecord / BlockedCaller / TrustedCaller / LatencyBreakdown:
 and show `takeover_note` / `audio_note`. For the simulator: `simulated: true`, `two_way_audio: false`, takeover is a
 labelled simulation. For Azure Communication Services: `two_way_audio: true` only if media streaming is connected.
 
+`CallDetail.assistant_speaking` / `speaking_turn_id` say whether the assistant is mid-utterance *right now* (so a client
+that joins or reconnects during speech can show it; the turn's `speech.est_duration_ms` gives the length). Whenever a
+caller turn follows speech whose estimated duration has already elapsed, `assistant.finished` is emitted for that
+speech before the caller's `transcript.final`; a caller turn that arrives while the speech is still playing is a
+barge-in (`assistant.interrupted`).
+
 ## Live events (WebSocket)
 
 1. `POST /live/ticket` with `{call_id?: string}` → `{ticket, expires_in, ws_url}`. Tickets are single-use, ≈ 60 s, bound to

@@ -238,9 +238,15 @@ class Repository:
 
     # =========================================================================================== users
     async def ensure_user(self, user_id: str, display_name: str, now: datetime) -> None:
-        if await self.s.get(m.UserRow, user_id) is None:
-            self.s.add(m.UserRow(id=user_id, display_name=display_name[:120], created_at=now))
-            await self.s.flush()
+        """Create the owner row on first sight. Safe under concurrent first requests (the loser's insert is ignored)."""
+        if await self.s.get(m.UserRow, user_id) is not None:
+            return
+        try:
+            async with self.s.begin_nested():
+                self.s.add(m.UserRow(id=user_id, display_name=display_name[:120], created_at=now))
+                await self.s.flush()
+        except IntegrityError:
+            return  # another request created it between our read and our insert
 
     async def user_ids(self) -> list[str]:
         return list((await self.s.scalars(select(m.UserRow.id))).all())

@@ -1,5 +1,6 @@
 """HTTP behaviour of the Sparta API: flows, error envelope, headers, idempotency, limits and the owner-facing routes."""
 
+import asyncio
 import base64
 import hashlib
 import hmac
@@ -43,6 +44,14 @@ async def test_scam_call_end_to_end_over_http(env: ApiEnv):
     events = (await env.client.get(f"{API}/calls/{call['id']}/events")).json()
     assert events[0]["type"] == "call.created" and events[-1]["type"] == "summary.created"
     assert [e["seq"] for e in events] == sorted(e["seq"] for e in events)
+
+
+async def test_concurrent_first_requests_of_a_new_owner_all_succeed(env: ApiEnv):
+    headers = {"X-Sparta-Dev-User": "brand-new-owner"}
+    paths = [f"{API}/me", f"{API}/preferences", f"{API}/assistant-profile"] * 3
+    responses = await asyncio.gather(*(env.client.get(p, headers=headers) for p in paths))
+    assert [r.status_code for r in responses] == [200] * len(paths)
+    assert (await env.client.get(f"{API}/me", headers=headers)).json()["id"] == "brand-new-owner"
 
 
 async def test_home_summary_reflects_onboarding_and_attention(env: ApiEnv):

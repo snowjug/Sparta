@@ -271,6 +271,12 @@ class CallCapabilities(SpartaModel):
 
 class CallDetail(CallListItem):
     language_mode: str = "auto"
+    assistant_speaking: bool = Field(
+        default=False, description="The assistant is mid-utterance right now (see `speaking_turn_id`)."
+    )
+    speaking_turn_id: str | None = Field(
+        default=None, description="Turn being spoken while `assistant_speaking`; its `speech.est_duration_ms` is known."
+    )
     turns: list[CallTurn] = Field(default_factory=list)
     risk: RiskAssessment | None = None
     escalations: list[Escalation] = Field(default_factory=list)

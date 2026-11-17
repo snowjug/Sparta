@@ -309,6 +309,12 @@
             ],
             "title": "Action Taken"
           },
+          "assistant_speaking": {
+            "default": false,
+            "description": "The assistant is mid-utterance right now (see `speaking_turn_id`).",
+            "title": "Assistant Speaking",
+            "type": "boolean"
+          },
           "blocked": {
             "default": false,
             "title": "Blocked",
@@ -473,6 +479,18 @@
           "simulated": {
             "title": "Simulated",
             "type": "boolean"
+          },
+          "speaking_turn_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Turn being spoken while `assistant_speaking`; its `speech.est_duration_ms` is known.",
+            "title": "Speaking Turn Id"
           },
           "started_at": {
             "format": "date-time",

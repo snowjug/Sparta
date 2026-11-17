@@ -112,6 +112,7 @@ def create_app(settings: Settings | None = None, *, container: Container | None 
     )
     app.state.settings = settings
     app.state.known_users = set()
+    app.state.user_locks = {}  # serialises the first request(s) of a new owner so provisioning runs once per process
     if container is not None:
         app.state.container = container
         app.state.authenticator = build_authenticator(settings, None)

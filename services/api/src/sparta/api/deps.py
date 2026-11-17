@@ -1,5 +1,6 @@
 """FastAPI dependencies: container access, the authenticated owner, rate limits and idempotent execution."""
 
+import asyncio
 import hashlib
 import json
 import re
@@ -43,8 +44,13 @@ async def current_owner(request: Request) -> Principal:
     principal: Principal = await request.app.state.authenticator.authenticate(request)
     known: set[str] = request.app.state.known_users
     if principal.id not in known:
-        await container.owner.ensure_user(principal)
-        known.add(principal.id)
+        locks: dict[str, asyncio.Lock] = request.app.state.user_locks
+        lock = locks.setdefault(principal.id, asyncio.Lock())
+        async with lock:
+            if principal.id not in known:  # a concurrent first request may have provisioned the owner meanwhile
+                await container.owner.ensure_user(principal)
+                known.add(principal.id)
+        locks.pop(principal.id, None)
     await _hit(request, container, "api", principal.id, container.settings.rate_limit_per_minute)
     return principal
 

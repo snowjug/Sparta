@@ -167,6 +167,22 @@ async def test_duplicate_provider_events_are_detected(db):
 
 
 @pytest.mark.asyncio
+async def test_ensure_user_survives_losing_the_insert_race(db, monkeypatch):
+    # Two requests both read "no such user"; the other one commits first, then ours inserts and hits the unique key.
+    async with db.uow() as loser:
+        real_get = loser.s.get
+
+        async def stale_get(entity, ident, *args, **kwargs):
+            return None if entity is m.UserRow else await real_get(entity, ident, *args, **kwargs)
+
+        monkeypatch.setattr(loser.s, "get", stale_get)
+        async with db.uow() as winner:
+            await winner.ensure_user("racer", "Racer", NOW)
+        await loser.ensure_user("racer", "Racer", NOW)  # must not raise nor poison the transaction
+        assert await loser.user_ids() == ["racer"]
+
+
+@pytest.mark.asyncio
 async def test_listing_filters_search_and_cursor_pagination(db):
     await seed_user(db)
     async with db.uow() as repo:

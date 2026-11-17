@@ -231,6 +231,34 @@ async def test_barge_in_marks_the_interrupted_assistant_turn_and_lets_the_caller
     await h.say(created.id, "Hello, this is Suresh from the society office about maintenance", settle=False)
 
 
+async def test_speech_that_already_ended_is_finished_before_the_next_caller_turn(h: Harness):
+    created = await h.start()
+    rt = h.c.calls._runtimes[created.id]
+    assert rt.playback_id is not None
+    rt.speaking_until = h.clock.monotonic() - 0.01  # the estimate has elapsed but the completion has not been delivered
+    result = await h.c.calls.submit_turn(
+        OWNER, created.id, "Hello, this is Suresh from the society office", source=TurnSource.SCRIPTED
+    )
+    assert result.interrupted_turn_id is None
+    types = event_types(await h.c.calls.events(OWNER, created.id, 0))
+    caller_turn = [i for i, t in enumerate(types) if t == "transcript.final"][1]
+    assert types.index("assistant.finished") < caller_turn
+    assert types.count("assistant.finished") == 1 and "assistant.interrupted" not in types
+    await h.settle(created.id)
+    assert event_types(await h.c.calls.events(OWNER, created.id, 0)).count("assistant.interrupted") == 0
+
+
+async def test_the_call_detail_says_when_the_assistant_is_mid_utterance(h: Harness):
+    created = await h.start()
+    speaking = await h.detail(created.id)
+    assert speaking.assistant_speaking is True and speaking.speaking_turn_id == created.turns[0].id
+    snapshot = await h.c.calls.snapshot_event(OWNER, created.id)
+    assert snapshot.data["call"]["assistant_speaking"] is True
+    await h.settle(created.id)
+    done = await h.detail(created.id)
+    assert done.assistant_speaking is False and done.speaking_turn_id is None
+
+
 async def test_a_caller_talking_over_the_assistant_interrupts_it_automatically(h: Harness):
     created = await h.start()
     await h.clock.advance(1.0)
