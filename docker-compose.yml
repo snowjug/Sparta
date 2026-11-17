@@ -1,0 +1,139 @@
+# Sparta local stack: PostgreSQL 16, Redis 7, the API (built from services/api) and the web app (built from apps/web).
+#
+#   cp .env.example .env                                  # optional: ports, dev passwords, provider settings
+#   docker compose up --build                             # everything
+#   docker compose up -d --build postgres redis api       # backend only; then run the web app on the host
+#   docker compose down                                   # stop (data volumes are kept)
+#   docker compose down -v                                # stop and DELETE the data volumes
+#
+# Needs Docker Compose v2.24 or newer (optional env_file) and BuildKit. Open http://localhost:3000 (web) and
+# http://localhost:8000/docs (API). Every published port is bound to 127.0.0.1 only.
+#
+# This is a DEVELOPMENT stack: development identity (no sign-in; the API is told explicitly that listening on 0.0.0.0 inside
+# its container is fine, see SPARTA_ALLOW_NETWORK_DEV_AUTH below), simulator providers, dev-only passwords. Every port is
+# bound to 127.0.0.1, so use it on a trusted local machine or network only. It is not a production template: see
+# infrastructure/azure and docs/DEPLOYMENT.md for that.
+name: sparta
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: sparta
+      POSTGRES_PASSWORD: ${SPARTA_POSTGRES_PASSWORD:-sparta-dev-only}
+      POSTGRES_DB: sparta
+    ports:
+      - "127.0.0.1:${SPARTA_POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - sparta-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sparta -d sparta"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--requirepass", "${SPARTA_REDIS_PASSWORD:-sparta-dev-only}"]
+    environment:
+      REDISCLI_AUTH: ${SPARTA_REDIS_PASSWORD:-sparta-dev-only}
+    ports:
+      - "127.0.0.1:${SPARTA_REDIS_PORT:-6379}:6379"
+    volumes:
+      - sparta-redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+
+  api:
+    build:
+      context: ./services/api
+      args:
+        SPARTA_EXTRAS: ${SPARTA_EXTRAS-azure,otlp}
+        PIP_INDEX_URL: ${PIP_INDEX_URL:-https://pypi.org/simple}
+    init: true
+    restart: unless-stopped
+    # Optional .env: provider settings and limits (see .env.example). The values under `environment` win over it.
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      SPARTA_ENV: ${SPARTA_ENV:-development}
+      SPARTA_AUTH_MODE: ${SPARTA_AUTH_MODE:-dev}
+      # The development identity has no sign-in: anyone who can reach the API acts as the owner, so `sparta serve` refuses
+      # to listen on 0.0.0.0 (as it must inside a container) unless this is set. It is acceptable here ONLY because this is
+      # a local development stack whose port is published on 127.0.0.1 (trusted local network only). Never copy it to a
+      # shared, public or production host: production uses SPARTA_AUTH_MODE=oidc, where it has no effect.
+      SPARTA_ALLOW_NETWORK_DEV_AUTH: ${SPARTA_ALLOW_NETWORK_DEV_AUTH:-true}
+      SPARTA_SIMULATOR_ENABLED: ${SPARTA_SIMULATOR_ENABLED:-true}
+      SPARTA_DATABASE_URL: postgresql+asyncpg://sparta:${SPARTA_POSTGRES_PASSWORD:-sparta-dev-only}@postgres:5432/sparta
+      SPARTA_REDIS_URL: redis://:${SPARTA_REDIS_PASSWORD:-sparta-dev-only}@redis:6379/0
+      # Migrations run explicitly in `command` (the way a production release runs them), not implicitly at startup.
+      SPARTA_AUTO_MIGRATE: "false"
+      SPARTA_PUBLIC_BASE_URL: http://localhost:${SPARTA_API_PORT:-8000}
+      SPARTA_CORS_ORIGINS: http://localhost:${SPARTA_WEB_PORT:-3000},http://127.0.0.1:${SPARTA_WEB_PORT:-3000}
+    # Apply migrations, create the development owner, then serve. `exec` hands PID 1 to the server so it receives SIGTERM.
+    command:
+      - sh
+      - -c
+      - python -m sparta migrate && python -m sparta seed && exec python -m sparta serve --host 0.0.0.0 --port 8000
+    ports:
+      - "127.0.0.1:${SPARTA_API_PORT:-8000}:8000"
+    volumes:
+      # Development keys (SPARTA_DATA_KEYS / SPARTA_PEPPER unset) live here, so stored data survives restarts.
+      - sparta-api-data:/var/lib/sparta
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "sparta-healthcheck"]
+      interval: 10s
+      timeout: 6s
+      retries: 6
+      start_period: 30s
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+  web:
+    # apps/web/Dockerfile is owned by the web app. NEXT_PUBLIC_* values are inlined at build time, so they are build args.
+    build:
+      context: ./apps/web
+      args:
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:${SPARTA_API_PORT:-8000}}
+        NEXT_PUBLIC_AUTH_MODE: ${NEXT_PUBLIC_AUTH_MODE:-dev}
+        NPM_REGISTRY: ${NPM_REGISTRY:-https://registry.npmjs.org/}
+    init: true
+    restart: unless-stopped
+    environment:
+      PORT: "3000"
+      HOSTNAME: 0.0.0.0
+    ports:
+      - "127.0.0.1:${SPARTA_WEB_PORT:-3000}:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  sparta-pgdata:
+  sparta-redis:
+  sparta-api-data:
