@@ -23,6 +23,16 @@ def _settings() -> Settings:
     return get_settings()
 
 
+def _dependencies_ok(settings: Settings, *, redis: bool) -> bool:
+    """Print one readable line per unreachable dependency instead of letting the server die with a stack trace."""
+    from sparta.preflight import check_dependencies
+
+    problems = asyncio.run(check_dependencies(settings, include_redis=redis))
+    for problem in problems:
+        print(f"error: {problem}", file=sys.stderr)
+    return not problems
+
+
 def cmd_serve(args: argparse.Namespace) -> int:
     import uvicorn
 
@@ -30,6 +40,8 @@ def cmd_serve(args: argparse.Namespace) -> int:
 
     settings = _settings()
     configure_logging(settings.log_level, settings.log_json)
+    if not _dependencies_ok(settings, redis=True):
+        return 2
     if settings.auth_mode == "dev" and args.host not in LOOPBACK:
         print(
             "WARNING: development identity is active and this server listens on a non-loopback address "
@@ -54,6 +66,8 @@ def cmd_migrate(args: argparse.Namespace) -> int:
     from sparta.db.session import downgrade, run_migrations
 
     settings = _settings()
+    if not _dependencies_ok(settings, redis=False):
+        return 2
     if args.revision.startswith("-") or args.direction == "down":
         asyncio.run(downgrade(settings.database_url, args.revision))
     else:
@@ -78,6 +92,8 @@ def cmd_seed(_: argparse.Namespace) -> int:
         finally:
             await container.stop()
 
+    if not _dependencies_ok(_settings(), redis=True):
+        return 2
     owner = asyncio.run(run())
     print(f"development owner '{owner}' is ready")
     return 0
