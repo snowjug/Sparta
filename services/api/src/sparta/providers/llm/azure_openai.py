@@ -11,7 +11,9 @@ The model is an *advisor*, never an authority. Sparta's deterministic engine own
 * Caller text is UNTRUSTED. It is sanitised (control, zero-width and bidi characters removed, angle brackets removed so
   the delimiters cannot be forged, whitespace collapsed so it cannot fake structure), truncated, and placed between
   delimiters that the system prompt declares to be data. The model has no tools. The owner's name and any other owner
-  data are never sent.
+  data are never sent: the call service replaces the name with "the owner" in everything it hands to a provider
+  (``redact_owner_name`` in ``sparta/risk/matchers.py``, used in ``services/calls.py``), and the adapter is given no
+  other owner data.
 * Prompt Shields / content-filter blocks surface as sanitised :class:`ProviderRejected` errors, never as content.
 
 Two request parameters differ between model families and are **UNVERIFIED** for the deployed model, so they are

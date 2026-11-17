@@ -1316,6 +1316,7 @@
           },
           "escalate_uncertain_urgent": {
             "default": true,
+            "description": "Stored only: the screening engine does not act on this yet. Escalation follows escalate_categories.",
             "title": "Escalate Uncertain Urgent",
             "type": "boolean"
           },
@@ -1966,6 +1967,7 @@
           },
           "notify_on_high_risk": {
             "default": false,
+            "description": "Applied by the Android app to its own notifications. The server sends no push for it yet.",
             "title": "Notify On High Risk",
             "type": "boolean"
           },
@@ -1979,6 +1981,7 @@
                 "type": "null"
               }
             ],
+            "description": "Applied by the Android app to its own notifications. The server sends no push yet.",
             "title": "Quiet Hours End"
           },
           "quiet_hours_start": {
@@ -1991,6 +1994,7 @@
                 "type": "null"
               }
             ],
+            "description": "Applied by the Android app to its own notifications. The server sends no push yet.",
             "title": "Quiet Hours Start"
           }
         },

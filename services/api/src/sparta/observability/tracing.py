@@ -2,6 +2,10 @@
 
 Traces carry identifiers and timings only, never transcript text or numbers. When OpenTelemetry is not configured
 the code still produces a valid, random trace id so every call has a *safe diagnostic trace ID* clients can quote.
+
+Spans exist for every HTTP request (``RequestContextMiddleware``), every provider call
+(``ResilientCaller``) and the conversation engine step (``CallService``). A call created while serving a request takes
+that request's trace id, so the id a client quotes is the id of the exported trace.
 """
 
 import secrets
@@ -12,6 +16,7 @@ from typing import TYPE_CHECKING
 from opentelemetry import trace
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.trace import Span, SpanKind, Status, StatusCode
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -40,6 +45,11 @@ def setup_tracing(settings: "Settings") -> None:
     _configured = True
 
 
+def tracer() -> trace.Tracer:
+    """The process tracer (tests replace this function to capture spans)."""
+    return trace.get_tracer(_TRACER_NAME)
+
+
 def new_trace_id() -> str:
     """Current span's trace id if one is active and valid, otherwise a fresh random 128-bit id."""
     ctx = trace.get_current_span().get_span_context()
@@ -49,13 +59,22 @@ def new_trace_id() -> str:
 
 
 @contextmanager
-def span(name: str, **attributes: str | int | float | bool) -> "Iterator[None]":
-    """A span with identifier/timing attributes only. Never pass transcript text or numbers here."""
-    tracer = trace.get_tracer(_TRACER_NAME)
-    with tracer.start_as_current_span(name) as current:
+def span(name: str, *, kind: SpanKind = SpanKind.INTERNAL, **attributes: str | int | float | bool) -> "Iterator[Span]":
+    """A span with identifier/timing attributes only. Never pass transcript text or numbers here.
+
+    An exception marks the span as an error with the exception *class* only: messages can quote caller input.
+    """
+    with tracer().start_as_current_span(
+        name, kind=kind, record_exception=False, set_status_on_exception=False
+    ) as current:
         for key, value in attributes.items():
             current.set_attribute(key, value)
-        yield
+        try:
+            yield current
+        except BaseException as exc:
+            current.set_status(Status(StatusCode.ERROR))
+            current.set_attribute("error.type", type(exc).__name__)
+            raise
 
 
 @dataclass(frozen=True)

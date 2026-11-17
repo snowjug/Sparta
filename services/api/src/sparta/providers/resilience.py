@@ -15,6 +15,7 @@ from typing import TypeVar
 
 from sparta.clock import Clock, SystemClock
 from sparta.observability.metrics import PROVIDER_ERRORS, PROVIDER_LATENCY_MS, PROVIDER_REQUESTS, Metrics
+from sparta.observability.tracing import span
 from sparta.providers.base import ProviderError, ProviderTimeout, ProviderUnavailable
 
 T = TypeVar("T")
@@ -91,6 +92,10 @@ class ResilientCaller:
         self.metrics = metrics or Metrics()
 
     async def call(self, fn: Callable[[], Awaitable[T]], *, trace_id: str = "") -> T:
+        with span("provider.call", provider=self.provider, stage=self.stage):
+            return await self._call(fn, trace_id)
+
+    async def _call(self, fn: Callable[[], Awaitable[T]], trace_id: str) -> T:
         if not self.breaker.allow():
             self.metrics.inc(PROVIDER_ERRORS, provider=self.provider, stage=self.stage, kind="circuit_open")
             raise ProviderUnavailable(self.provider, self.stage, "temporarily unavailable (circuit open)")

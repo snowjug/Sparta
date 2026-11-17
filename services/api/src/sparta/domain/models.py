@@ -350,17 +350,31 @@ class EscalationRules(StrictInputModel):
             CallCategory.LEGITIMATE_APPOINTMENT,
         ]
     )
-    escalate_uncertain_urgent: bool = True
+    escalate_uncertain_urgent: bool = Field(
+        default=True,
+        description="Stored only: the screening engine does not act on this yet. Escalation follows escalate_categories.",
+    )
     auto_end_high_risk: bool = True
     owner_response_timeout_s: int = Field(default=30, ge=5, le=180)
 
 
 class NotificationPreferences(StrictInputModel):
     notify_on_escalation: bool = True
-    notify_on_high_risk: bool = False
+    notify_on_high_risk: bool = Field(
+        default=False,
+        description="Applied by the Android app to its own notifications. The server sends no push for it yet.",
+    )
     include_transcript_lines: bool = True
-    quiet_hours_start: str | None = Field(default=None, pattern=r"^([01]\d|2[0-3]):[0-5]\d$")
-    quiet_hours_end: str | None = Field(default=None, pattern=r"^([01]\d|2[0-3]):[0-5]\d$")
+    quiet_hours_start: str | None = Field(
+        default=None,
+        pattern=r"^([01]\d|2[0-3]):[0-5]\d$",
+        description="Applied by the Android app to its own notifications. The server sends no push yet.",
+    )
+    quiet_hours_end: str | None = Field(
+        default=None,
+        pattern=r"^([01]\d|2[0-3]):[0-5]\d$",
+        description="Applied by the Android app to its own notifications. The server sends no push yet.",
+    )
 
 
 class UserPreferences(StrictInputModel):

@@ -12,16 +12,40 @@ import time
 from collections.abc import MutableMapping
 from typing import Any
 
+from opentelemetry.trace import SpanKind, Status, StatusCode
 from starlette.datastructures import Headers, MutableHeaders
 from starlette.exceptions import HTTPException
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from sparta.api.errors import error_response
 from sparta.logging_setup import correlation_id_var
+from sparta.observability.tracing import span
 
 log = logging.getLogger("sparta.http")
 REQUEST_ID = re.compile(r"[A-Za-z0-9._\-]{8,64}")
 DOCS_PATHS = ("/docs", "/redoc")
+
+
+def route_template(scope: Scope) -> str | None:
+    """The matched route as a template (``/api/v1/calls/{call_id}``), never the concrete path.
+
+    The route object only knows its path relative to the router it was declared on, so the static prefix is the part
+    of the request path in front of the route's own (formatted) path.
+    """
+    route = scope.get("route")
+    template = getattr(route, "path_format", None) or getattr(route, "path", None)
+    if not template:
+        return None
+    template = str(template)
+    try:
+        concrete = template.format(**(scope.get("path_params") or {}))
+    except (KeyError, IndexError, ValueError):
+        return template
+    path = str(scope.get("path", ""))
+    if len(path) > len(concrete) and path.endswith(concrete):
+        return path[: len(path) - len(concrete)] + template
+    return template
+
 
 SECURITY_HEADERS: dict[str, str] = {
     "x-content-type-options": "nosniff",
@@ -37,7 +61,11 @@ HSTS = "max-age=63072000; includeSubDomains"
 
 
 class RequestContextMiddleware:
-    """Assigns the request id (echoing a sane client-supplied one), logs one access line, never the query string."""
+    """Assigns the request id (echoing a sane client-supplied one), traces the request, logs one access line.
+
+    The span carries the method, the matched route template, the status and the request id: never the raw path (it can
+    hold call ids) or the query string.
+    """
 
     def __init__(self, app: ASGIApp) -> None:
         self.app = app
@@ -65,7 +93,23 @@ class RequestContextMiddleware:
             await send(message)
 
         try:
-            await self.app(scope, receive, send_with_id)
+            if scope["type"] == "http":
+                method = str(scope.get("method", "GET"))
+                with span(f"{method} request", kind=SpanKind.SERVER) as current:
+                    current.set_attribute("http.request.method", method)
+                    current.set_attribute("sparta.request_id", request_id)
+                    try:
+                        await self.app(scope, receive, send_with_id)
+                    finally:
+                        template = route_template(scope)
+                        if template:
+                            current.update_name(f"{method} {template}")
+                            current.set_attribute("http.route", template)
+                        current.set_attribute("http.response.status_code", status)
+                        if status >= 500:
+                            current.set_status(Status(StatusCode.ERROR))
+            else:
+                await self.app(scope, receive, send_with_id)
         finally:
             if scope["type"] == "http":
                 log.info(

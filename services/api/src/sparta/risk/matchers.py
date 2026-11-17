@@ -58,6 +58,14 @@ def owner_name_pattern(owner_name: str | None) -> str:
     return "(?:" + "|".join(re.escape(t) for t in sorted(tokens, key=len, reverse=True)) + ")"
 
 
+def redact_owner_name(text: str, owner_name: str | None, replacement: str = "the owner") -> str:
+    """``text`` with the owner's name replaced: for anything that leaves the process, such as a model provider."""
+    pattern = owner_name_pattern(owner_name)
+    if pattern == NEVER_MATCH:
+        return text
+    return compile_pattern(rf"\b{pattern}\b").sub(replacement, text)
+
+
 @lru_cache(maxsize=4096)
 def _compiled(source: str) -> re.Pattern[str]:
     # Shared across rule sets: only vocabularies that mention {OWNER} differ between owners.

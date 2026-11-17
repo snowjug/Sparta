@@ -57,7 +57,7 @@ from sparta.domain.models import (
 from sparta.language.registry import load_registry
 from sparta.observability import metrics as mt
 from sparta.observability.metrics import Metrics, percentile
-from sparta.observability.tracing import UnitCosts, estimate_cost, new_trace_id
+from sparta.observability.tracing import UnitCosts, estimate_cost, new_trace_id, span
 from sparta.orchestrator.engine import (
     CallerInput,
     ConversationEngine,
@@ -77,6 +77,7 @@ from sparta.providers.base import (
 )
 from sparta.providers.resilience import ResilientCaller
 from sparta.providers.vad.energy import EnergyVad
+from sparta.risk.matchers import redact_owner_name
 from sparta.services.audio_pipeline import AudioPipeline
 from sparta.services.audit import record_audit
 from sparta.services.dto import (
@@ -900,19 +901,23 @@ class CallService:
                 recent = await repo.recent_turns(rt.call_id)
             model_codes, model_ms = await self._model_signals(rt, text, old_ctx, recent)
             started = time.perf_counter()
-            result = self.engine.on_caller_turn(
-                old_ctx,
-                rt.cfg,
-                CallerInput(
-                    text=text,
-                    source=source,
-                    language_hint=language_hint,
-                    stt_confidence=stt_confidence,
-                    previous_text=previous[1] if previous else None,
-                    previous_turn_id=previous[0] if previous else None,
-                    model_signal_codes=model_codes,
-                ),
-            )
+            with span("engine.on_caller_turn", call_id=rt.call_id, source=source.value) as step:
+                result = self.engine.on_caller_turn(
+                    old_ctx,
+                    rt.cfg,
+                    CallerInput(
+                        text=text,
+                        source=source,
+                        language_hint=language_hint,
+                        stt_confidence=stt_confidence,
+                        previous_text=previous[1] if previous else None,
+                        previous_turn_id=previous[0] if previous else None,
+                        model_signal_codes=model_codes,
+                    ),
+                )
+                step.set_attribute("sparta.final_state", result.final_state.value)
+                if result.risk is not None:
+                    step.set_attribute("sparta.risk_level", result.risk.risk_level.value)
             self.metrics.observe(mt.RISK_ENGINE_MS, (time.perf_counter() - started) * 1000.0)
             latency, sim_ms = self._turn_latency(rt, source, stt_ms, result, model_ms)
             if sim_ms:
@@ -952,11 +957,12 @@ class CallService:
         if self.llm.meta.provider == "rules":
             return (), None
         started = time.perf_counter()
+        owner = rt.cfg.owner_name  # the owner's name never leaves the process: the opening line says it
         request = TurnEvaluationRequest(
             call_id=rt.call_id,
-            caller_text=text[:600],
+            caller_text=redact_owner_name(text[:600], owner),
             language=ctx.language,
-            recent_turns=[(s, t[:300]) for s, t in recent[-6:]],
+            recent_turns=[(s, redact_owner_name(t[:300], owner)) for s, t in recent[-6:]],
             known_signals=[s.code for s in ctx.signals],
             trace_id="",
         )
@@ -1288,7 +1294,14 @@ class CallService:
         if not self.settings.feature_llm_summaries or self.llm.meta.provider == "rules":
             return summary
         turns = await repo.recent_turns(rt.call_id, 12)
-        request = SummaryRequest(call_id=rt.call_id, rules_summary=summary.text, turns=turns, risk=risk, trace_id="")
+        owner = rt.cfg.owner_name
+        request = SummaryRequest(
+            call_id=rt.call_id,
+            rules_summary=redact_owner_name(summary.text, owner),
+            turns=[(speaker, redact_owner_name(text, owner)) for speaker, text in turns],
+            risk=risk,
+            trace_id="",
+        )
         outcome, error = await self._llm_caller.call_or(lambda: self.llm.summarize_call(request), None)
         if error is not None or outcome is None or not outcome.text.strip():
             return summary
