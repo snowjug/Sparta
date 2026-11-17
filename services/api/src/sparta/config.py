@@ -111,7 +111,6 @@ class Settings(BaseSettings):
         default=None,
         description="With TELEPHONY_PROVIDER=other: 'package.module:factory' returning a TelephonyProvider",
     )
-    feature_llm_replies: bool = False
     max_active_calls: int = 5
     telephony_owner_user_id: str | None = Field(
         default=None, description="Owner that receives calls delivered by a real telephony provider"
@@ -140,7 +139,11 @@ class Settings(BaseSettings):
     feature_personal_voice: bool = False
     feature_llm_summaries: bool = False
     feature_raw_audio_storage: bool = False
-    feature_translation: bool = True
+    feature_translation: bool = Field(
+        default=False,
+        description="Reserved: machine translation of caller speech is not implemented. Assistant replies always "
+        "carry an English rendering (planner templates) whatever this is set to.",
+    )
 
     # --- observability -------------------------------------------------------------
     otel_enabled: bool = True

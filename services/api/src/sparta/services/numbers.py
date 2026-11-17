@@ -1,7 +1,7 @@
 """Caller-number handling: normalisation, keyed fingerprints and masked display.
 
 Raw numbers are personal data. The API never returns them; lists and matching use a keyed fingerprint
-(HMAC-SHA256 with a per-user key) and a masked rendering such as ``+91 98••• ••21``. The same scheme is implemented on
+(HMAC-SHA256 with a per-user key) and a masked rendering such as ``+91 98•••• ••21``. The same scheme is implemented on
 Android so a device can match numbers offline without ever holding the raw number of a caller it blocked on a server.
 """
 
@@ -50,7 +50,7 @@ def _split_country(digits: str) -> tuple[str, str]:
 
 
 def mask_number(e164: str | None) -> str:
-    """``+919876543221`` → ``+91 98••• ••21``. Short numbers keep only their last digit."""
+    """``+919876543221`` → ``+91 98•••• ••21``. Short numbers keep only their last digit."""
     if not e164:
         return PRIVATE_DISPLAY
     digits = e164.lstrip("+")

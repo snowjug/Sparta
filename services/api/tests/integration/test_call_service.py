@@ -328,6 +328,15 @@ async def test_a_call_without_a_number_cannot_be_blocked(h: Harness):
         await h.c.calls.block(OWNER, created.id, None)
 
 
+async def test_caller_display_joins_label_and_masked_number_with_a_middle_dot(h: Harness):
+    both = await h.start(number="+919876543210", label="Spam Sam")
+    assert both.caller_display == "Spam Sam \u00b7 +91 98\u2022\u2022\u2022\u2022 \u2022\u202210"
+    label_only = await h.start(number=None, label="Spam Sam")
+    assert label_only.caller_display == "Spam Sam"
+    for display in (both.caller_display, label_only.caller_display):
+        assert display.isprintable() and "\u00c2" not in display and "\u00c3" not in display
+
+
 async def test_daily_call_cap_is_enforced_with_a_retry_hint():
     async with running_container(daily_call_cap=2) as c:
         h = Harness(c)

@@ -90,7 +90,6 @@ class Container:
                     "llm_provider": "rules",
                     "telephony_provider": "simulator",
                     "feature_llm_summaries": False,
-                    "feature_llm_replies": False,
                 }
             )
         clock = clock or SystemClock()

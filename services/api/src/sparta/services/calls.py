@@ -309,7 +309,9 @@ class CallService:
             label = (req.caller_label or "").strip() or None
             masked = mask_number(e164) if e164 else None
             display = (
-                f"{label} Â· {masked}" if (label and masked) else (masked or label or self._default_display(provider))
+                f"{label} \u00b7 {masked}"
+                if (label and masked)
+                else (masked or label or self._default_display(provider))
             )
             cfg = self.engine_config(call_id, principal, prefs, profile, language_mode)
             params = RuntimeParams(
