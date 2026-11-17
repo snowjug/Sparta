@@ -89,15 +89,25 @@ class Settings(BaseSettings):
 
     azure_speech_key: SecretStr | None = None
     azure_speech_region: str | None = None
+    azure_speech_endpoint: str | None = Field(
+        default=None, description="Custom-domain Speech endpoint; defaults to the regional host"
+    )
     azure_openai_endpoint: str | None = None
     azure_openai_key: SecretStr | None = None
     azure_openai_deployment: str | None = None
     azure_openai_api_version: str = "2024-10-21"
     acs_connection_string: SecretStr | None = None
     acs_callback_base_url: str | None = None
+    acs_resource_id: str | None = Field(
+        default=None, description="ACS resource id; the expected audience of Call Automation callback JWTs"
+    )
     acs_event_grid_secret: SecretStr | None = None
+    entra_tenant_id: str | None = Field(default=None, description="Tenant that issues Event Grid delivery tokens")
+    event_grid_audience: str | None = Field(default=None, description="Audience of Event Grid secure-webhook tokens")
     provider_timeout_s: float = 6.0
     provider_max_retries: int = 2
+    simulator_enabled: bool = True
+    feature_llm_replies: bool = False
 
     # --- limits and guardrails -----------------------------------------------------
     rate_limit_per_minute: int = 240

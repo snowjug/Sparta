@@ -43,6 +43,9 @@ class _NullStream:
     async def push_audio(self, chunk: bytes) -> None:
         self.bytes_received += len(chunk)
 
+    async def flush(self) -> None:
+        return None
+
     async def events(self) -> AsyncIterator[TranscriptEvent]:
         return
         yield  # pragma: no cover - makes this an (empty) async generator
