@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability (private)
+    url: https://github.com/snowjug/Sparta/security/advisories/new
+    about: Vulnerabilities, and any case where the assistant reveals or accepts a request for protected information, are reported privately.
+  - name: Documentation
+    url: https://github.com/snowjug/Sparta/tree/main/docs
+    about: Architecture, safety model, privacy, telephony, deployment and the evaluation report.

@@ -1,0 +1,200 @@
+# Deploys the infrastructure (Bicep) and the container images to Azure Container Apps.
+#
+# SAFE BY DEFAULT: until the repository variables AZURE_CLIENT_ID, AZURE_TENANT_ID and AZURE_SUBSCRIPTION_ID exist, this
+# workflow only prints why it did nothing and succeeds. Nothing is deployed and no credential is touched.
+#
+# When it does run:
+#   * Trigger: a manual run (choose an image tag, or "what if" only), or automatically after "Container images"
+#     succeeded on main (that run published sha-<commit> images, so they exist before this starts).
+#   * The deploy job uses the GitHub Environment "production". Add required reviewers to that environment so every
+#     production deployment needs a human approval (Settings > Environments > production).
+#   * Authentication is Azure OIDC federation (no client secret): configure a federated credential with the subject
+#     repo:<owner>/<repo>:environment:production on the app registration or managed identity (docs/DEPLOYMENT.md).
+#   * Secrets are environment secrets, handed to Bicep through environment variables (readEnvironmentVariable in
+#     main.bicepparam), never written to a file: SPARTA_DATA_KEYS, SPARTA_PEPPER, SPARTA_WEBHOOK_SECRET,
+#     POSTGRES_ADMIN_PASSWORD and, optionally, AZURE_SPEECH_KEY and AZURE_OPENAI_KEY.
+#   * Database migrations run as the Container Apps job created by the template (production never migrates at startup).
+#
+# This workflow has NOT been run on GitHub or against Azure by its author: see docs/DEPLOYMENT.md, "What is not verified".
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Image tag to deploy (default: sha-<commit of this run>)"
+        required: false
+        type: string
+      what_if_only:
+        description: "Only show what would change (az deployment group what-if); deploy nothing"
+        required: false
+        type: boolean
+        default: false
+      run_migrations:
+        description: "Run the database migration job after deploying"
+        required: false
+        type: boolean
+        default: true
+  workflow_run:
+    workflows: ["Container images"]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  preflight:
+    name: Check deployment configuration
+    # After the image workflow, only continue when it succeeded.
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      configured: ${{ steps.check.outputs.configured }}
+      image_tag: ${{ steps.check.outputs.image_tag }}
+      commit: ${{ steps.check.outputs.commit }}
+    steps:
+      - name: Are the Azure OIDC variables configured?
+        id: check
+        env:
+          AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+          AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+          AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+          INPUT_TAG: ${{ inputs.image_tag }}
+          COMMIT: ${{ github.event.workflow_run.head_sha || github.sha }}
+        run: |
+          set -euo pipefail
+          missing=""
+          for name in AZURE_CLIENT_ID AZURE_TENANT_ID AZURE_SUBSCRIPTION_ID; do
+            if [ -z "${!name:-}" ]; then missing="${missing} ${name}"; fi
+          done
+          echo "commit=${COMMIT}" >> "$GITHUB_OUTPUT"
+          echo "image_tag=${INPUT_TAG:-sha-${COMMIT}}" >> "$GITHUB_OUTPUT"
+          if [ -n "$missing" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Deployment skipped (not configured)::Missing repository variable(s):${missing}. This is a safe no-op."
+            {
+              echo "### Deployment skipped"
+              echo
+              echo "Nothing was deployed because these repository variables are not set:${missing}."
+              echo
+              echo "This is the expected state until Azure is set up. To enable deployments follow docs/DEPLOYMENT.md:"
+              echo "create an Azure OIDC federated credential for the \`production\` environment, set the three variables"
+              echo "(AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID), add environment secrets and required reviewers."
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+            echo "Azure OIDC variables are present; the deploy job will wait for the production environment approval."
+          fi
+
+  deploy:
+    name: Deploy to Azure (production)
+    needs: preflight
+    if: needs.preflight.outputs.configured == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment:
+      name: production
+      url: ${{ steps.deploy.outputs.web_url }}
+    permissions:
+      contents: read
+      id-token: write
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    env:
+      RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP || 'rg-sparta-prod' }}
+      LOCATION: ${{ vars.AZURE_LOCATION || 'centralindia' }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.preflight.outputs.commit }}
+          persist-credentials: false
+
+      - name: Sign in to Azure (OIDC, no stored secret)
+        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Validate, then deploy (or only show what would change)
+        id: deploy
+        env:
+          OWNER: ${{ github.repository_owner }}
+          IMAGE_TAG: ${{ needs.preflight.outputs.image_tag }}
+          WHAT_IF_ONLY: ${{ inputs.what_if_only }}
+          SPARTA_DATA_KEYS: ${{ secrets.SPARTA_DATA_KEYS }}
+          SPARTA_PEPPER: ${{ secrets.SPARTA_PEPPER }}
+          SPARTA_WEBHOOK_SECRET: ${{ secrets.SPARTA_WEBHOOK_SECRET }}
+          POSTGRES_ADMIN_PASSWORD: ${{ secrets.POSTGRES_ADMIN_PASSWORD }}
+          AZURE_SPEECH_KEY: ${{ secrets.AZURE_SPEECH_KEY }}
+          AZURE_OPENAI_KEY: ${{ secrets.AZURE_OPENAI_KEY }}
+          SPARTA_OIDC_ISSUER: ${{ vars.SPARTA_OIDC_ISSUER }}
+          SPARTA_OIDC_AUDIENCE: ${{ vars.SPARTA_OIDC_AUDIENCE }}
+          SPARTA_ENVIRONMENT_NAME: ${{ vars.SPARTA_ENVIRONMENT_NAME }}
+        run: |
+          set -euo pipefail
+          for name in SPARTA_DATA_KEYS SPARTA_PEPPER SPARTA_WEBHOOK_SECRET POSTGRES_ADMIN_PASSWORD; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error title=Missing environment secret::The environment secret ${name} is not set on the production environment."
+              exit 1
+            fi
+          done
+          owner="${OWNER,,}"
+          export SPARTA_API_IMAGE="ghcr.io/${owner}/sparta-api:${IMAGE_TAG}"
+          export SPARTA_WEB_IMAGE="ghcr.io/${owner}/sparta-web:${IMAGE_TAG}"
+          az group create --name "$RESOURCE_GROUP" --location "$LOCATION" --output none
+          args=(--resource-group "$RESOURCE_GROUP" --template-file infrastructure/azure/main.bicep --parameters infrastructure/azure/main.bicepparam)
+          az deployment group validate "${args[@]}" --output none
+          if [ "${WHAT_IF_ONLY:-false}" = "true" ]; then
+            az deployment group what-if "${args[@]}"
+            echo "web_url=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          az deployment group create --name "sparta-${GITHUB_RUN_ID}" "${args[@]}" --query properties.outputs --output json > "${RUNNER_TEMP}/outputs.json"
+          {
+            echo "api_fqdn=$(jq -r '.apiFqdn.value' "${RUNNER_TEMP}/outputs.json")"
+            echo "web_url=$(jq -r '.webUrl.value' "${RUNNER_TEMP}/outputs.json")"
+            echo "migration_job=$(jq -r '.migrationJobName.value' "${RUNNER_TEMP}/outputs.json")"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Apply database migrations (Container Apps job)
+        if: inputs.what_if_only != true && inputs.run_migrations != false
+        env:
+          MIGRATION_JOB: ${{ steps.deploy.outputs.migration_job }}
+        run: |
+          set -euo pipefail
+          az extension add --name containerapp --upgrade --only-show-errors
+          execution="$(az containerapp job start --name "$MIGRATION_JOB" --resource-group "$RESOURCE_GROUP" --query name --output tsv)"
+          echo "Started migration execution ${execution}"
+          for _ in $(seq 1 60); do
+            status="$(az containerapp job execution show --name "$MIGRATION_JOB" --resource-group "$RESOURCE_GROUP" --job-execution-name "$execution" --query properties.status --output tsv)"
+            echo "status: ${status}"
+            case "$status" in
+              Succeeded) exit 0 ;;
+              Failed | Stopped | Degraded)
+                echo "::error title=Migration failed::Execution ${execution} ended as ${status}. Read its logs in Log Analytics (ContainerAppConsoleLogs_CL)."
+                exit 1
+                ;;
+            esac
+            sleep 10
+          done
+          echo "::error title=Migration timed out::Execution ${execution} did not finish within 10 minutes."
+          exit 1
+
+      - name: Smoke test the deployed API
+        if: inputs.what_if_only != true
+        env:
+          API_FQDN: ${{ steps.deploy.outputs.api_fqdn }}
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --retry 12 --retry-delay 10 --retry-all-errors "https://${API_FQDN}/healthz"
+          echo
+          curl --fail --silent --show-error --retry 12 --retry-delay 10 --retry-all-errors "https://${API_FQDN}/readyz"
+          echo
+          {
+            echo "### Deployed"
+            echo "API: https://${API_FQDN} (healthz and readyz answered 200)"
+          } >> "$GITHUB_STEP_SUMMARY"

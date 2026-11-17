@@ -1,0 +1,417 @@
+# Continuous integration for pull requests and main.
+#
+# * Path-aware: on pull requests only the areas whose files changed are built (the "changes" job decides). Pushes to
+#   main and manual runs always build everything.
+# * "ci-ok" is the single check to require in branch protection: it passes when every job that ran succeeded and
+#   treats jobs skipped by the path filter as success.
+# * "web-e2e" (Playwright) is informational and deliberately NOT part of ci-ok until it has proven stable on GitHub.
+# * Nothing here needs a secret. Third-party actions are pinned by full commit SHA; first-party actions by major tag.
+#
+# This workflow has NOT been run on GitHub by its author (see docs/DEPLOYMENT.md, "What is not verified").
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  PYTHON_VERSION: "3.12"
+  NODE_VERSION: "24"
+  JAVA_VERSION: "17"
+  PYTHONUTF8: "1"
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+  NEXT_TELEMETRY_DISABLED: "1"
+
+jobs:
+  changes:
+    name: Changed areas
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      backend: ${{ steps.areas.outputs.backend }}
+      web: ${{ steps.areas.outputs.web }}
+      android: ${{ steps.areas.outputs.android }}
+      infra: ${{ steps.areas.outputs.infra }}
+    steps:
+      - name: Decide from the files of the pull request
+        id: areas
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          REPOSITORY: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          set_all() {
+            for area in backend web android infra; do echo "${area}=true" >> "$GITHUB_OUTPUT"; done
+          }
+          # Pushes to main and manual runs build everything.
+          if [ "$EVENT_NAME" != "pull_request" ]; then
+            set_all
+            exit 0
+          fi
+          files="$(gh api --paginate "repos/${REPOSITORY}/pulls/${PR_NUMBER}/files" --jq '.[].filename')"
+          count="$(printf '%s\n' "$files" | grep -c . || true)"
+          echo "The pull request touches ${count} file(s)."
+          # The API lists at most 3000 files: when in doubt, run everything.
+          if [ "$count" -ge 3000 ]; then
+            set_all
+            exit 0
+          fi
+          has() { printf '%s\n' "$files" | grep -Eq "$1"; }
+          backend=false
+          web=false
+          android=false
+          infra=false
+          if has '^(services/api/|packages/(contracts|evaluation)/|\.github/workflows/ci\.yml$)'; then backend=true; fi
+          if has '^(apps/web/|packages/contracts/|\.github/workflows/ci\.yml$)'; then web=true; fi
+          if has '^(apps/android/|\.github/workflows/ci\.yml$)'; then android=true; fi
+          if has '^(infrastructure/|scripts/|\.github/|Makefile$|docker-compose\.yml$|\.env\.example$|\.gitleaks\.toml$|services/api/(Dockerfile|\.dockerignore)$|apps/web/(Dockerfile|\.dockerignore)$)'; then infra=true; fi
+          {
+            echo "backend=${backend}"
+            echo "web=${web}"
+            echo "android=${android}"
+            echo "infra=${infra}"
+          } >> "$GITHUB_OUTPUT"
+          echo "backend=${backend} web=${web} android=${android} infra=${infra}"
+
+  backend:
+    name: Backend (lint, types, tests, contract, evaluation)
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: services/api
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: sparta
+          POSTGRES_PASSWORD: sparta-ci-only
+          POSTGRES_DB: sparta_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U sparta -d sparta_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      # The PostgreSQL integration tests DROP ALL TABLES in this throwaway service database.
+      SPARTA_TEST_POSTGRES_URL: postgresql+asyncpg://sparta:sparta-ci-only@127.0.0.1:5432/sparta_test
+      # Reserved: no test reads this yet (see .env.example, section 11).
+      SPARTA_TEST_REDIS_URL: redis://127.0.0.1:6379/1
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: services/api/requirements-dev.lock
+      - name: Install the locked dependencies (sha256 hashes verified) and the package
+        run: |
+          python -m pip install -r requirements-dev.lock
+          python -m pip install --no-deps -e .
+      - name: Lint (ruff check)
+        run: python -m ruff check .
+      - name: Format check (ruff format)
+        run: python -m ruff format --check .
+      - name: Type check (mypy)
+        run: python -m mypy src
+      - name: Tests (pytest, SQLite and PostgreSQL)
+        run: python -m pytest tests
+      - name: OpenAPI contract is current
+        run: python -m sparta openapi --check
+      - name: Evaluation smoke (dev split; exits non-zero when a safety invariant fails)
+        run: python -m sparta evaluate --split dev --out "${RUNNER_TEMP}/evaluation-{split}.json" --markdown "${RUNNER_TEMP}/evaluation-{split}.md"
+      - name: Keep the evaluation report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: evaluation-dev
+          path: |
+            ${{ runner.temp }}/evaluation-dev.json
+            ${{ runner.temp }}/evaluation-dev.md
+          if-no-files-found: ignore
+          retention-days: 14
+
+  backend-security:
+    name: Backend security (pip-audit, bandit, lock hashes)
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: services/api
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: services/api/requirements-dev.lock
+      - name: Install the locked dependencies (sha256 hashes verified)
+        run: python -m pip install -r requirements-dev.lock
+      - name: Known vulnerabilities in the locked dependencies (pip-audit)
+        # Audits the pinned versions in the lock itself, without resolving anything (needs network access to the
+        # advisory service). A new advisory against a pinned version fails this job on purpose: bump the pin in
+        # requirements-dev.lock or, with a written justification, add --ignore-vuln <ID>.
+        run: python -m pip_audit -r requirements-dev.lock --no-deps --disable-pip --progress-spinner off
+      - name: Lock hashes are files that PyPI publishes (scripts/verify_locks.py)
+        # The locks are generated through whatever index a developer uses, often a mirror. This asks pypi.org whether every
+        # sha256 in them is a published file digest. A hash PyPI does not know (exit 1) fails the job; an unreachable
+        # PyPI (exit 2) is only a warning, because it proves nothing either way.
+        working-directory: .
+        run: |
+          code=0
+          python scripts/verify_locks.py || code=$?
+          if [ "$code" -eq 2 ]; then
+            echo "::warning title=Lock hashes not verified::pypi.org could not be reached"
+          elif [ "$code" -ne 0 ]; then
+            exit "$code"
+          fi
+      - name: Static security analysis (bandit; the configuration lives in pyproject.toml)
+        run: python -m bandit -q -c pyproject.toml -r src
+
+  web:
+    name: Web (lint, types, unit tests, build)
+    needs: changes
+    if: needs.changes.outputs.web == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - name: Install (npm ci)
+        run: npm ci
+      - name: Lockfile points at the public registry
+        run: npm run lock:check
+      - name: Lint
+        run: npm run lint
+      - name: Type check
+        run: npm run typecheck
+      - name: Unit tests
+        run: npm test
+      - name: Production build
+        env:
+          NEXT_PUBLIC_API_BASE_URL: http://localhost:8000
+          NEXT_PUBLIC_AUTH_MODE: dev
+        run: npm run build
+
+  web-e2e:
+    name: Web end-to-end (Playwright, informational)
+    needs: changes
+    if: needs.changes.outputs.web == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: services/api/requirements-dev.lock
+      - name: Install the API (Playwright starts it with `python -m sparta serve`)
+        working-directory: services/api
+        run: |
+          python -m pip install -r requirements-dev.lock
+          python -m pip install --no-deps -e .
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - name: Install the web dependencies
+        working-directory: apps/web
+        run: npm ci
+      - name: Cache the Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('apps/web/package-lock.json') }}
+      - name: Install Chromium
+        working-directory: apps/web
+        run: |
+          if [ "${CACHE_HIT}" = "true" ]; then
+            npx playwright install-deps chromium
+          else
+            npx playwright install --with-deps chromium
+          fi
+        env:
+          CACHE_HIT: ${{ steps.playwright-cache.outputs.cache-hit }}
+      - name: End-to-end tests
+        working-directory: apps/web
+        env:
+          CI: "true"
+        run: npm run e2e
+      - name: Keep the Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report
+          path: |
+            apps/web/playwright-report
+            apps/web/test-results
+          if-no-files-found: ignore
+          retention-days: 7
+
+  android:
+    name: Android (unit tests, lint, debug APK)
+    needs: changes
+    if: needs.changes.outputs.android == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: apps/android
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+      - name: Make the Gradle wrapper executable (the executable bit is not guaranteed on a Windows-authored checkout)
+        run: chmod +x ./gradlew
+      - name: Unit tests, lint and debug build
+        run: ./gradlew testDebugUnitTest lintDebug assembleDebug --stacktrace
+      - name: Keep the debug APK (unsigned by design, no signing secrets exist in this workflow)
+        uses: actions/upload-artifact@v7
+        with:
+          name: sparta-debug-apk
+          path: apps/android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          retention-days: 14
+      - name: Keep the lint and test reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: android-reports
+          path: |
+            apps/android/app/build/reports
+            apps/android/app/build/test-results
+          if-no-files-found: ignore
+          retention-days: 7
+
+  infra:
+    name: Infrastructure and tooling (compose, Bicep, workflows, scripts)
+    needs: changes
+    if: needs.changes.outputs.infra == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: docker-compose.yml is valid
+        run: docker compose --env-file .env.example config --quiet
+      - name: Bicep compiles and lints, and the parameter file matches the template
+        env:
+          # Placeholders only (no secrets exist in this workflow): they let main.bicepparam compile, which type-checks
+          # it against the template's parameters. Real values come from the deploy workflow's environment secrets.
+          SPARTA_DATA_KEYS: ci-placeholder
+          SPARTA_PEPPER: ci-placeholder
+          SPARTA_WEBHOOK_SECRET: ci-placeholder
+          POSTGRES_ADMIN_PASSWORD: ci-placeholder-0123456789
+          SPARTA_OIDC_ISSUER: https://issuer.example.test/
+          SPARTA_OIDC_AUDIENCE: api://sparta-ci
+        run: |
+          az bicep install
+          az bicep build --file infrastructure/azure/main.bicep --stdout > /dev/null
+          az bicep build-params --file infrastructure/azure/main.bicepparam --stdout > /dev/null
+          az bicep lint --file infrastructure/azure/main.bicep
+      - name: Workflows pass actionlint (pinned release, checksum verified)
+        env:
+          ACTIONLINT_VERSION: "1.7.12"
+          ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+        run: |
+          set -euo pipefail
+          archive="${RUNNER_TEMP}/actionlint.tar.gz"
+          curl -fsSL -o "$archive" "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          echo "${ACTIONLINT_SHA256}  ${archive}" | sha256sum --check --strict
+          tar -xzf "$archive" -C "$RUNNER_TEMP" actionlint
+          "${RUNNER_TEMP}/actionlint" -color
+      - name: Shell scripts, Python helper and Makefile
+        run: |
+          set -euo pipefail
+          shellcheck -x scripts/*.sh
+          for script in scripts/*.sh; do bash -n "$script"; done
+          python3 -c "import ast, pathlib; ast.parse(pathlib.Path('scripts/verify_locks.py').read_text(encoding='utf-8'))"
+          make help > /dev/null
+      - name: PowerShell scripts parse
+        shell: pwsh
+        run: |
+          $failed = 0
+          foreach ($file in Get-ChildItem scripts -Filter *.ps1) {
+            $tokens = $null
+            $parseErrors = $null
+            [void][System.Management.Automation.Language.Parser]::ParseFile($file.FullName, [ref]$tokens, [ref]$parseErrors)
+            foreach ($e in $parseErrors) {
+              Write-Host "::error file=$($file.FullName),line=$($e.Extent.StartLineNumber)::$($e.Message)"
+              $failed++
+            }
+          }
+          if ($failed -gt 0) { exit 1 }
+          Write-Host "All PowerShell scripts parse."
+
+  ci-ok:
+    name: ci-ok
+    if: always()
+    needs: [changes, backend, backend-security, web, android, infra]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Every job that had to run succeeded
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: |
+          set -euo pipefail
+          echo "$NEEDS" | jq -r 'to_entries[] | "\(.key): \(.value.result)"'
+          bad="$(echo "$NEEDS" | jq -r '[to_entries[] | select(.value.result != "success" and .value.result != "skipped") | .key] | join(", ")')"
+          if [ -n "$bad" ]; then
+            echo "::error::Failed or cancelled: ${bad}"
+            exit 1
+          fi
+          echo "All required jobs passed (or were skipped because their area did not change)."
