@@ -18,8 +18,11 @@ product benefit at V1 scale.
 * One deployable Python service (`services/api`, importable package `sparta`).
 * Internal packages mirror the recommended services and communicate **only through typed interfaces**:
   `sparta.risk`, `sparta.language`, `sparta.orchestrator`, `sparta.providers` (speech/LLM/VAD), `sparta.telephony`.
-* Import direction is enforced by convention and a unit test: `risk` and `language` import nothing from `orchestrator`,
-  `telephony`, `db` or `api`; `orchestrator` never imports `api`.
+* Import direction is enforced by convention and by `services/api/tests/unit/test_architecture.py`, which reads the
+  imports of every module: `domain` imports nothing else from `sparta`; `language` and `risk` import neither
+  `orchestrator`, `providers`, `telephony`, `services`, `db` nor `api` (and `language` not `risk`); `orchestrator` imports
+  none of `services`, `telephony`, `db` or `api`; `providers` and `telephony` never import `services` or `api`; `db`
+  never imports `api`, `orchestrator`, `services` or `telephony`.
 * `apps/web` and `apps/android` consume the HTTP/WebSocket contract only. The OpenAPI document is exported to
   `packages/contracts/openapi.json` and checked in CI for drift.
 * The `/services/*` directories from the recommendation are not created as empty shells.

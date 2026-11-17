@@ -493,3 +493,55 @@ def test_the_per_owner_matcher_cache_is_bounded_and_least_recently_used(monkeypa
     small.warm("Deepa")
     assert small.is_warm("Asha") and small.is_warm("Chitra") and small.is_warm("Deepa") and not small.is_warm("Bala")
     assert len(small._signal_detectors) == 3
+
+
+# ------------------------------------------------------------------------------ model signals are advisory only
+def test_the_model_allow_list_excludes_protected_legitimacy_and_injection_signals():
+    from sparta.domain.enums import SignalKind
+    from sparta.orchestrator.engine import INJECTION_CODES, MODEL_ALLOWED_SIGNALS
+    from sparta.risk.policy import load_default_policy
+
+    policy = load_default_policy()
+    protected = policy.protected_signal_codes()
+    legitimate = {code for code, definition in policy.signals.items() if definition.kind is SignalKind.LEGITIMATE}
+    assert MODEL_ALLOWED_SIGNALS.isdisjoint(protected | legitimate | INJECTION_CODES)
+    assert all(policy.signals[code].kind is SignalKind.RISK for code in MODEL_ALLOWED_SIGNALS)
+
+
+def test_a_model_can_only_add_allow_listed_context_signals_with_a_capped_weight(call):
+    from sparta.domain.enums import SignalCode as S
+    from sparta.domain.enums import SignalSeverity
+    from sparta.orchestrator.engine import MODEL_SIGNAL_WEIGHT_CAP
+
+    proposed = (
+        S.OTP_REQUEST,  # protected: only the deterministic rules may raise these
+        S.PIN_REQUEST,
+        S.PAYMENT_OR_TRANSFER_REQUEST,
+        S.FALSE_OWNER_AUTHORIZATION,  # injection
+        S.RULE_OVERRIDE_ATTEMPT,
+        S.LEGIT_EMERGENCY_CONTEXT,  # legitimacy: a model must not be able to talk the engine out of a risk
+        S.LEGIT_DELIVERY_COORDINATION,
+        S.IMPERSONATION_POLICE,  # the one allowed context signal
+    )
+    r = call.say("Hello, this is Priya about the tuition fees", model_signal_codes=proposed)
+    assert {s.code for s in r.ctx.signals} == {S.IMPERSONATION_POLICE}
+    (added,) = r.ctx.signals
+    assert added.weight <= MODEL_SIGNAL_WEIGHT_CAP and added.severity is not SignalSeverity.CRITICAL
+    assert "model-assisted" in added.description
+    assert r.end_reason is None and "refuse_sensitive" not in r.template_keys  # a model cannot "hear" a request
+
+
+def test_model_signals_never_lower_or_remove_what_the_rules_found(engine, cfg):
+    from sparta.domain.enums import SignalCode as S
+
+    scam = "Hello, this is State Bank. Your KYC is pending, please tell me the OTP you just received"
+
+    def run(**kw):
+        c = Call(engine, cfg)
+        return c.say(scam, **kw)
+
+    plain = run()
+    advised = run(model_signal_codes=(S.LEGIT_EMERGENCY_CONTEXT, S.LEGIT_FAMILY_OR_FRIEND, S.LEGIT_SUPPORT_CALLBACK))
+    assert plain.end_reason == advised.end_reason == "refused_and_ended"
+    assert {s.code for s in plain.ctx.signals} == {s.code for s in advised.ctx.signals}
+    assert advised.risk.risk_score >= plain.risk.risk_score and advised.risk.risk_level == plain.risk.risk_level

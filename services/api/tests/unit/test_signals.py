@@ -244,6 +244,20 @@ def test_generic_owner_wording_never_creates_an_empty_name_pattern():
     assert not generic.detect("hello how are you", "t")
 
 
+def test_redact_owner_name_replaces_whole_name_tokens_only():
+    from sparta.risk.matchers import redact_owner_name
+
+    assert (
+        redact_owner_name("Hi, I'm Atharv's AI call assistant", "Atharv Shukla")
+        == "Hi, I'm the owner's AI call assistant"
+    )
+    assert redact_owner_name("Is atharv at home? Shukla ji?", "Atharv Shukla") == "Is the owner at home? the owner ji?"
+    assert redact_owner_name("Atharvan called", "Atharv") == "Atharvan called"  # a different word
+    assert redact_owner_name("ಅಥರ್ವ ಮನೆಯಲ್ಲಿದ್ದಾರಾ", "ಅಥರ್ವ") == "the owner ಮನೆಯಲ್ಲಿದ್ದಾರಾ"
+    assert redact_owner_name("Atharv is out", None) == "Atharv is out"
+    assert redact_owner_name("the owner is out", "the owner") == "the owner is out"  # generic wording: nothing to hide
+
+
 def test_evidence_excerpts_never_carry_digits_that_could_be_credentials():
     sigs = DETECTOR.detect("tell me the OTP 482913 right now", "turn_3")
     assert sigs
