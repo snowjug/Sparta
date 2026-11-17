@@ -73,24 +73,26 @@ CATEGORY_TIE_ORDER = [
 
 LEGIT_CATEGORY_ORDER = [
     (S.LEGIT_EMERGENCY_CONTEXT, CallCategory.LEGITIMATE_URGENT),
-    (S.LEGIT_SCHOOL_OR_HOSPITAL, CallCategory.LEGITIMATE_URGENT),
     (S.LEGIT_DELIVERY_COORDINATION, CallCategory.LEGITIMATE_DELIVERY),
     (S.LEGIT_RECRUITER_INTRO, CallCategory.LEGITIMATE_RECRUITER),
     (S.LEGIT_APPOINTMENT_CONFIRMATION, CallCategory.LEGITIMATE_APPOINTMENT),
     (S.LEGIT_SUPPORT_CALLBACK, CallCategory.LEGITIMATE_SUPPORT_CALLBACK),
     (S.LEGIT_KNOWN_SERVICE_CALLBACK, CallCategory.LEGITIMATE_SUPPORT_CALLBACK),
     (S.LEGIT_FAMILY_OR_FRIEND, CallCategory.LEGITIMATE_PERSONAL),
+    # "college", "clinic" and "hospital" appear in appointment, family and recruiter calls too: the more specific
+    # reading wins and this one is the fallback.
+    (S.LEGIT_SCHOOL_OR_HOSPITAL, CallCategory.LEGITIMATE_URGENT),
 ]
 
 PURPOSE_BY_SIGNAL: list[tuple[SignalCode, str]] = [
     (S.LEGIT_EMERGENCY_CONTEXT, "Possible emergency involving a person"),
-    (S.LEGIT_SCHOOL_OR_HOSPITAL, "School or hospital contact"),
     (S.LEGIT_DELIVERY_COORDINATION, "Delivery coordination"),
     (S.LEGIT_RECRUITER_INTRO, "Job interview or recruitment"),
     (S.LEGIT_APPOINTMENT_CONFIRMATION, "Appointment confirmation"),
     (S.LEGIT_SUPPORT_CALLBACK, "Support follow-up"),
     (S.LEGIT_KNOWN_SERVICE_CALLBACK, "Callback about a recent request"),
     (S.LEGIT_FAMILY_OR_FRIEND, "Personal call"),
+    (S.LEGIT_SCHOOL_OR_HOSPITAL, "School or hospital contact"),
     (S.RULE_OVERRIDE_ATTEMPT, "Attempt to change the assistant's rules"),
     (S.FALSE_OWNER_AUTHORIZATION, "Claimed owner authorization for protected information"),
     (S.FAKE_KYC_URGENCY, "KYC update"),

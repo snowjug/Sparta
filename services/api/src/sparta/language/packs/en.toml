@@ -438,7 +438,6 @@ support_callback = [
   '\byou\s+(?:had\s+)?(?:raised|registered|logged|filed|opened|submitted|created|reported|contacted|booked)\b',
   '\bregarding\s+(?:your|the)\s+(?:complaint|ticket|request|query|issue|case|enquiry|inquiry|booking|order|service\s+request)\b',
   '\bfollow(?:ing)?[\s-]?up\b',
-  '\bcustomer\s+(?:support|care|service|success)\b',
   '\b(?:as|per)\s+discussed\b',
   '\bresolution\s+of\s+your\b',
   '\byour\s+(?:complaint|ticket|query|issue)\b',
@@ -535,7 +534,7 @@ warning = [
 negation = [
   '\b(?:no|nor|neither|zero)\s+(?:(?:any|an?|the|such|more|further|other|additional|your|my|our)\s+)*{LIST}',
   '\bno\s+(?:need|requirement|necessity)\s+(?:for|of)\s+(?:(?:any|an?|the|your|my|our)\s+)*{LIST}',
-  '\b(?:never|not|(?:do|does|did|should|must|need|may|might|would|could|is|are|was|were)(?:\s+not|\s*n\x27?t)|(?:can|will|shall)\s+not|can\x27?t|cannot|won\x27?t|shan\x27?t)(?:\s|{BREAK})+(?:(?:ever|really|please|kindly|at\s+all|at\s+any\s+time|in\s+any\s+case|under\s+any\s+circumstances?)(?:\s|{BREAK})+)*(?:(?:(?:ask|request|need|want|demand|collect|submit|forward|confirm|mention|type|transfer|deposit|install|download|click|open|enter|send)(?:s|ed|ing)?|(?:requir|shar|provid|disclos|divulg|purchas|us)(?:e|es|ed|ing)|giv(?:e|es|en|ing)|gave|tak(?:e|es|en|ing)|took|tell(?:s|ing)?|told|read(?:s|ing)?|say(?:s|ing)?|said|pay(?:s|ing)?|paid|buy(?:s|ing)?|bought|reveal(?:s|ed|ing)?|verif(?:y|ies|ied|ying)|sent)\s+)?(?:(?:you|me|us|anyone|anybody|someone|any|an?|the|your|my|our|his|her|their|for|of|with|to|from|out|in|about|on)\s+){0,4}{LIST}',
+  '\b(?:never|not|(?:do|does|did|should|must|need|may|might|would|could|is|are|was|were)(?:\s+not|\s*n\x27?t)|(?:can|will|shall)\s+not|can\x27?t|cannot|won\x27?t|shan\x27?t)(?:\s|{BREAK})+(?:(?:ever|really|please|kindly|at\s+all|at\s+any\s+time|in\s+any\s+case|under\s+any\s+circumstances?)(?:\s|{BREAK})+)*(?:(?:(?:ask|request|need|want|demand|collect|submit|forward|confirm|mention|type|transfer|deposit|install|download|click|open|enter|send)(?:s|ed|ing)?|(?:requir|shar|provid|disclos|divulg|purchas|us)(?:e|es|ed|ing)|giv(?:e|es|en|ing)|gave|tak(?:e|es|en|ing)|took|tell(?:s|ing)?|told|read(?:s|ing)?|say(?:s|ing)?|said|pay(?:s|ing)?|paid|buy(?:s|ing)?|bought|reveal(?:s|ed|ing)?|verif(?:y|ies|ied|ying)|sent)\s+)?(?:(?:you|me|us|anyone|anybody|someone|any|an?|the|your|my|our|his|her|their|for|of|with|to|from|out|in|about|on)\s+){0,4}(?:to\s+(?:share|tell|give|provide|send|disclose|reveal|enter|read(?:\s+out)?|say|submit|pay|transfer|forward|confirm|verify|install|download|use|open|click)\s+(?:(?:you|me|us|anyone|anybody|someone|any|an?|the|your|my|our|his|her|their|for|of|with|to|from|out|in|about|on)\s+){0,4})?{LIST}',
   '\b(?:no\s*one|nobody)\s+(?:(?:will|would|should|can|could|shall|must)\s+)?(?:ever\s+)?(?:asks?|requests?|needs?|wants?|requires?|demands?)\s+(?:(?:you|me|us|for|of|any|an?|the|your|my|our|his|her|their|to|from|about)\s+){0,4}{LIST}',
   '{LIST}\s+(?:(?:is|are|was|were|will|would|should|must|can|could|shall|may|might|does|do)\s+)?(?:never|not|(?:is|are|was|were|should|must|can|could|would|will|does|do)n\x27?t|won\x27?t|cannot)\s+(?:(?:be|being|get|gets)\s+)?(?:needed|required|necessary|asked|requested|involved|charged|collected|shared|given|told|disclosed|revealed|provided|sent|taken|demanded|used|installed|downloaded)\b',
 ]

@@ -18,6 +18,8 @@ from sparta.language.text import canon_latin, compile_pattern, token_script, tok
 
 SCRIPT_LANG = {"Knda": "kn-IN", "Taml": "ta-IN", "Telu": "te-IN", "Mlym": "ml-IN", "Beng": "bn-IN"}
 SUFFIX_WEIGHT = 0.5
+INDIC_FRAME_SHARE = 0.6  # an Indic language this strong relative to English is the matrix language of the sentence
+MIN_INDIC_FRAME_SCORE = 2.5  # ... and needs at least a few Indic words (a stray "ji" must not flip English)
 UNKNOWN = "und"
 
 
@@ -128,8 +130,16 @@ class LanguageDetector:
 
         ranked = sorted(scores.items(), key=lambda kv: kv[1], reverse=True)
         top_lang, top = ranked[0]
-        second = ranked[1][1] if len(ranked) > 1 else 0.0
-        margin = (top - second) / total
+        if top_lang == "en-IN":
+            # Code-switched speech with an Indic frame ("nanu Sahyadri Bank customer care inda maatadthidini") is
+            # answered in the Indic language even when English nouns outnumber the Indic words.
+            indic_lang, indic = max(
+                (("hi-IN", scores.get("hi-IN", 0.0)), ("kn-IN", scores.get("kn-IN", 0.0))), key=lambda kv: kv[1]
+            )
+            if indic >= MIN_INDIC_FRAME_SCORE and indic >= INDIC_FRAME_SHARE * top:
+                top_lang, top = indic_lang, indic
+        second = max((s for code, s in scores.items() if code != top_lang), default=0.0)
+        margin = max(0.0, (top - second) / total)
         evidence = min(1.0, total / 4.0)
         confidence = max(0.05, min(0.99, 0.35 + 0.45 * margin + 0.2 * evidence))
 
