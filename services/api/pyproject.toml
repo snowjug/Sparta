@@ -92,6 +92,7 @@ ignore = [
   "RUF001",  # multilingual strings contain look-alike characters on purpose
   "RUF002",
   "RUF003",
+  "E501",    # `ruff format` owns wrapping; remaining long lines are strings/comments where wrapping hurts readability
 ]
 
 [tool.ruff.lint.per-file-ignores]

@@ -108,6 +108,15 @@ class Settings(BaseSettings):
     provider_max_retries: int = 2
     simulator_enabled: bool = True
     feature_llm_replies: bool = False
+    max_active_calls: int = 5
+    telephony_owner_user_id: str | None = Field(
+        default=None, description="Owner that receives calls delivered by a real telephony provider"
+    )
+    estimated_stt_per_audio_hour_usd: float = 0.0
+    estimated_tts_per_million_chars_usd: float = 0.0
+    estimated_llm_per_million_prompt_tokens_usd: float = 0.0
+    estimated_llm_per_million_completion_tokens_usd: float = 0.0
+    estimated_telephony_per_minute_usd: float = 0.0
 
     # --- limits and guardrails -----------------------------------------------------
     rate_limit_per_minute: int = 240

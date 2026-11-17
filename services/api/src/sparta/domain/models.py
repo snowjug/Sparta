@@ -366,6 +366,11 @@ class UserPreferences(StrictInputModel):
     silence_first_timeout_s: int = Field(default=8, ge=3, le=30)
     silence_second_timeout_s: int = Field(default=8, ge=3, le=30)
     max_call_duration_s: int = Field(default=180, ge=30, le=900)
+    takeover_number: str | None = Field(
+        default=None,
+        pattern=r"^\+?[0-9 ()\-]{7,20}$",
+        description="Where a real provider bridges the call when you tap Take Over (never used by the simulator)",
+    )
     retention: RetentionPolicy = Field(default_factory=RetentionPolicy)
     escalation: EscalationRules = Field(default_factory=EscalationRules)
     notifications: NotificationPreferences = Field(default_factory=NotificationPreferences)

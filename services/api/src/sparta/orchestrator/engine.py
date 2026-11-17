@@ -25,6 +25,7 @@ from sparta.domain.enums import (
     ResponseStyle,
     ScreeningStrictness,
     SignalCode,
+    SignalSeverity,
     Speaker,
     TurnSource,
 )
@@ -52,7 +53,34 @@ S = SignalCode
 MAX_INPUT_CHARS = 1000
 PROBE_CODES = frozenset({S.ADDRESS_OR_LOCATION_REQUEST, S.OWNER_AVAILABILITY_PROBE})
 INJECTION_CODES = frozenset({S.RULE_OVERRIDE_ATTEMPT, S.FALSE_OWNER_AUTHORIZATION})
+# A model may add context signals but never the protected-information requests: those stay deterministic, so a
+# hallucinating or manipulated model cannot end a legitimate call by "hearing" a request that was never made.
+MODEL_ALLOWED_SIGNALS = frozenset(
+    {
+        S.SUSPICIOUS_PRIZE,
+        S.ARREST_OR_LEGAL_THREAT,
+        S.ACCOUNT_CLOSURE_THREAT,
+        S.FAKE_KYC_URGENCY,
+        S.URGENCY_PRESSURE,
+        S.IMPERSONATION_BANK,
+        S.IMPERSONATION_GOVERNMENT,
+        S.IMPERSONATION_POLICE,
+        S.IMPERSONATION_COURIER,
+        S.IMPERSONATION_EMPLOYER,
+        S.MALICIOUS_LINK_OR_CALLBACK,
+        S.HARASSMENT_OR_ABUSE,
+        S.TELEMARKETING,
+    }
+)
+MODEL_SIGNAL_WEIGHT_CAP = 0.6
 FALLBACK_KEYS = ["probe_deflect"]
+_SEVERITY_ORDER = [
+    SignalSeverity.INFO,
+    SignalSeverity.LOW,
+    SignalSeverity.MEDIUM,
+    SignalSeverity.HIGH,
+    SignalSeverity.CRITICAL,
+]
 
 
 def sanitize_text(text: str) -> str:
@@ -97,6 +125,8 @@ class CallerInput:
     stt_confidence: float | None = None
     previous_text: str | None = None
     previous_turn_id: str | None = None
+    # Advisory signal codes from a model provider. Only context signals are accepted (see MODEL_ALLOWED_SIGNALS).
+    model_signal_codes: tuple[SignalCode, ...] = ()
 
 
 @dataclass
@@ -344,6 +374,20 @@ class ConversationEngine:
                 if s.code not in known:
                     s.evidence_turn_ids = [i for i in (inp.previous_turn_id, turn_id) if i]
                     new.append(s)
+        have = {s.code for s in new} | {s.code for s in ctx.signals}
+        for code in inp.model_signal_codes:
+            if code in MODEL_ALLOWED_SIGNALS and code not in have:
+                definition = self.policy.signals[code]
+                new.append(
+                    RiskSignal(
+                        code=code,
+                        kind=definition.kind,
+                        severity=min(definition.severity, SignalSeverity.HIGH, key=_SEVERITY_ORDER.index),
+                        weight=min(definition.weight, MODEL_SIGNAL_WEIGHT_CAP),
+                        evidence_turn_ids=[turn_id],
+                        description=f"{definition.description} (model-assisted)",
+                    )
+                )
         ctx.signals = merge_signals(ctx.signals, new)
         claims = extract_claims(text)
         name, org, role = claims.merged_into(
