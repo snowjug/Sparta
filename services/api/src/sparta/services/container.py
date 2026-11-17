@@ -22,8 +22,10 @@ from sparta.services.ids import DeterministicIds, IdFactory, RandomIds
 from sparta.services.kv import KeyValueStore, MemoryKV, RedisKV
 from sparta.services.live import LiveHub
 from sparta.services.notifier import LoggingPushNotifier, PushNotifier
+from sparta.services.owner import OwnerService
 from sparta.services.providers import ProviderSet, build_providers
 from sparta.services.ratelimit import RateLimiter
+from sparta.services.simulator import SimulatorService
 
 log = logging.getLogger("sparta.container")
 
@@ -53,6 +55,8 @@ class Container:
     notifier: PushNotifier
     pepper: bytes
     calls: CallService
+    owner: OwnerService
+    simulator: SimulatorService
     hermetic: bool = False
     started: bool = False
 
@@ -116,6 +120,29 @@ class Container:
             pepper=pepper,
             costs=unit_costs(settings),
         )
+        owner = OwnerService(
+            settings=settings,
+            db=db,
+            clock=clock,
+            ids=ids,
+            engine=engine,
+            providers=providers,
+            calls=calls,
+            pepper=pepper,
+        )
+
+        async def replay_container() -> Self:
+            return await cls.build(settings, hermetic=True)
+
+        simulator = SimulatorService(
+            settings=settings,
+            db=db,
+            clock=clock,
+            ids=ids,
+            calls=calls,
+            providers=providers,
+            replay_factory=replay_container,
+        )
         return cls(
             settings=settings,
             clock=clock,
@@ -130,6 +157,8 @@ class Container:
             notifier=notifier,
             pepper=pepper,
             calls=calls,
+            owner=owner,
+            simulator=simulator,
             hermetic=hermetic,
         )
 
@@ -149,6 +178,7 @@ class Container:
             await self.db.dispose()
             return
         self.started = False
+        await self.simulator.stop()
         await self.calls.stop()
         await self.hub.stop()
         await self.providers.aclose()

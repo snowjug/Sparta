@@ -378,6 +378,11 @@ class Repository:
                 m.TrustedCallerRow.user_id == user_id, m.TrustedCallerRow.fingerprint == fingerprint
             )
         )
+        await self.s.execute(
+            update(m.CallSessionRow)
+            .where(m.CallSessionRow.user_id == user_id, m.CallSessionRow.caller_fingerprint == fingerprint)
+            .values(blocked=True, trusted=False)
+        )
         return _blocked_entry(existing)
 
     async def add_trusted(
@@ -413,6 +418,11 @@ class Repository:
             delete(m.BlockedCallerRow).where(
                 m.BlockedCallerRow.user_id == user_id, m.BlockedCallerRow.fingerprint == fingerprint
             )
+        )
+        await self.s.execute(
+            update(m.CallSessionRow)
+            .where(m.CallSessionRow.user_id == user_id, m.CallSessionRow.caller_fingerprint == fingerprint)
+            .values(trusted=True, blocked=False)
         )
         return _trusted_entry(existing)
 

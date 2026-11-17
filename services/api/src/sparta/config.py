@@ -116,6 +116,10 @@ class Settings(BaseSettings):
     telephony_owner_user_id: str | None = Field(
         default=None, description="Owner that receives calls delivered by a real telephony provider"
     )
+    forwarding_number: str | None = Field(
+        default=None,
+        description="Number the owner forwards unanswered/unknown calls to (the provider's inbound number)",
+    )
     estimated_stt_per_audio_hour_usd: float = 0.0
     estimated_tts_per_million_chars_usd: float = 0.0
     estimated_llm_per_million_prompt_tokens_usd: float = 0.0

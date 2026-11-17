@@ -24,6 +24,7 @@ from sparta.telephony.simulator import SimulatorTelephonyProvider
 
 log = logging.getLogger("sparta.providers")
 
+
 @dataclass
 class ProviderSet:
     telephony: TelephonyProvider

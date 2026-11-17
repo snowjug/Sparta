@@ -76,6 +76,7 @@ from sparta.providers.base import (
     TurnEvaluationRequest,
 )
 from sparta.providers.resilience import ResilientCaller
+from sparta.services.audit import record_audit
 from sparta.services.dto import (
     CreateCallRequest,
     InterruptResult,
@@ -163,6 +164,20 @@ class CallService:
     def active_runtime_count(self) -> int:
         return len(self._runtimes)
 
+    def speaking_remaining_s(self, call_id: str) -> float | None:
+        """Seconds of assistant speech left (0 when silent); ``None`` when the call is not running in this process."""
+        rt = self._runtimes.get(call_id)
+        if rt is None:
+            return None
+        if rt.playback_id is None:
+            return 0.0
+        return max(0.0, rt.speaking_until - self.clock.monotonic())
+
+    def is_busy(self, call_id: str) -> bool:
+        """True while a step of this call is being processed (used by deterministic drivers to wait for quiet)."""
+        rt = self._runtimes.get(call_id)
+        return rt is not None and rt.lock.locked()
+
     # ================================================================================== helpers
     def _provider_by_name(self, name: str) -> TelephonyProvider:
         if name == self.telephony.name:
@@ -200,7 +215,7 @@ class CallService:
             else:
                 yield
 
-    def _validate_language_mode(self, requested: str, prefs: UserPreferences) -> str:
+    def validate_language_mode(self, requested: str, prefs: UserPreferences) -> str:
         if requested in ("", "auto"):
             return "auto" if prefs.auto_detect_language else prefs.primary_language
         if requested not in self._supported:
@@ -218,7 +233,7 @@ class CallService:
                 "The daily call limit has been reached.", retry_after_s=max(1, int((midnight - now).total_seconds()))
             )
 
-    def _engine_config(
+    def engine_config(
         self, call_id: str, principal: Principal, prefs: UserPreferences, profile: AssistantProfile, language_mode: str
     ) -> EngineConfig:
         owner = profile.owner_display_name
@@ -283,7 +298,7 @@ class CallService:
             prefs = await repo.get_preferences(principal.id)
             profile = await repo.get_assistant_profile(principal.id) or AssistantProfile()
             await self._enforce_limits(repo, principal.id, now)
-            language_mode = self._validate_language_mode(req.language_mode, prefs)
+            language_mode = self.validate_language_mode(req.language_mode, prefs)
             fp = None
             if e164:
                 fp = fingerprint(user_salt(self.pepper, principal.id), e164)
@@ -291,9 +306,9 @@ class CallService:
             label = (req.caller_label or "").strip() or None
             masked = mask_number(e164) if e164 else None
             display = (
-                f"{label} · {masked}" if (label and masked) else (masked or label or self._default_display(provider))
+                f"{label} Â· {masked}" if (label and masked) else (masked or label or self._default_display(provider))
             )
-            cfg = self._engine_config(call_id, principal, prefs, profile, language_mode)
+            cfg = self.engine_config(call_id, principal, prefs, profile, language_mode)
             params = RuntimeParams(
                 silence_timers=req.silence_timers == "preferences",
                 silence_first_s=float(prefs.silence_first_timeout_s),
@@ -768,7 +783,7 @@ class CallService:
         latency = self._tts_latency(rt.call_id, result.ctx.seq, rt.params)
         sim_delay = (latency.tts_first_audio_ms or 0) + (latency.playback_start_ms or 0)
         if sim_delay:
-            await self.clock.sleep(sim_delay / 1000.0)
+            await self.clock.sleep(sim_delay / 1000.0, tag="net")
         async with self.db.uow() as repo:
             row = await repo.get_call_row(rt.user_id, rt.call_id)
             assert row is not None
@@ -777,6 +792,15 @@ class CallService:
                 await repo.resolve_escalation(escalation_resolution[0], escalation_resolution[1], self.clock.now())
             if owner_action is not None:
                 await repo.add_owner_action(owner_action)
+                await record_audit(
+                    repo,
+                    rt.user_id,
+                    "call.owner_action",
+                    "call",
+                    rt.call_id,
+                    {"action": owner_action.action.value, "simulated": owner_action.simulated},
+                    now=self.clock.now(),
+                )
             await self._persist_result(repo, ev, row, old_ctx, result, latency=latency)
             for kind, data in extra_events or []:
                 await ev.emit(kind, data)
@@ -856,7 +880,7 @@ class CallService:
             self.metrics.observe(mt.RISK_ENGINE_MS, (time.perf_counter() - started) * 1000.0)
             latency, sim_ms = self._turn_latency(rt, source, stt_ms, result, model_ms)
             if sim_ms:
-                await self.clock.sleep(sim_ms / 1000.0)
+                await self.clock.sleep(sim_ms / 1000.0, tag="net")
             async with self.db.uow() as repo:
                 row = await repo.get_call_row(rt.user_id, rt.call_id)
                 assert row is not None
@@ -1067,6 +1091,8 @@ class CallService:
             )
             await repo.update_call(call_id, blocked=True, trusted=False)
             active = row.status == CallStatus.ACTIVE.value
+            if not active:
+                await repo.update_call(call_id, owner_attention=False)
             await repo.add_owner_action(
                 OwnerAction(
                     id=self.ids.new("act"),
@@ -1076,6 +1102,7 @@ class CallService:
                     simulated=row.simulated,
                 )
             )
+            await record_audit(repo, principal.id, "caller.blocked", "blocked_caller", entry.id, now=self.clock.now())
         if active:
             rt = await self._runtime(principal.id, call_id)
             async with self._locked(rt):
@@ -1100,6 +1127,8 @@ class CallService:
                 self.clock.now(),
             )
             await repo.update_call(call_id, trusted=True, blocked=False)
+            if row.status != CallStatus.ACTIVE.value:
+                await repo.update_call(call_id, owner_attention=False)
             await repo.add_owner_action(
                 OwnerAction(
                     id=self.ids.new("act"),
@@ -1109,6 +1138,7 @@ class CallService:
                     simulated=row.simulated,
                 )
             )
+            await record_audit(repo, principal.id, "caller.trusted", "trusted_caller", entry.id, now=self.clock.now())
         return entry
 
     async def feedback(
@@ -1124,6 +1154,8 @@ class CallService:
                 ),
                 principal.id,
             )
+            if row.status != CallStatus.ACTIVE.value:  # the owner has looked at it: stop asking for attention
+                await repo.update_call(call_id, owner_attention=False)
         if created:
             self.metrics.inc(mt.FEEDBACK_TOTAL, kind=kind.value)
         if kind is FeedbackKind.TRUST_CALLER and created:
@@ -1333,6 +1365,7 @@ class CallService:
             if row.status == CallStatus.ACTIVE.value:
                 raise Conflict("End the call before deleting its content.")
             await repo.delete_call_content(principal.id, call_id)
+            await record_audit(repo, principal.id, "call.content_deleted", "call", call_id, now=self.clock.now())
 
     async def delete_call(self, principal: Principal, call_id: str) -> None:
         async with self.db.uow() as repo:
@@ -1342,10 +1375,22 @@ class CallService:
             if row.status == CallStatus.ACTIVE.value:
                 raise Conflict("End the call before deleting it.")
             await repo.delete_call(principal.id, call_id)
+            await record_audit(repo, principal.id, "call.deleted", "call", call_id, now=self.clock.now())
 
     async def delete_all_content(self, principal: Principal) -> int:
         async with self.db.uow() as repo:
-            return await repo.delete_all_content(principal.id)
+            count = await repo.delete_all_content(principal.id)
+            await record_audit(
+                repo, principal.id, "calls.all_content_deleted", "calls", None, {"count": count}, now=self.clock.now()
+            )
+            return count
+
+    async def record_access(self, principal: Principal, call_id: str, action: str) -> None:
+        """Audit a sensitive read (export, diagnostic report). Raises NotFound for someone else's call."""
+        async with self.db.uow() as repo:
+            if await repo.get_call_row(principal.id, call_id) is None:
+                raise NotFound("Call not found.")
+            await record_audit(repo, principal.id, action, "call", call_id, now=self.clock.now())
 
     async def diagnostic_report(self, principal: Principal, call_id: str) -> dict[str, Any]:
         """Sanitised report: identifiers, states, timings and codes. No transcript text, names or numbers."""
