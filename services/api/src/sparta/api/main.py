@@ -4,9 +4,11 @@
 ``python -m sparta serve``). Tests pass an already built, hermetic ``Container`` so no lifespan or background job runs.
 """
 
+import inspect
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from typing import Any
 
 import httpx
 from fastapi import APIRouter, FastAPI
@@ -61,6 +63,17 @@ def _operation_id(route: APIRoute) -> str:
     return f"{tag}_{route.name}"
 
 
+def _own_telemetry_only() -> dict[str, Any]:
+    """FastAPI 0.16x instruments itself with OpenTelemetry whenever a global provider exists (that is, with OTLP set up).
+    Its spans carry the raw URL path and query string (a history search term is content), adopt a trace id chosen by the
+    caller's ``traceparent`` header and duplicate the request span in ``api/middleware.py``, so they are turned off:
+    Sparta's own spans are the only ones. Older FastAPI versions have no such option and no such behaviour."""
+    if "telemetry" not in inspect.signature(FastAPI.__init__).parameters:
+        return {}
+    off = {"tracing": False, "metrics": False, "logs": False, "operation_spans": False, "auto_configure": False}
+    return {"telemetry": off}
+
+
 def create_app(settings: Settings | None = None, *, container: Container | None = None) -> FastAPI:
     settings = settings or (container.settings if container is not None else get_settings())
     owns_container = container is None
@@ -109,6 +122,7 @@ def create_app(settings: Settings | None = None, *, container: Container | None 
         lifespan=lifespan,
         responses=ERROR_RESPONSES,
         generate_unique_id_function=_operation_id,
+        **_own_telemetry_only(),
     )
     app.state.settings = settings
     app.state.known_users = set()

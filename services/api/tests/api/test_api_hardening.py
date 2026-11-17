@@ -1,13 +1,18 @@
 """Hardening found by the security review: limits, retention of cached responses, and bounded background work."""
 
+import hashlib
+import json
 from datetime import timedelta
 
+import pytest
 from call_harness import OWNER, Harness, running_container
+from pydantic import SecretStr
 from sqlalchemy import select
 
 from conftest import SCAM, ApiEnv, running_env
 from sparta.db import models as m
 from sparta.services import retention
+from sparta.services.views import ListNumberRequest
 
 API = "/api/v1"
 
@@ -116,6 +121,47 @@ async def test_with_transcript_storage_off_the_cache_remembers_only_that_the_req
     assert replay.status_code == 409 and replay.headers["idempotent-replayed"] == "true"
 
 
+async def test_the_stored_request_fingerprint_cannot_confirm_a_guessed_phone_number():
+    """It used to be a bare SHA-256 of route + body, so anyone who could read the table could test guessed numbers."""
+    number = "+919876543210"
+    route = f"POST {API}/blocked-callers"
+    key = {"Idempotency-Key": "block-hash-0001"}
+    unkeyed = hashlib.sha256(
+        json.dumps(
+            {"route": route, "body": ListNumberRequest(number=number).model_dump(mode="json")}, sort_keys=True
+        ).encode()
+    ).hexdigest()
+    stored: list[str] = []
+    for pepper in ("first-pepper-for-the-test", "second-pepper-for-the-test"):
+        async with running_env(pepper=SecretStr(pepper)) as env:
+            first = await env.client.post(f"{API}/blocked-callers", json={"number": number}, headers=key)
+            assert first.status_code == 201
+            (row,) = await idempotency_rows(env)
+            assert row.request_hash != unkeyed
+            stored.append(row.request_hash)
+            replay = await env.client.post(f"{API}/blocked-callers", json={"number": number}, headers=key)
+            assert replay.headers["idempotent-replayed"] == "true"  # the keyed fingerprint still identifies a retry
+            other = await env.client.post(f"{API}/blocked-callers", json={"number": "+919876543299"}, headers=key)
+            assert other.status_code == 409  # and still tells a different request apart
+    assert stored[0] != stored[1]  # it depends on the pepper, which is not in the database
+
+
+@pytest.mark.parametrize("kind", ["blocked", "trusted"])
+async def test_removing_a_list_entry_forgets_the_cached_response_that_added_it(env: ApiEnv, kind: str):
+    key = {"Idempotency-Key": f"{kind}-add-0001"}
+    body = {"number": "+919876543211"}
+    added = await env.client.post(f"{API}/{kind}-callers", json=body, headers=key)
+    assert added.status_code == 201
+    entry_id = added.json()["id"]
+    assert (await env.client.post(f"{API}/{kind}-callers", json=body, headers=key)).headers["idempotent-replayed"]
+
+    assert (await env.client.delete(f"{API}/{kind}-callers/{entry_id}")).status_code == 204
+    assert await idempotency_rows(env) == []
+    again = await env.client.post(f"{API}/{kind}-callers", json=body, headers=key)
+    assert again.status_code == 201 and "idempotent-replayed" not in again.headers
+    assert again.json()["id"] != entry_id  # a real new entry, not the removed one shown as present
+
+
 # --------------------------------------------------------------------------------- screening events
 async def test_screening_events_have_a_daily_cap_but_replays_still_succeed():
     async with running_env(daily_screening_event_cap=2) as env:
@@ -137,6 +183,25 @@ async def test_screening_events_have_a_daily_cap_but_replays_still_succeed():
         assert (
             await env.client.post(f"{API}/screening/events", json=event(1))
         ).status_code == 200  # an idempotent replay
+
+
+async def test_backdating_screening_events_does_not_get_around_the_daily_cap():
+    """The cap counts what the server received today, not the time the client says the call happened."""
+    async with running_env(daily_screening_event_cap=2) as env:
+
+        def backdated(n: int) -> dict:
+            return {
+                "client_event_id": f"evt-old-{n:04d}",
+                "number_fingerprint": f"{n:064x}",
+                "number_display": "+91 98•••• ••10",
+                "decision": "reject",
+                "reason": "spam",
+                "occurred_at": (env.clock.now() - timedelta(days=3)).isoformat(),
+            }
+
+        assert (await env.client.post(f"{API}/screening/events", json=backdated(1))).status_code == 200
+        assert (await env.client.post(f"{API}/screening/events", json=backdated(2))).status_code == 200
+        assert (await env.client.post(f"{API}/screening/events", json=backdated(3))).status_code == 429
 
 
 # --------------------------------------------------------------------------------------- retention

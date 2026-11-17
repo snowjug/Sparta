@@ -47,23 +47,53 @@ class Hit:
     end: int
 
 
+def _owner_name_tokens(owner_name: str | None) -> frozenset[str]:
+    """The owner's name as canonical tokens: three letters or more, and never the generic words."""
+    if not owner_name:
+        return frozenset()
+    tokens = {normalize(t, lowercase=True) for t, _, _ in tokenize(owner_name) if len(t) >= 3}
+    return frozenset(tokens - GENERIC_OWNER_NAMES)
+
+
 def owner_name_pattern(owner_name: str | None) -> str:
     """Regex alternation of the owner's name tokens, or a never-matching pattern when no real name is set."""
-    if not owner_name:
-        return NEVER_MATCH
-    tokens = {normalize(t, lowercase=True) for t, _, _ in tokenize(owner_name) if len(t) >= 3}
-    tokens -= GENERIC_OWNER_NAMES
+    tokens = _owner_name_tokens(owner_name)
     if not tokens:
         return NEVER_MATCH
     return "(?:" + "|".join(re.escape(t) for t in sorted(tokens, key=len, reverse=True)) + ")"
 
 
 def redact_owner_name(text: str, owner_name: str | None, replacement: str = "the owner") -> str:
-    """``text`` with the owner's name replaced: for anything that leaves the process, such as a model provider."""
-    pattern = owner_name_pattern(owner_name)
-    if pattern == NEVER_MATCH:
+    """``text`` with the owner's name replaced: for anything that leaves the process, such as a model provider.
+
+    Words are compared in the canonical form the detectors use, on both sides, so "José", "Zoë", "Aaarav" and a nukta
+    spelled either way are found in the raw text. A possessive keeps its "'s", and a full name becomes one replacement."""
+    names = _owner_name_tokens(owner_name)
+    if not names:
         return text
-    return compile_pattern(rf"\b{pattern}\b").sub(replacement, text)
+    parts: list[str] = []
+    copied = 0  # text before this offset is already in ``parts``
+    replaced_until = -1  # where the previous replacement ended
+    for token, start, end in tokenize(text):
+        if len(token) < 3:
+            continue
+        canonical = normalize(token, lowercase=True)
+        possessive = canonical.endswith("'s")
+        if (canonical[:-2] if possessive else canonical) not in names:
+            continue
+        gap = text[replaced_until:start] if replaced_until >= 0 else None
+        if gap is not None and not gap.strip():
+            parts.append(text[copied:replaced_until])  # "Atharv Shukla": one replacement for the whole name
+            copied = end
+        else:
+            parts.append(text[copied:start])
+            parts.append(replacement)
+            copied = end
+        if possessive:
+            parts.append(token[-2:])
+        replaced_until = end
+    parts.append(text[copied:])
+    return "".join(parts)
 
 
 @lru_cache(maxsize=4096)

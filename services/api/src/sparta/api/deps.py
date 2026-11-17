@@ -2,6 +2,7 @@
 
 import asyncio
 import hashlib
+import hmac
 import json
 import re
 from collections.abc import Awaitable, Callable
@@ -77,6 +78,26 @@ async def require_simulator(container: Ctr) -> None:
         raise NotFound("The simulator is not enabled on this server.")
 
 
+async def forget_cached_creations(request: Request, owner: Principal, container: Container) -> None:
+    """After a list entry is removed: the cached response to the request that added it must not be replayed, because it
+    would present the removed entry as present. ``DELETE /x/{id}`` forgets the cached ``POST /x`` responses."""
+    collection = request.url.path.rsplit("/", 1)[0]
+    async with container.db.uow() as repo:
+        await repo.delete_idempotent_route(owner.id, f"POST {collection}"[:160])
+
+
+def _request_fingerprint(container: Container, owner_id: str, route: str, body: BaseModel | None) -> str:
+    """A keyed hash of the request. It is stored next to the cached response, and a bare SHA-256 of a request that
+    holds a typed phone number can be reversed by trying numbers; keyed with the pepper (which is not in the database)
+    it can only be compared, never confirmed. It is scoped to the owner as well."""
+    payload = json.dumps(
+        {"route": route, "body": body.model_dump(mode="json") if body is not None else None}, sort_keys=True
+    )
+    mac = hmac.new(container.pepper, f"idempotency-request|{owner_id}|".encode(), hashlib.sha256)
+    mac.update(payload.encode())
+    return mac.hexdigest()
+
+
 async def run_idempotent[T](
     request: Request,
     owner: Principal,
@@ -97,10 +118,7 @@ async def run_idempotent[T](
     if not IDEMPOTENCY_KEY.fullmatch(key):
         raise InvalidInput("Idempotency-Key must be 1-64 characters: letters, digits, '_', '-', ':' or '.'.")
     route = f"{request.method} {request.url.path}"[:160]
-    fingerprint = json.dumps(
-        {"route": route, "body": body.model_dump(mode="json") if body is not None else None}, sort_keys=True
-    )
-    digest = hashlib.sha256(fingerprint.encode()).hexdigest()
+    digest = _request_fingerprint(container, owner.id, route, body)
     lock = "idem:" + hashlib.sha256(f"{owner.id}|{route}|{key}".encode()).hexdigest()
     async with container.kv.lock(lock, ttl_s=60.0, wait_s=15.0):
         now = container.clock.now()

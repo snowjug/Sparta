@@ -5,7 +5,7 @@ from typing import Annotated
 from fastapi import APIRouter, Path, Query, Request, Response
 from fastapi.responses import JSONResponse
 
-from sparta.api.deps import Ctr, Owner, run_idempotent
+from sparta.api.deps import Ctr, Owner, forget_cached_creations, run_idempotent
 from sparta.api.errors import ERROR_RESPONSES
 from sparta.domain.models import BlockedCaller, TrustedCaller
 from sparta.services.views import AuditEntry, ListNumberRequest, SafetyEventView, SafetyPolicyView
@@ -40,8 +40,9 @@ async def add_blocked(req: ListNumberRequest, request: Request, owner: Owner, c:
 
 
 @router.delete("/blocked-callers/{entry_id}", status_code=204)
-async def remove_blocked(entry_id: EntryId, owner: Owner, c: Ctr) -> Response:
+async def remove_blocked(entry_id: EntryId, request: Request, owner: Owner, c: Ctr) -> Response:
     await c.owner.remove_blocked(owner, entry_id)
+    await forget_cached_creations(request, owner, c)
     return Response(status_code=204)
 
 
@@ -59,8 +60,9 @@ async def add_trusted(req: ListNumberRequest, request: Request, owner: Owner, c:
 
 
 @router.delete("/trusted-callers/{entry_id}", status_code=204)
-async def remove_trusted(entry_id: EntryId, owner: Owner, c: Ctr) -> Response:
+async def remove_trusted(entry_id: EntryId, request: Request, owner: Owner, c: Ctr) -> Response:
     await c.owner.remove_trusted(owner, entry_id)
+    await forget_cached_creations(request, owner, c)
     return Response(status_code=204)
 
 

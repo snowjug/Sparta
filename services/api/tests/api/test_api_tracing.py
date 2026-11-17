@@ -1,6 +1,7 @@
 """Spans carry identifiers and timings, never content; a call takes the trace id of the request that created it."""
 
 import pytest
+from opentelemetry import trace as otel_trace
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
@@ -20,6 +21,9 @@ def exporter(monkeypatch) -> InMemorySpanExporter:
     provider = TracerProvider()
     provider.add_span_processor(SimpleSpanProcessor(exporter))
     monkeypatch.setattr(tracing, "tracer", lambda: provider.get_tracer("sparta-test"))
+    # With OTLP configured the process has a global provider, and FastAPI (0.16x) instruments itself against it unless
+    # told not to. Having one here makes any span of FastAPI's own show up in every test below.
+    monkeypatch.setattr(otel_trace, "get_tracer_provider", lambda: provider)
     return exporter
 
 
@@ -51,6 +55,33 @@ async def test_every_http_request_is_a_server_span_named_by_its_route_template(e
     exported = everything_exported(exporter)
     for private in (created["id"], "secret-search-term", "9876543210", "Spam Sam"):
         assert private not in exported, private
+
+
+async def test_only_sparta_spans_exist_and_none_carries_the_url(env: ApiEnv, exporter):
+    """FastAPI's own spans would add the raw path and query string (see the fixture); they are switched off."""
+    created = await env.new_call(caller_number="+919876543210")
+    exporter.clear()
+    await env.client.get(f"{API}/calls", params={"q": "private search words", "limit": 5})
+    await env.client.get(f"{API}/calls/{created['id']}")
+    finished = exporter.get_finished_spans()
+    assert [s.name for s in finished] == [f"GET {API}/calls", f"GET {API}/calls/{{call_id}}"]
+    for span in finished:
+        assert not {"url.path", "url.query", "url.full", "url.scheme"} & set(span.attributes or {})
+        assert span.instrumentation_scope.name == "sparta-test"  # nothing from FastAPI's own "fastapi" tracer
+
+
+async def test_a_callers_traceparent_does_not_choose_the_trace_id(env: ApiEnv, exporter):
+    forged = f"00-{'ab' * 16}-{'cd' * 8}-01"
+    created = await env.client.post(f"{API}/calls", json={}, headers={"traceparent": forged})
+    assert created.status_code == 201
+    (request_span,) = [
+        s
+        for s in exporter.get_finished_spans()
+        if s.kind is SpanKind.SERVER and s.attributes["http.route"] == f"{API}/calls"
+    ]
+    assert request_span.parent is None
+    assert f"{request_span.context.trace_id:032x}" != "ab" * 16
+    assert created.json()["trace_id"] == f"{request_span.context.trace_id:032x}"
 
 
 async def test_a_server_error_marks_the_span_and_a_client_error_does_not(env: ApiEnv, exporter):

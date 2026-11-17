@@ -846,13 +846,16 @@ class Repository:
         return int(await self.s.scalar(stmt) or 0)
 
     async def count_screening_events_since(self, user_id: str, since: datetime) -> int:
+        """Native screening events the server *received* since ``since``. Their ``started_at`` is the client's claim
+        (clamped, but backdatable by a week), so it cannot be what the daily cap counts."""
         stmt = (
             select(func.count())
-            .select_from(m.CallSessionRow)
+            .select_from(m.ProviderEventRow)
+            .join(m.CallSessionRow, m.ProviderEventRow.call_id == m.CallSessionRow.id)
             .where(
                 m.CallSessionRow.user_id == user_id,
-                m.CallSessionRow.started_at >= since,
                 m.CallSessionRow.mode == CallMode.SCREENING_ONLY.value,
+                m.ProviderEventRow.received_at >= since,
             )
         )
         return int(await self.s.scalar(stmt) or 0)
@@ -977,6 +980,12 @@ class Repository:
             ),
         )
         await self.s.execute(stmt)
+
+    async def delete_idempotent_route(self, user_id: str, route: str) -> None:
+        """Forget every cached response stored for one route, for example the POSTs that added list entries."""
+        await self.s.execute(
+            delete(m.IdempotencyRow).where(m.IdempotencyRow.user_id == user_id, m.IdempotencyRow.route == route)
+        )
 
     async def delete_call_content(self, user_id: str, call_id: str) -> bool:
         row = await self.get_call_row(user_id, call_id)

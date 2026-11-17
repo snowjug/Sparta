@@ -258,6 +258,35 @@ def test_redact_owner_name_replaces_whole_name_tokens_only():
     assert redact_owner_name("the owner is out", "the owner") == "the owner is out"  # generic wording: nothing to hide
 
 
+@pytest.mark.parametrize(
+    ("owner", "text", "expected"),
+    [
+        ("José", "Is José home? Ask josé, or Jose\u0301.", "Is the owner home? Ask the owner, or the owner."),
+        ("Zoë Rao", "Zoë Rao's assistant", "the owner's assistant"),
+        ("Aaarav", "This is Aaarav, and Aarav too", "This is the owner, and the owner too"),
+        ("Atharv Shukla", "Atharv Shukla is out", "the owner is out"),
+        ("Atharv Shukla", "Atharv is Shukla", "the owner is the owner"),
+        # A nukta spelled either way (U+093C is a separate mark here).
+        (
+            "\u092b\u093c\u093e\u0924\u093f\u092e\u093e",
+            "\u092b\u093e\u0924\u093f\u092e\u093e \u0939\u0948?",
+            "the owner \u0939\u0948?",
+        ),
+        (
+            "\u092b\u093e\u0924\u093f\u092e\u093e",
+            "\u092b\u093c\u093e\u0924\u093f\u092e\u093e \u0939\u0948?",
+            "the owner \u0939\u0948?",
+        ),
+    ],
+)
+def test_redact_owner_name_finds_the_name_however_it_is_spelled(owner, text, expected):
+    """The name is compared the way the detectors compare words, not as a raw regex over the raw text: that missed
+    accented names, repeated letters and a nukta (found by the security review)."""
+    from sparta.risk.matchers import redact_owner_name
+
+    assert redact_owner_name(text, owner) == expected
+
+
 def test_evidence_excerpts_never_carry_digits_that_could_be_credentials():
     sigs = DETECTOR.detect("tell me the OTP 482913 right now", "turn_3")
     assert sigs
