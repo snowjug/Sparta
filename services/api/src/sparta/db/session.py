@@ -3,8 +3,9 @@
 import asyncio
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from functools import lru_cache
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 from sqlalchemy import event, text
 from sqlalchemy.engine import make_url
@@ -15,6 +16,8 @@ from sparta.db.models import Base
 
 if TYPE_CHECKING:
     from sparta.db.repository import Repository
+
+SchemaState = Literal["ok", "unavailable", "migrations_pending"]
 
 _PACKAGE_MIGRATIONS = Path(__file__).resolve().parents[1] / "_migrations"  # wheel installs (hatch force-include)
 _SOURCE_MIGRATIONS = Path(__file__).resolve().parents[3] / "migrations"  # source checkout and editable installs
@@ -106,14 +109,26 @@ class Database:
             return False
         return True
 
-    async def schema_ready(self) -> bool:
-        """The database answers *and* the schema exists (a fresh server that was never migrated is not ready)."""
+    async def schema_state(self) -> SchemaState:
+        """Whether this instance may take traffic: the database answers, the schema exists, and the migrations applied
+        are the ones this code expects. A database *ahead* of the code (a rollback) is fine: migrations are additive and
+        a later release removes what is no longer used."""
         try:
             async with self.engine.connect() as conn:
                 await conn.execute(text("SELECT 1 FROM users LIMIT 1"))
+                try:
+                    applied = (await conn.execute(text("SELECT version_num FROM alembic_version"))).scalar_one_or_none()
+                except Exception:
+                    applied = None  # created without migrations (tests, deterministic replay): nothing to compare
         except Exception:
-            return False
-        return True
+            return "unavailable"
+        head, known = expected_revisions()
+        if head is not None and applied in known and applied != head:
+            return "migrations_pending"
+        return "ok"
+
+    async def schema_ready(self) -> bool:
+        return await self.schema_state() == "ok"
 
     async def dispose(self) -> None:
         await self.engine.dispose()
@@ -126,6 +141,22 @@ def _alembic_config(url: str) -> Any:
     cfg.set_main_option("script_location", str(MIGRATIONS_DIR))
     cfg.set_main_option("sqlalchemy.url", url.replace("%", "%%"))
     return cfg
+
+
+@lru_cache(maxsize=1)
+def expected_revisions() -> tuple[str | None, frozenset[str]]:
+    """The migration head this code expects and every revision it knows. ``(None, empty)`` when the migration scripts
+    cannot be read or have several heads: readiness then does not compare revisions."""
+    try:
+        from alembic.script import ScriptDirectory
+
+        script = ScriptDirectory.from_config(_alembic_config("sqlite://"))
+        heads = script.get_heads()
+        if len(heads) != 1:
+            return None, frozenset()
+        return heads[0], frozenset(revision.revision for revision in script.walk_revisions())
+    except Exception:
+        return None, frozenset()
 
 
 async def run_migrations(url: str, revision: str = "head") -> None:

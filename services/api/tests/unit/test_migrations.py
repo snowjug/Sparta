@@ -70,6 +70,39 @@ async def test_migrations_apply_match_the_models_and_downgrade_cleanly(tmp_path)
 
 
 @pytest.mark.asyncio
+async def test_schema_state_follows_the_migration_history(tmp_path):
+    """Readiness compares the applied revision with the one this code expects (a new revision must not take traffic
+    before `python -m sparta migrate` has run), and a database ahead of the code, as after a rollback, stays ready."""
+    from sparta.db.session import Database, expected_revisions
+
+    head, known = expected_revisions()
+    assert head is not None and {"0001", head} <= known and head != "0001"
+
+    url = f"sqlite+aiosqlite:///{(tmp_path / 'state.db').as_posix()}"
+    db = Database(url)
+    try:
+        assert await db.schema_state() == "unavailable"  # never migrated
+        await run_migrations(url, "0001")
+        assert await db.schema_state() == "migrations_pending"
+        assert await db.schema_ready() is False
+        await run_migrations(url)
+        assert await db.schema_state() == "ok"
+        assert await db.schema_ready() is True
+        async with db.engine.begin() as conn:
+            await conn.execute(text("UPDATE alembic_version SET version_num = 'from_a_later_release'"))
+        assert await db.schema_state() == "ok"
+    finally:
+        await db.dispose()
+
+    memory = Database("sqlite+aiosqlite:///:memory:")
+    try:
+        await memory.create_all()
+        assert await memory.schema_state() == "ok"  # created from the models: there is no history to compare
+    finally:
+        await memory.dispose()
+
+
+@pytest.mark.asyncio
 async def test_migrations_run_without_the_source_tree_alembic_ini(tmp_path, monkeypatch):
     """A wheel install bundles the migrations but not alembic.ini; migrating must not depend on it."""
     from sparta.db import session

@@ -19,16 +19,19 @@ async def healthz() -> dict[str, str]:
 
 @router.get("/readyz")
 async def readyz(request: Request) -> JSONResponse:
-    """Readiness: the hard dependencies (database schema, shared state) answer. A degraded telephony provider is
-    reported but does not make the service unready, because the owner can still use everything else."""
+    """Readiness: the hard dependencies answer: the database (reachable, schema present, migrations at the version this
+    code expects) and shared state. A new revision therefore takes no traffic until `python -m sparta migrate` has run.
+    A degraded telephony provider is reported but does not make the service unready, because the owner can still use
+    everything else."""
     c = get_container(request)
+    database = await c.db.schema_state()
     checks: dict[str, Any] = {
-        "database": "ok" if await c.db.schema_ready() else "unavailable",
+        "database": database,
         "shared_state": "ok" if await c.kv.ping() else "unavailable",
     }
     status = await c.providers.telephony.status()
     checks["telephony"] = {"provider": status.provider, "healthy": status.healthy, "simulated": status.simulated}
-    ready = checks["database"] == "ok" and checks["shared_state"] == "ok"
+    ready = database == "ok" and checks["shared_state"] == "ok"
     return JSONResponse(
         {"status": "ready" if ready else "unavailable", "checks": checks}, status_code=200 if ready else 503
     )

@@ -10698,7 +10698,7 @@
     },
     "/readyz": {
       "get": {
-        "description": "Readiness: the hard dependencies (database schema, shared state) answer. A degraded telephony provider is\nreported but does not make the service unready, because the owner can still use everything else.",
+        "description": "Readiness: the hard dependencies answer: the database (reachable, schema present, migrations at the version this\ncode expects) and shared state. A new revision therefore takes no traffic until `python -m sparta migrate` has run.\nA degraded telephony provider is reported but does not make the service unready, because the owner can still use\neverything else.",
         "operationId": "health_readyz",
         "responses": {
           "200": {

@@ -8,6 +8,7 @@ import hmac
 import pytest
 
 from conftest import DELIVERY, SCAM, ApiEnv, running_env, wav_bytes
+from sparta.db.session import run_migrations
 from sparta.services.simulator import curated_scenarios
 
 API = "/api/v1"
@@ -637,3 +638,18 @@ async def test_health_readiness_and_metrics_exposure(env: ApiEnv):
         await exposed.say(call["id"], SCAM)
         text = (await exposed.client.get("/metrics")).text
         assert "sparta_calls_total" in text and "9876543210" not in text and "State Bank" not in text
+
+
+async def test_readiness_waits_for_the_migrations_this_release_needs(tmp_path):
+    url = f"sqlite+aiosqlite:///{(tmp_path / 'ready.db').as_posix()}"
+    await run_migrations(url, "0001")  # the previous release's schema
+    async with running_env(database_url=url, auto_migrate=False) as env:
+        assert (await env.client.get("/healthz")).status_code == 200  # alive, just not ready for traffic
+        pending = await env.client.get("/readyz")
+        assert pending.status_code == 503
+        assert (
+            pending.json()["status"] == "unavailable" and pending.json()["checks"]["database"] == "migrations_pending"
+        )
+        await run_migrations(url)
+        ready = await env.client.get("/readyz")
+        assert ready.status_code == 200 and ready.json()["checks"]["database"] == "ok"
