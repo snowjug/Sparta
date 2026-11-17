@@ -30,7 +30,7 @@ medium = 0.30
 
 [limits]
 max_clarify_attempts = 2
-max_probe_deflections = 2
+max_probe_deflections = 1
 excerpt_radius = 40
 
 # Signals that never allow the assistant to comply, whatever the model or the caller says.
@@ -170,7 +170,7 @@ description = "Threatened to block, close or suspend an account, card or SIM"
 category = "possible_financial_impersonation"
 [signals.FAKE_KYC_URGENCY]
 severity = "high"
-weight = 0.65
+weight = 0.55
 description = "Pressed for an urgent KYC update"
 category = "possible_financial_impersonation"
 [signals.URGENCY_PRESSURE]
@@ -184,7 +184,7 @@ description = "Announced a prize, lottery or reward"
 category = "possible_prize_scam"
 [signals.IMPERSONATION_BANK]
 severity = "medium"
-weight = 0.4
+weight = 0.35
 description = "Claimed to represent a bank (unverified)"
 category = "possible_financial_impersonation"
 [signals.IMPERSONATION_GOVERNMENT]
@@ -326,6 +326,48 @@ unless = ["warning"]
 signal = "ADDRESS_OR_LOCATION_REQUEST"
 near = [["address_location"], ["request"]]
 window = 80
+unless = ["warning"]
+
+# Weak cues ("please", "what is", "need") only count when immediately next to the sensitive term.
+[[rules]]
+signal = "OTP_REQUEST"
+near = [["otp"], ["request_weak"]]
+window = 30
+unless = ["warning"]
+[[rules]]
+signal = "PASSWORD_REQUEST"
+near = [["password"], ["request_weak"]]
+window = 30
+unless = ["warning"]
+[[rules]]
+signal = "PIN_REQUEST"
+near = [["pin"], ["request_weak"]]
+window = 30
+unless = ["warning"]
+[[rules]]
+signal = "CVV_REQUEST"
+near = [["cvv"], ["request_weak"]]
+window = 30
+unless = ["warning"]
+[[rules]]
+signal = "CARD_OR_ACCOUNT_CREDENTIAL_REQUEST"
+near = [["card_credential"], ["request_weak"]]
+window = 30
+unless = ["warning"]
+[[rules]]
+signal = "AUTH_OR_RECOVERY_CODE_REQUEST"
+near = [["auth_code"], ["request_weak"]]
+window = 30
+unless = ["warning"]
+[[rules]]
+signal = "IDENTITY_DOCUMENT_REQUEST"
+near = [["id_document"], ["request_weak"]]
+window = 30
+unless = ["warning"]
+[[rules]]
+signal = "ADDRESS_OR_LOCATION_REQUEST"
+near = [["address_location"], ["request_weak"]]
+window = 30
 unless = ["warning"]
 [[rules]]
 signal = "OWNER_AVAILABILITY_PROBE"

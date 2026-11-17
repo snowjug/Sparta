@@ -44,7 +44,10 @@ _SAFE_KEYS = {
 
 _VALUE_PATTERNS: list[tuple[re.Pattern[str], str]] = [
     (re.compile(r"(?i)bearer\s+[a-z0-9._\-~+/]+=*"), "Bearer [redacted]"),
-    (re.compile(r"(?i)\b(api[-_]?key|secret|token|password|signature)\s*[=:]\s*[^\s,;&\"']+"), r"\1=[redacted]"),
+    (
+        re.compile(r"(?i)\b(api[-_]?key|secret|token|password|signature)\s*[=:]\s*[^\s,;&\"']+"),
+        r"\1=[redacted]",
+    ),
     (re.compile(r"\beyJ[a-zA-Z0-9_\-]{8,}\.[a-zA-Z0-9_\-]{8,}\.[a-zA-Z0-9_\-]*"), "[jwt]"),
     (re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+"), "[email]"),
     (re.compile(r"(?<!\w)\+?\d[\d\s\-().]{8,}\d(?!\w)"), "[phone]"),
@@ -84,7 +87,11 @@ class JsonFormatter(logging.Formatter):
             "logger": record.name,
             "msg": redact_text(record.getMessage()),
         }
-        for var_name, var in (("correlation_id", correlation_id_var), ("trace_id", trace_id_var), ("call_id", call_id_var)):
+        for var_name, var in (
+            ("correlation_id", correlation_id_var),
+            ("trace_id", trace_id_var),
+            ("call_id", call_id_var),
+        ):
             current = var.get()
             if current:
                 payload[var_name] = current
@@ -99,8 +106,11 @@ class JsonFormatter(logging.Formatter):
 
 class ReadableFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
-        base = f"{self.formatTime(record, '%H:%M:%S')} {record.levelname:<7} {record.name}: {redact_text(record.getMessage())}"
-        extras = {k: redact_value(k, v) for k, v in record.__dict__.items() if k not in _RESERVED and not k.startswith("_")}
+        stamp = self.formatTime(record, "%H:%M:%S")
+        base = f"{stamp} {record.levelname:<7} {record.name}: {redact_text(record.getMessage())}"
+        extras = {
+            k: redact_value(k, v) for k, v in record.__dict__.items() if k not in _RESERVED and not k.startswith("_")
+        }
         if extras:
             base += " " + " ".join(f"{k}={v}" for k, v in extras.items())
         if record.exc_info:

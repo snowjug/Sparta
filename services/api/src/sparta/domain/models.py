@@ -91,7 +91,8 @@ class SpeechPlan(SpartaModel):
     style: str | None = None
     ssml: str | None = None
     transliteration: str | None = Field(
-        default=None, description="Latin-script rendering for developers/testers when text is in a native script"
+        default=None,
+        description="Latin-script rendering for developers/testers when text is in a native script",
     )
     est_duration_ms: int = 0
 
@@ -125,7 +126,8 @@ class RiskAssessment(SpartaModel):
     signals: list[RiskSignal] = Field(default_factory=list)
     recommended_action: RecommendedAction = RecommendedAction.CONTINUE_SCREENING
     additional_actions: list[RecommendedAction] = Field(
-        default_factory=list, description="Extra advice alongside the primary action, e.g. block/report recommended"
+        default_factory=list,
+        description="Extra advice alongside the primary action, e.g. block/report recommended",
     )
     requires_owner_attention: bool = False
     reasons: list[str] = Field(
@@ -254,22 +256,6 @@ class CallListItem(SpartaModel):
     has_content: bool = True
 
 
-class CallDetail(CallListItem):
-    language_mode: str = "auto"
-    turns: list[CallTurn] = Field(default_factory=list)
-    risk: RiskAssessment | None = None
-    escalations: list[Escalation] = Field(default_factory=list)
-    owner_actions: list[OwnerAction] = Field(default_factory=list)
-    summary: CallSummary | None = None
-    feedback: list[FeedbackRecord] = Field(default_factory=list)
-    timeline: list[TimelineEntry] = Field(default_factory=list)
-    provider_events: list[ProviderEventRecord] = Field(default_factory=list)
-    versions: VersionInfo = Field(default_factory=VersionInfo)
-    trace_id: str = ""
-    metrics: dict[str, float] = Field(default_factory=dict)
-    capabilities: "CallCapabilities" = Field(default_factory=lambda: CallCapabilities())
-
-
 class CallCapabilities(SpartaModel):
     """Which owner controls are honest/available for this call's provider. Unsupported controls carry a reason."""
 
@@ -283,7 +269,20 @@ class CallCapabilities(SpartaModel):
     audio_note: str | None = None
 
 
-CallDetail.model_rebuild()
+class CallDetail(CallListItem):
+    language_mode: str = "auto"
+    turns: list[CallTurn] = Field(default_factory=list)
+    risk: RiskAssessment | None = None
+    escalations: list[Escalation] = Field(default_factory=list)
+    owner_actions: list[OwnerAction] = Field(default_factory=list)
+    summary: CallSummary | None = None
+    feedback: list[FeedbackRecord] = Field(default_factory=list)
+    timeline: list[TimelineEntry] = Field(default_factory=list)
+    provider_events: list[ProviderEventRecord] = Field(default_factory=list)
+    versions: VersionInfo = Field(default_factory=VersionInfo)
+    trace_id: str = ""
+    metrics: dict[str, float] = Field(default_factory=dict)
+    capabilities: CallCapabilities = Field(default_factory=CallCapabilities)
 
 
 class ConversationContext(SpartaModel):
@@ -311,6 +310,9 @@ class ConversationContext(SpartaModel):
     ended_reason: str | None = None
     assistant_speaking: bool = False
     speaking_turn_id: str | None = None
+    turn_languages: list[str] = Field(default_factory=list, description="Dominant language of each caller turn")
+    safe_turns: int = 0
+    last_caller_turn_id: str | None = None
 
 
 # --------------------------------------------------------------------------------------

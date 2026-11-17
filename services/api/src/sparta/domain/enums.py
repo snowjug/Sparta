@@ -70,7 +70,7 @@ class SignalCode(StrEnum):
 
     # Protected-information requests
     OTP_REQUEST = "OTP_REQUEST"
-    PASSWORD_REQUEST = "PASSWORD_REQUEST"
+    PASSWORD_REQUEST = "PASSWORD_REQUEST"  # noqa: S105 (a signal identifier, not a credential)
     PIN_REQUEST = "PIN_REQUEST"
     CVV_REQUEST = "CVV_REQUEST"
     CARD_OR_ACCOUNT_CREDENTIAL_REQUEST = "CARD_OR_ACCOUNT_CREDENTIAL_REQUEST"
@@ -217,6 +217,7 @@ class VoiceStatus(StrEnum):
 class EventType(StrEnum):
     """Live WebSocket event names."""
 
+    CALL_SNAPSHOT = "call.snapshot"
     CALL_CREATED = "call.created"
     CALL_CONNECTED = "call.connected"
     CALL_LISTENING = "call.listening"

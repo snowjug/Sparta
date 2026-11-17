@@ -627,20 +627,12 @@ request = [
   'भेज\w*',
   'बोल\w*',
   'पढ़\w*',
-  'चाहिए',
-  'ज[रज़]ूरी',
   'वेरिफाई\s*(?:कीजिए|करें|करिए|करो)',
   'कन्फर्म\s*(?:कीजिए|करें|करिए|करो)',
   'एंटर\s*(?:कीजिए|करें|करिए|करो)',
   'डालिए|डालें',
   'लिखिए|लिखवाइए',
-  'क्या\s*है',
-  'कौन\s*सा',
-  'कितना',
-  'कहाँ|कहां',
   'सुनाइए|सुनाओ',
-  '\b(?:kahan|kahaan|kidhar)\b',
-  'कृपया',
   '\bbata\w*\b',
   '\bde\s*(?:dijiye|dijiyega|do|den)\b',
   '\bdijiye(?:ga)?\b',
@@ -648,17 +640,27 @@ request = [
   '\bbhej\w*\b',
   '\bbol\w*\b',
   '\bpadh\w*\b',
-  '\bchahiye\b',
-  '\b(?:zaruri|jaruri|zaroori)\b',
   '\bverify\s*(?:kijiye|karein|kariye|karo)\b',
   '\bconfirm\s*(?:kijiye|karein|kariye|karo)\b',
   '\benter\s*(?:kijiye|karein|kariye|karo)\b',
   '\b(?:daliye|dalein|dalo)\b',
   '\b(?:likhiye|likhwaiye)\b',
+  '\b(?:sunaiye|sunao)\b',
+]
+request_weak = [
+  'चाहिए',
+  'ज[रज़]ूरी',
+  'क्या\s*है',
+  'कौन\s*सा',
+  'कितना',
+  'कहाँ|कहां',
+  'कृपया',
+  '\b(?:kahan|kahaan|kidhar)\b',
+  '\bchahiye\b',
+  '\b(?:zaruri|jaruri|zaroori)\b',
   '\bkya\s*hai\b',
   '\bkaun\s*sa\b',
   '\bkitna\b',
-  '\b(?:sunaiye|sunao)\b',
   '\bkripya\b',
   '\bplz\b',
 ]
@@ -693,6 +695,8 @@ claim = [
   '\b(?:ki|ke)\s*(?:taraf|tarf|or)\s*se\b',
   '\b(?:se|ka|ki)\s*(?:manager|officer|adhikari|agent|pratinidhi|executive|inspector|karmchari)\b',
   '\b(?:main|mai|mein|me)\b[^.]{0,40}\b(?:se|ka|ki)\s*(?:bol|baat)\b',
+  '\b(?:main|mai)\b[^.]{0,40}\b(?:bol|baat\s+kar)\s*(?:raha|rahi|rahe)\s*(?:hoon|hun|hu|hain)\b',
+  '\b(?:main|mai)\s+(?:\w+\s+){0,3}(?:officer|manager|inspector|agent|executive|representative)\b',
 ]
 received_probe = [
   '\b(?:aaya|aya|aayi|aai|aaye|aae|mila|mili|bheja|bheji|prapt)\b',
@@ -837,8 +841,8 @@ translit = "Dhanyavaad. Yeh call kis baare mein hai?"
 text = "माफ़ कीजिए, बात स्पष्ट नहीं सुनाई दी। क्या आप दोबारा बता सकते हैं?"
 translit = "Maaf kijiye, baat spasht nahin sunai di. Kya aap dobara bata sakte hain?"
 [templates.reprompt_silence.default]
-text = "हैलो? क्या आप लाइन पर हैं?"
-translit = "Hello? Kya aap line par hain?"
+text = "हैलो, क्या आप लाइन पर हैं?"
+translit = "Hello, kya aap line par hain?"
 [templates.close_silence.default]
 text = "कुछ सुनाई नहीं दे रहा है, इसलिए यह कॉल समाप्त की जा रही है। धन्यवाद।"
 translit = "Kuch sunai nahin de raha hai, isliye yeh call samapt ki ja rahi hai. Dhanyavaad."
@@ -854,6 +858,9 @@ translit = "Call karne ke liye dhanyavaad, lekin is vishay mein madad nahin ki j
 [templates.escalate_hold.default]
 text = "धन्यवाद। {owner_to} अभी सूचित किया जा रहा है। कृपया लाइन पर बने रहें।"
 translit = "Dhanyavaad. {owner_to} abhi suchit kiya ja raha hai. Kripya line par bane rahein."
+[templates.escalate_waiting.default]
+text = "धन्यवाद, यह नोट कर लिया गया है। {owner_subj} को सूचित कर दिया गया है, कृपया लाइन पर बने रहें।"
+translit = "Dhanyavaad, yeh note kar liya gaya hai. {owner_subj} ko suchit kar diya gaya hai, kripya line par bane rahein."
 [templates.take_message.default]
 text = "आपका संदेश आगे पहुँचा दिया जाएगा। कृपया छोटा संदेश और कॉलबैक नंबर बताइए।"
 translit = "Aapka sandesh aage pahuncha diya jayega. Kripya chhota sandesh aur callback number bataiye."
@@ -872,6 +879,9 @@ translit = "Filhaal angrezi, hindi aur kannada mein baat ki ja sakti hai. Kripya
 [templates.probe_deflect.default]
 text = "क्षमा करें, कोई भी व्यक्तिगत जानकारी साझा नहीं की जा सकती। चाहें तो संदेश छोड़ सकते हैं।"
 translit = "Kshama karein, koi bhi vyaktigat jaankari saajha nahin ki ja sakti. Chahein to sandesh chhod sakte hain."
+[templates.decline_personal.default]
+text = "क्षमा करें, कोई भी व्यक्तिगत जानकारी साझा नहीं की जा सकती।"
+translit = "Kshama karein, koi bhi vyaktigat jaankari saajha nahin ki ja sakti."
 [templates.injection_refuse.default]
 text = "क्षमा करें, काम करने के नियम बदले नहीं जा सकते। केवल संदेश लिया जा सकता है।"
 translit = "Kshama karein, kaam karne ke niyam badle nahin ja sakte. Keval sandesh liya ja sakta hai."

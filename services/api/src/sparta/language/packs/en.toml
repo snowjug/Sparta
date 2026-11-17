@@ -126,6 +126,7 @@ address_location = [
   '\baddress\b',
   '\bwhere\s+(?:do\s+you|does\s+he|does\s+she|are\s+you|is\s+he|is\s+she|is\s+sir|is\s+madam|is\s+mr\.?\s+\w+|is\s+the\s+owner|is\s+{OWNER})\s+(?:live|stay|staying|living|located|now|at|right\s+now)\b',
   '\bwhere\s+(?:are\s+you|is\s+he|is\s+she|is\s+sir|is\s+madam|is\s+{OWNER})\b',
+  '\bwhere\s+(?:he|she|sir|madam|{OWNER})\s+(?:is|lives|stays|works|stay|live|work)\b',
   '\b(?:your|his|her)\s+(?:current\s+|exact\s+|live\s+)?(?:location|whereabouts)\b',
   '\b(?:current|exact|live)\s+location\b',
   '\bwhich\s+(?:area|city|locality|apartment|building|flat|floor|street|road|society|colony|layout)\b',
@@ -134,8 +135,9 @@ address_location = [
   '\blandmark\b',
 ]
 owner_availability = [
+  '\b(?:the\s+owner|sir|madam|mr\.?\s+\w+|mrs\.?\s+\w+|{OWNER})\s+(?:is|was|will\s+be|\x27s)\s+(?:currently\s+|right\s+now\s+|still\s+|not\s+|out\s+of\s+)?(?:at\s+|in\s+)?(?:home|house|office|work|travell?ing|away|busy|sleeping|alone|available|free|unavailable|in\s+a\s+meeting|in\s+town|town|station)\b',
   '\b(?:is|are)\s+(?:he|she|sir|madam|mr\.?\s+\w+|the\s+owner|{OWNER})\s+(?:at\s+|in\s+)?(?:home|house|office|there|available|free|around|alone|busy|in\s+town)\b',
-  '\bare\s+you\s+(?:at\s+home|alone|home\s+alone|free|available|there|in\s+town|busy)\b',
+  '\bare\s+you\s+(?:at\s+home|alone|home\s+alone|free|available|in\s+town|busy)\b',
   '\b(?:anyone|anybody|someone|somebody|who)\s+(?:else\s+)?(?:is\s+)?(?:at\s+home|home|with\s+you|there)\b',
   '\bwhen\s+(?:will|does|is)\s+(?:he|she|sir|madam|{OWNER})\s+(?:be\s+)?(?:back|come|home|free|return|available|reach)\b',
   '\bwhere\s+(?:is|does)\s+(?:he|she|sir|madam|{OWNER})\s+(?:work|working)\b',
@@ -472,8 +474,13 @@ known_callback = [
 ]
 
 [cues]
+# Strong request verbs: an OTP/PIN/password term anywhere nearby makes this a request for it.
 request = [
-  '\b(?:tell|give|share|send|read|provide|confirm|verify|enter|type|say|state|forward|spell|dictate|mention|disclose|submit|text|whatsapp|fill|furnish|supply|punch|key)\b',
+  '\b(?:tell|give|share|send|read|provide|confirm|verify|enter|say|spell|dictate|mention|disclose|submit|whatsapp|furnish|supply|punch)\b',
+  '\b(?:state|forward|type|key|fill|text)\s+(?:in\s+|out\s+)?(?:me\s+|us\s+|it\s+|the\s+|your\s+|that\s+|this\s+)',
+]
+# Weak cues ("please", "what is", "need"): only count when right next to the sensitive term.
+request_weak = [
   '\bwhat(?:\x27s|s|\s+is|\s+are|\s+was)\b',
   '\bwhere\b',
   '\bneed(?:s|ed)?\b',
@@ -559,7 +566,7 @@ text = "Thanks. And what is this call regarding?"
 [templates.clarify_repeat.default]
 text = "Sorry, I didn't catch that. Could you say that again?"
 [templates.reprompt_silence.default]
-text = "Hello? Are you still there?"
+text = "Hello, are you still there?"
 [templates.close_silence.default]
 text = "I can't hear anything, so I'll end the call now. Goodbye."
 [templates.refuse_sensitive.default]
@@ -570,6 +577,8 @@ text = "I'm ending this call now. Goodbye."
 text = "Thanks for calling, but I can't help with this. Goodbye."
 [templates.escalate_hold.default]
 text = "Thanks. I'll let {owner_to} know right now. Please stay on the line."
+[templates.escalate_waiting.default]
+text = "Thanks, I've noted that. {owner_subj} has been notified, so please stay on the line."
 [templates.take_message.default]
 text = "I'll pass your message along. Could you share a short message and a callback number?"
 [templates.safe_continue.default]
@@ -582,6 +591,8 @@ text = "Thanks for holding. Could you tell me a little more about what this is r
 text = "I can currently help in English, Hindi or Kannada. Could you please continue in one of these?"
 [templates.probe_deflect.default]
 text = "I'm sorry, I can't share any personal details. I can take a message if you like."
+[templates.decline_personal.default]
+text = "I'm sorry, I can't share any personal details."
 [templates.injection_refuse.default]
 text = "I'm sorry, I can't change how I work. I can only take a message."
 [templates.farewell_message.default]

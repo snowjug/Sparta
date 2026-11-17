@@ -143,7 +143,9 @@ class Settings(BaseSettings):
             if not (self.oidc_jwks_url or self.oidc_issuer):
                 out.append("SPARTA_OIDC_JWKS_URL (or an issuer to derive it from) is required for OIDC")
         if self.telephony_provider == "azure" and not (self.acs_connection_string and self.acs_callback_base_url):
-            out.append("TELEPHONY_PROVIDER=azure requires SPARTA_ACS_CONNECTION_STRING and SPARTA_ACS_CALLBACK_BASE_URL")
+            out.append(
+                "TELEPHONY_PROVIDER=azure requires SPARTA_ACS_CONNECTION_STRING and SPARTA_ACS_CALLBACK_BASE_URL"
+            )
         if self.stt_provider == "azure" and not (self.azure_speech_key and self.azure_speech_region):
             out.append("SPARTA_STT_PROVIDER=azure requires SPARTA_AZURE_SPEECH_KEY and SPARTA_AZURE_SPEECH_REGION")
         if self.tts_provider == "azure" and not (self.azure_speech_key and self.azure_speech_region):
@@ -170,6 +172,8 @@ class Settings(BaseSettings):
                 out.append("SPARTA_REDIS_URL is required in production for shared rate limits and call coordination")
             if "*" in self.cors_origins:
                 out.append("SPARTA_CORS_ORIGINS must list explicit origins in production (no '*')")
+            elif any(not o.startswith("https://") or "localhost" in o or "127.0.0.1" in o for o in self.cors_origins):
+                out.append("SPARTA_CORS_ORIGINS must be https origins and may not include localhost in production")
             if "*" in self.trusted_hosts:
                 out.append("SPARTA_TRUSTED_HOSTS must list explicit hostnames in production (no '*')")
             if self.feature_raw_audio_storage:

@@ -277,11 +277,15 @@ class RiskEngine:
 
         probe = codes & {S.ADDRESS_OR_LOCATION_REQUEST, S.OWNER_AVAILABILITY_PROBE}
         if probe and legit_strength < 0.5:
-            return RecommendedAction.REFUSE_AND_END, extras, False
+            # Deflect and ask again; the engine ends the call if the caller keeps probing.
+            return RecommendedAction.ASK_CLARIFYING_QUESTION, extras, False
 
-        if legit_strength >= 0.5 and score < level_medium(self.policy, ctx):
-            if any(s.code in LEGIT_ESCALATION_CODES for s in legit):
-                return RecommendedAction.ESCALATE_TO_OWNER, extras, True
+        if (
+            legit_strength >= 0.5
+            and score < level_medium(self.policy, ctx)
+            and any(s.code in LEGIT_ESCALATION_CODES for s in legit)
+        ):
+            return RecommendedAction.ESCALATE_TO_OWNER, extras, True
 
         if S.TELEMARKETING in codes and legit_strength < 0.5 and score < level_medium(self.policy, ctx) + 0.2:
             return RecommendedAction.END_SPAM, extras, False

@@ -15,7 +15,17 @@ _WORD_CLASS_BODY = rf"\w{_INDIC_RANGE}"
 
 _ZERO_WIDTH = dict.fromkeys(map(ord, "\u200b\u200c\u200d\u2060\ufeff"))
 _INDIC_DIGITS: dict[int, int] = {}
-for _base in (0x0966, 0x09E6, 0x0A66, 0x0AE6, 0x0B66, 0x0BE6, 0x0C66, 0x0CE6, 0x0D66):  # Devanagari … Malayalam
+for _base in (
+    0x0966,
+    0x09E6,
+    0x0A66,
+    0x0AE6,
+    0x0B66,
+    0x0BE6,
+    0x0C66,
+    0x0CE6,
+    0x0D66,
+):  # Devanagari … Malayalam
     for _i in range(10):
         _INDIC_DIGITS[_base + _i] = ord("0") + _i
 

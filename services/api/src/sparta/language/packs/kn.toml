@@ -558,31 +558,33 @@ request = [
   'ತಿಳಿಸಿ',
   'ತಿಳಿಸ\w*',
   'ಶೇರ್\s*ಮಾಡಿ',
-  'ಬೇಕು',
-  'ಬೇಕಾಗಿದೆ',
-  'ಬೇಕಾಗುತ್ತೆ',
   'ಓದಿ',
   'ಓದ\w*',
   'ಕನ್ಫರ್ಮ್\s*ಮಾಡಿ',
   'ವೆರಿಫೈ\s*ಮಾಡಿ',
   'ಎಂಟರ್\s*ಮಾಡಿ',
-  'ಏನು',
-  'ಎಷ್ಟು',
-  'ಯಾವುದು',
-  'ಎಲ್ಲಿ',
-  'ದಯವಿಟ್ಟು',
-  '\b(?:elli|yelli)\b',
   '\b(?:heli|helri|helu|helbeku|helbahuda|helabahudu)\b',
   '\b(?:kodi|kodri|kodbeku|kodabahudu|kodabahuda|kodtira|koduttira)\b',
   '\b(?:needi|neediri|needbeku)\b',
   '\b(?:tilisi|tilisiri|tilisbeku|tilisabahuda|tilisabahudu)\b',
   '\b(?:kalisi|kaluhisi|kalsi|kalsiri|kalsbeku)\b',
   '\bshare\s*maad\w*\b',
-  '\b(?:beku|bekaagide|bekagide|bekittu|bekaaguttade)\b',
   '\bodi\b',
   '\bconfirm\s*maad\w*\b',
   '\bverify\s*maad\w*\b',
   '\benter\s*maad\w*\b',
+]
+request_weak = [
+  'ಬೇಕು',
+  'ಬೇಕಾಗಿದೆ',
+  'ಬೇಕಾಗುತ್ತೆ',
+  'ಏನು',
+  'ಎಷ್ಟು',
+  'ಯಾವುದು',
+  'ಎಲ್ಲಿ',
+  'ದಯವಿಟ್ಟು',
+  '\b(?:elli|yelli)\b',
+  '\b(?:beku|bekaagide|bekagide|bekittu|bekaaguttade)\b',
   '\b(?:yenu|enu|eshtu|yaavudu)\b',
   '\bdayavittu\b',
   '\bplz\b',
@@ -742,8 +744,8 @@ translit = "Dhanyavaadagalu. Ee kare yaavudara bagge?"
 text = "ಕ್ಷಮಿಸಿ, ಸರಿಯಾಗಿ ಕೇಳಿಸಲಿಲ್ಲ. ದಯವಿಟ್ಟು ಇನ್ನೊಮ್ಮೆ ಹೇಳಬಹುದೇ?"
 translit = "Kshamisi, sariyaagi kelisalilla. Dayavittu innomme helabahude?"
 [templates.reprompt_silence.default]
-text = "ಹಲೋ? ನೀವು ಲೈನಿನಲ್ಲಿ ಇದ್ದೀರಾ?"
-translit = "Hello? Neevu line inalli iddeeraa?"
+text = "ಹಲೋ, ನೀವು ಲೈನಿನಲ್ಲಿ ಇದ್ದೀರಾ?"
+translit = "Hello, neevu line inalli iddeeraa?"
 [templates.close_silence.default]
 text = "ಏನೂ ಕೇಳಿಸುತ್ತಿಲ್ಲ, ಆದ್ದರಿಂದ ಕರೆಯನ್ನು ಮುಗಿಸಲಾಗುತ್ತಿದೆ. ಧನ್ಯವಾದಗಳು."
 translit = "Eno kelisuttilla, aaddarinda kareyannu mugisalaguttide. Dhanyavaadagalu."
@@ -759,6 +761,9 @@ translit = "Kare maadiddakke dhanyavaadagalu, aadare ee vishayadalli sahaya maad
 [templates.escalate_hold.default]
 text = "ಧನ್ಯವಾದಗಳು. {owner_to} ಈಗಲೇ ತಿಳಿಸುತ್ತೇನೆ. ದಯವಿಟ್ಟು ಲೈನಿನಲ್ಲೇ ಇರಿ."
 translit = "Dhanyavaadagalu. {owner_to} eegale tilisuttene. Dayavittu line inalle iri."
+[templates.escalate_waiting.default]
+text = "ಧನ್ಯವಾದಗಳು, ಇದನ್ನು ಗಮನಿಸಲಾಗಿದೆ. {owner_to} ತಿಳಿಸಲಾಗಿದೆ, ದಯವಿಟ್ಟು ಲೈನಿನಲ್ಲೇ ಇರಿ."
+translit = "Dhanyavaadagalu, idannu gamanisalagide. {owner_to} tilisalagide, dayavittu line inalle iri."
 [templates.take_message.default]
 text = "ನಿಮ್ಮ ಸಂದೇಶವನ್ನು ತಲುಪಿಸಲಾಗುತ್ತದೆ. ದಯವಿಟ್ಟು ಚಿಕ್ಕ ಸಂದೇಶ ಮತ್ತು ಕಾಲ್‌ಬ್ಯಾಕ್ ನಂಬರ್ ತಿಳಿಸಿ."
 translit = "Nimma sandeshavannu talupisalaguttade. Dayavittu chikka sandesha mattu callback number tilisi."
@@ -777,6 +782,9 @@ translit = "Sadyakke English, hindi mattu kannadadalli maatra maatanaadabahudu. 
 [templates.probe_deflect.default]
 text = "ಕ್ಷಮಿಸಿ, ಯಾವುದೇ ವೈಯಕ್ತಿಕ ಮಾಹಿತಿಯನ್ನು ಹಂಚಿಕೊಳ್ಳಲು ಸಾಧ್ಯವಿಲ್ಲ. ಬೇಕಿದ್ದರೆ ಸಂದೇಶ ಬಿಡಬಹುದು."
 translit = "Kshamisi, yaavude vaiyaktika maahitiyannu hanchikollalu saadhyavilla. Bekiddare sandesha bidabahudu."
+[templates.decline_personal.default]
+text = "ಕ್ಷಮಿಸಿ, ಯಾವುದೇ ವೈಯಕ್ತಿಕ ಮಾಹಿತಿಯನ್ನು ಹಂಚಿಕೊಳ್ಳಲು ಸಾಧ್ಯವಿಲ್ಲ."
+translit = "Kshamisi, yaavude vaiyaktika maahitiyannu hanchikollalu saadhyavilla."
 [templates.injection_refuse.default]
 text = "ಕ್ಷಮಿಸಿ, ನನ್ನ ಕೆಲಸದ ನಿಯಮಗಳನ್ನು ಬದಲಾಯಿಸಲು ಸಾಧ್ಯವಿಲ್ಲ. ಸಂದೇಶವನ್ನು ಮಾತ್ರ ಪಡೆಯಬಹುದು."
 translit = "Kshamisi, nanna kelasada niyamagalannu badalaayisalu saadhyavilla. Sandeshavannu maatra padeyabahudu."

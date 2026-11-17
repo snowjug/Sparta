@@ -12,13 +12,23 @@ import re
 from dataclasses import dataclass, field
 from functools import lru_cache
 
-from sparta.domain.models import LanguageSegment
+from sparta.domain.models import LanguageSegment, LanguageVariant, ScriptCode
 from sparta.language.registry import LanguagePack, PackRegistry, load_registry
 from sparta.language.text import canon_latin, compile_pattern, token_script, tokenize
 
 SCRIPT_LANG = {"Knda": "kn-IN", "Taml": "ta-IN", "Telu": "te-IN", "Mlym": "ml-IN", "Beng": "bn-IN"}
 SUFFIX_WEIGHT = 0.5
 UNKNOWN = "und"
+
+
+@dataclass
+class _Run:
+    """A maximal stretch of consecutive tokens in one language, while segments are being built."""
+
+    language: str
+    start: int
+    end: int
+    scripts: dict[str, int]
 
 
 @dataclass
@@ -140,7 +150,11 @@ class LanguageDetector:
 
     # ------------------------------------------------------------------ helpers
     def _profile(
-        self, top: str, scores: dict[str, float], total: float, labelled: list[tuple[int, int, str | None, str]]
+        self,
+        top: str,
+        scores: dict[str, float],
+        total: float,
+        labelled: list[tuple[int, int, str | None, str]],
     ) -> str:
         if top not in self._supported:
             return "unsupported"
@@ -168,50 +182,46 @@ class LanguageDetector:
         self, labelled: list[tuple[int, int, str | None, str]], scores: dict[str, float], total: float
     ) -> list[LanguageSegment]:
         segments: list[LanguageSegment] = []
-        current: dict[str, object] | None = None
+        current: _Run | None = None
         pending_start: int | None = None
         for start, end, lang, sc in labelled:
             if lang is None:
                 if current is not None:
-                    current["end"] = end
+                    current.end = end
                 elif pending_start is None:
                     pending_start = start
                 continue
-            if current is not None and current["language"] == lang:
-                current["end"] = end
-                current["scripts"][sc] = current["scripts"].get(sc, 0) + 1  # type: ignore[index,union-attr]
+            if current is not None and current.language == lang:
+                current.end = end
+                current.scripts[sc] = current.scripts.get(sc, 0) + 1
                 continue
             if current is not None:
                 segments.append(self._finish(current, scores, total))
-            current = {
-                "language": lang,
-                "start": pending_start if pending_start is not None else start,
-                "end": end,
-                "scripts": {sc: 1},
-            }
+            current = _Run(lang, pending_start if pending_start is not None else start, end, {sc: 1})
             pending_start = None
         if current is not None:
             segments.append(self._finish(current, scores, total))
         return segments
 
-    def _finish(self, cur: dict[str, object], scores: dict[str, float], total: float) -> LanguageSegment:
-        lang = str(cur["language"])
-        scripts: dict[str, int] = cur["scripts"]  # type: ignore[assignment]
-        script = max(scripts.items(), key=lambda kv: kv[1])[0]
-        romanized = script == "Latn" and lang != "en-IN"
-        variant = None
-        if romanized and lang == "hi-IN":
+    def _finish(self, run: _Run, scores: dict[str, float], total: float) -> LanguageSegment:
+        script = max(run.scripts.items(), key=lambda kv: kv[1])[0]
+        romanized = script == "Latn" and run.language != "en-IN"
+        variant: LanguageVariant | None = None
+        if romanized and run.language == "hi-IN":
             variant = "hinglish"
-        elif romanized and lang == "kn-IN":
+        elif romanized and run.language == "kn-IN":
             variant = "kanglish"
+        script_code: ScriptCode = (
+            "Latn" if script == "Latn" else "Deva" if script == "Deva" else "Knda" if script == "Knda" else "Other"
+        )
         return LanguageSegment(
-            language=lang,
-            script=script if script in {"Latn", "Deva", "Knda"} else "Other",  # type: ignore[arg-type]
+            language=run.language,
+            script=script_code,
             romanized=romanized,
-            start=int(cur["start"]),  # type: ignore[call-overload]
-            end=int(cur["end"]),  # type: ignore[call-overload]
-            confidence=round(min(0.99, 0.5 + scores.get(lang, 0.0) / max(total, 1.0) * 0.5), 3),
-            variant=variant,  # type: ignore[arg-type]
+            start=run.start,
+            end=run.end,
+            confidence=round(min(0.99, 0.5 + scores.get(run.language, 0.0) / max(total, 1.0) * 0.5), 3),
+            variant=variant,
         )
 
     def _apply_hint(
