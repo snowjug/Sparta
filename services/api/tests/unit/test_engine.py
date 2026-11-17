@@ -8,6 +8,7 @@ from sparta.domain.enums import (
     CallCategory,
     OwnerActionType,
     RecommendedAction,
+    ResponseStyle,
     TurnSource,
 )
 from sparta.domain.enums import (
@@ -80,6 +81,19 @@ def test_opening_is_brief_discloses_ai_and_asks_one_question(call):
     assert "AI call assistant" in text and text.count("?") == 1 and len(text) < 120
     assert first.assistant_turn.speech.est_duration_ms > 0
     assert call.ctx.assistant_speaking and call.ctx.speaking_turn_id == first.assistant_turn.id
+
+
+@pytest.mark.parametrize(
+    "owner", ["Atharv Shukla", "Atharv K. Shukla", "Meera Krishnamurthy Rao", "अथर्व शुक्ला", "ಅಥರ್ವ ಶುಕ್ಲ"]
+)
+@pytest.mark.parametrize("style", list(ResponseStyle))
+def test_opening_still_discloses_the_ai_when_the_owner_has_a_full_name(engine, owner, style):
+    """Regression: the validator once took 'Atharv' in "I'm Atharv Shukla's AI call assistant" for a claim to be the
+    owner, so the default and formal openings were replaced by 'I can't share any personal details' (no disclosure)."""
+    first = engine.start(EngineConfig(call_id="call_name0001", owner_name=owner, response_style=style))
+    text = first.assistant_turn.text
+    assert "AI call assistant" in text and owner in text, text
+    assert "can't share" not in text
 
 
 # -------------------------------------------------------------------------- scams: refused and ended

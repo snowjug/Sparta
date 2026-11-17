@@ -13,11 +13,18 @@ LANGS = REG.supported_codes()
 KEYS = PLANNER.template_keys()
 NAMED = PlannerConfig(owner_name="Atharv")
 GENERIC = PlannerConfig(owner_name=None)
+# Real owners have full names, initials and non-Latin names; the first-name-only fixture hid a bug here once.
+FULL_NAMES = ["Atharv Shukla", "Atharv K. Shukla", "Meera Krishnamurthy Rao", "अथर्व शुक्ला", "ಅಥರ್ವ ಶುಕ್ಲ"]
+FULL_NAME_CONFIGS = [PlannerConfig(owner_name=name) for name in FULL_NAMES]
 
 
 @pytest.mark.parametrize("language", LANGS)
 @pytest.mark.parametrize("key", KEYS)
-@pytest.mark.parametrize("cfg", [NAMED, GENERIC], ids=["named-owner", "generic-owner"])
+@pytest.mark.parametrize(
+    "cfg",
+    [NAMED, GENERIC, *FULL_NAME_CONFIGS],
+    ids=["named-owner", "generic-owner", *[f"full-name-{i}" for i in range(len(FULL_NAMES))]],
+)
 def test_every_template_in_every_language_passes_the_output_validator(language, key, cfg):
     """The closed template set is safe by construction. This proves it, rather than assuming it."""
     plan = PLANNER.render(key, language, cfg)
@@ -28,12 +35,13 @@ def test_every_template_in_every_language_passes_the_output_validator(language, 
 
 @pytest.mark.parametrize("language", LANGS)
 @pytest.mark.parametrize("style", list(ResponseStyle))
-def test_disclosure_always_says_it_is_an_ai_assistant_and_never_the_owner(language, style):
-    plan = PLANNER.render("disclosure", language, PlannerConfig(owner_name="Atharv", response_style=style))
+@pytest.mark.parametrize("owner", ["Atharv", *FULL_NAMES])
+def test_disclosure_always_says_it_is_an_ai_assistant_and_never_the_owner(language, style, owner):
+    plan = PLANNER.render("disclosure", language, PlannerConfig(owner_name=owner, response_style=style))
     assert "AI" in plan.text
-    assert "Atharv" in plan.text  # named as the owner being assisted
+    assert owner in plan.text  # named as the owner being assisted
     validator = OutputValidator()
-    assert not validator._claims_to_be_owner(plan.text, "Atharv")
+    assert not validator._claims_to_be_owner(plan.text, owner)
     assert plan.locale == REG.pack(language).spec.tts_locale
 
 
@@ -122,6 +130,54 @@ def test_validator_allows_the_possessive_ai_assistant_form():
         .validate(plan("I'm Atharv's AI call assistant."), owner_name="Atharv", require_ai_disclosure=True)
         .ok
     )
+
+
+@pytest.mark.parametrize(
+    ("owner", "text"),
+    [
+        ("Atharv Shukla", "Hi, I'm Atharv Shukla's AI call assistant."),
+        ("Atharv Shukla", "Good day. I am Atharv Shukla’s AI call assistant."),
+        ("Atharv K. Shukla", "This is Atharv K. Shukla's AI call assistant."),
+        ("Meera Krishnamurthy Rao", "Hi, I'm Meera Krishnamurthy Rao's AI call assistant."),
+    ],
+)
+def test_validator_allows_the_possessive_ai_form_with_a_full_name(owner, text):
+    verdict = OutputValidator().validate(plan(text), owner_name=owner, require_ai_disclosure=True)
+    assert verdict.ok, verdict.violations
+
+
+@pytest.mark.parametrize(
+    ("owner", "text"),
+    [
+        ("Atharv Shukla", "Hello, this is Atharv Shukla speaking"),
+        ("Atharv Shukla", "I'm Atharv Shukla."),
+        ("Atharv Shukla", "My name is Atharv Shukla, how can I help?"),
+        ("Atharv Shukla", "I am Atharv. Who is calling?"),
+        ("Atharv Shukla", "This is Shukla here"),
+        ("Atharv K. Shukla", "I'm Atharv K. Shukla and I can help."),
+        # The AI form does not excuse a second, real claim in the same sentence.
+        ("Atharv Shukla", "I'm Atharv Shukla's AI call assistant, and this is Atharv speaking"),
+    ],
+)
+def test_validator_still_rejects_a_claim_to_be_the_owner_by_full_name(owner, text):
+    verdict = OutputValidator().validate(plan(text), owner_name=owner)
+    assert "claims_to_be_owner" in verdict.violations
+
+
+def test_the_claim_check_stays_fast_on_hostile_names_and_long_text():
+    """A name with initials such as 'Anil A. A.' once made the full-name loop backtrack exponentially."""
+    import time
+
+    check = OutputValidator._claims_to_be_owner
+    for owner, text in (
+        ("Anil A. A. A.", "Anil " + "a. " * 25),
+        ("Anil a. a", "Anil " + "a. " * 100),
+        ("Atharv Shukla", "Atharv Shukla " * 200),
+        ("Aaa Aaa", "aaa " * 500),
+    ):
+        started = time.perf_counter()
+        check(text, owner)
+        assert time.perf_counter() - started < 0.25, (owner, time.perf_counter() - started)
 
 
 def test_validator_demands_ai_disclosure_when_required():

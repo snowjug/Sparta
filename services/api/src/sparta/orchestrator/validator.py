@@ -65,17 +65,23 @@ class OutputValidator:
         name = clean_owner_name(owner_name)
         if not name:
             return False
-        tokens = [re.escape(t) for t in normalize(name).split() if len(t) >= 3]
-        if not tokens:
+        # Tokens never contain the separators below and are unique, so every way to split a run of name words is the
+        # same one (a repeated token such as the "a" of "A. A." made "a. a. a." match in exponentially many ways).
+        parts = sorted({t for t in re.split(r"[\s.]+", normalize(name)) if t}, key=len, reverse=True)
+        names = [re.escape(t) for t in parts if len(t) >= 3]
+        if not names:
             return False
-        who = "(?:" + "|".join(tokens) + ")"
+        who = "(?:" + "|".join(names) + ")"
+        any_part = "(?:" + "|".join(re.escape(t) for t in parts) + ")"
+        # A full name is judged as a whole, so "Atharv K. Shukla" is one name and not "Atharv" followed by more words.
+        full_name = rf"{who}(?:[\s.]+{any_part})*"
+        # Anything past this is rejected as too long anyway; the cap keeps the cost of this check bounded.
+        text = text[: MAX_CHARS * 2]
+        # "I'm Atharv Shukla's AI call assistant" is the *allowed* form: the name is possessive and followed by AI.
+        # It is taken out before looking for a claim, so it is never mistaken for "I'm Atharv" (and "Atharv" alone).
+        text = re.sub(rf"(?i)\b{full_name}(?:['’]s|\s+(?:का|ಅವರ))\s+AI\b", " ", text)
         pattern = re.compile(
             rf"(?i)\b(?:this\s+is|i\s*am|i['’]m|my\s+name\s+is|speaking|main|mera\s+naam|naanu|nanna\s+hesaru)\s+{who}\b"
             rf"|{who}\s+(?:speaking|here)\b"
         )
-        match = pattern.search(text)
-        if not match:
-            return False
-        # "I'm Atharv's AI call assistant" is the *allowed* form: the name is possessive and followed by AI/assistant.
-        tail = text[match.end() : match.end() + 12]
-        return not re.match(r"(?i)['’]s\s+AI|\s+(?:का|ಅವರ)\s+AI", tail)
+        return pattern.search(text) is not None
