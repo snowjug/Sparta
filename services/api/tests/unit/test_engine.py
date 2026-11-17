@@ -294,6 +294,12 @@ def test_language_switch_is_detected_tracked_and_followed(call):
     assert {"en-IN", "hi-IN", "kn-IN"} <= set(call.ctx.detected_languages)
 
 
+def test_detected_languages_list_only_what_the_caller_spoke(call):
+    assert call.ctx.detected_languages == []  # the assistant's opening language is not a detection
+    call.say("आपका इंटरव्यू कल सुबह दस बजे है")
+    assert call.ctx.detected_languages == ["hi-IN"]  # a Hindi-only caller is not reported as bilingual
+
+
 def test_forced_language_mode_ignores_what_the_caller_speaks(engine):
     c = Call(engine, EngineConfig(call_id="call_f", owner_name="Atharv", language_mode="kn-IN"))
     assert c.last.assistant_turn.speech.locale == "kn-IN"

@@ -698,6 +698,22 @@ class Repository:
             return False
         return True
 
+    async def has_provider_event(self, provider: str, external_id: str) -> bool:
+        found = await self.s.scalar(
+            select(func.count())
+            .select_from(m.ProviderEventRow)
+            .where(m.ProviderEventRow.provider == provider, m.ProviderEventRow.external_id == external_id[:160])
+        )
+        return bool(found)
+
+    async def attach_provider_event(self, provider: str, external_id: str, call_id: str) -> None:
+        """Link an already recorded provider event to the call it created (so the call detail can show it)."""
+        await self.s.execute(
+            update(m.ProviderEventRow)
+            .where(m.ProviderEventRow.provider == provider, m.ProviderEventRow.external_id == external_id[:160])
+            .values(call_id=call_id)
+        )
+
     async def list_provider_events(self, call_id: str, limit: int = 50) -> list[ProviderEventRecord]:
         rows = (
             await self.s.scalars(
@@ -890,17 +906,36 @@ class Repository:
 
     # ================================================================================= deletion / retention
     async def delete_transcript(self, call_id: str) -> None:
-        """Drop transcript-level content (turns, event log, evidence excerpts) but keep the summary and claims.
+        """Drop what the caller said (turns, event log, quoted evidence, escalation quotes) and keep the rest.
 
-        Used when the owner chose not to store transcripts: the call stays useful as a summary without the words.
+        Kept: the summary, the caller's claimed name/organisation, and the structured risk explanation (signal codes,
+        reasons and scores, none of which quote the caller). Used when transcripts are not stored for an owner and when
+        a transcript passes its retention period. The owner's explicit "delete content" is the stronger operation
+        (``delete_call_content``): it removes the summary and explanation as well.
         """
         await self.s.execute(delete(m.CallTurnRow).where(m.CallTurnRow.call_id == call_id))
         await self.s.execute(delete(m.LiveEventRow).where(m.LiveEventRow.call_id == call_id))
-        await self.s.execute(delete(m.RiskAssessmentRow).where(m.RiskAssessmentRow.call_id == call_id))
         await self.s.execute(
             update(m.EscalationRow).where(m.EscalationRow.call_id == call_id).values(important_lines=[])
         )
-        await self.update_call(call_id, has_content=False)
+        assessments = (
+            await self.s.scalars(select(m.RiskAssessmentRow).where(m.RiskAssessmentRow.call_id == call_id))
+        ).all()
+        for assessment in assessments:
+            data = dict(assessment.data or {})
+            data["signals"] = [{**s, "evidence_excerpt": None} for s in data.get("signals", [])]
+            assessment.data = data
+        row = await self.s.get(m.CallSessionRow, call_id)
+        if row is not None:
+            ctx = self.context_of(row)
+            for signal in ctx.signals:
+                signal.evidence_excerpt = None
+            if ctx.risk is not None:
+                for signal in ctx.risk.signals:
+                    signal.evidence_excerpt = None
+            row.context = ctx.model_dump(mode="json")
+            row.has_content = False
+        await self.s.flush()
 
     async def delete_call_content(self, user_id: str, call_id: str) -> bool:
         row = await self.get_call_row(user_id, call_id)

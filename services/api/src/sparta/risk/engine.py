@@ -9,6 +9,7 @@ Design rules (see docs/SAFETY_MODEL.md):
 """
 
 from dataclasses import dataclass, field
+from datetime import datetime
 from functools import lru_cache
 
 from sparta.domain.enums import (
@@ -138,7 +139,8 @@ class RiskEngine:
         self.policy = policy or load_default_policy()
 
     # ------------------------------------------------------------------ main entry
-    def assess(self, ctx: CallRiskContext, signals: list[RiskSignal]) -> RiskAssessment:
+    def assess(self, ctx: CallRiskContext, signals: list[RiskSignal], *, now: datetime | None = None) -> RiskAssessment:
+        """Assess the call so far. ``now`` is the injected clock's time (deterministic replays); wall clock if omitted."""
         p = self.policy
         risk = [s for s in signals if s.kind is SignalKind.RISK]
         legit = [s for s in signals if s.kind is SignalKind.LEGITIMATE]
@@ -196,7 +198,7 @@ class RiskEngine:
             requires_owner_attention=attention,
             reasons=reasons,
             policy_version=p.version,
-            assessed_at=utcnow(),
+            assessed_at=now or utcnow(),
             turn_count=ctx.caller_turns,
         )
 

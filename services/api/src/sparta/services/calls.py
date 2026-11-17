@@ -958,16 +958,19 @@ class CallService:
 
     async def submit_partial(self, principal: Principal, call_id: str, text: str, language_hint: str | None) -> None:
         rt = await self._runtime(principal.id, call_id)
+        await self._emit_partial(rt, text, language_hint)
+
+    async def _emit_partial(self, rt: CallRuntime, text: str, language_hint: str | None) -> None:
         text = sanitize_text(text)
         async with self.db.uow() as repo:
-            row = await repo.get_call_row(principal.id, call_id)
+            row = await repo.get_call_row(rt.user_id, rt.call_id)
             if row is None or row.status != CallStatus.ACTIVE.value:
                 raise Conflict("This call has ended.")
-            ev = self._buffer(repo, call_id, rt.simulated)
+            ev = self._buffer(repo, rt.call_id, rt.simulated)
             await ev.emit(
                 EventType.TRANSCRIPT_PARTIAL, {"speaker": Speaker.CALLER.value, "text": text, "language": language_hint}
             )
-        await self._publish(principal.id, ev.items)
+        await self._publish(rt.user_id, ev.items)
 
     async def silence(self, principal: Principal, call_id: str) -> TurnResult:
         rt = await self._runtime(principal.id, call_id)
@@ -1068,7 +1071,9 @@ class CallService:
             return OwnerActionResult(
                 action=record,
                 call=item,
-                capabilities=self._capabilities_for(row.provider, ended=item.status != CallStatus.ACTIVE),
+                capabilities=self._capabilities_for(
+                    row.provider, ended=item.status != CallStatus.ACTIVE, call_id=call_id
+                ),
             )
 
     async def block(self, principal: Principal, call_id: str, reason: str | None) -> BlockedCaller:
@@ -1177,7 +1182,7 @@ class CallService:
             prefs = await repo.get_preferences(rt.user_id)
             ctx = self.engine.complete(repo.context_of(row), reason or "completed")
             risk = ctx.risk or await repo.latest_risk(rt.call_id)
-            summary = build_summary(rt.call_id, ctx, risk, simulated=rt.simulated)
+            summary = build_summary(rt.call_id, ctx, risk, simulated=rt.simulated, now=self.clock.now())
             summary = await self._maybe_llm_summary(rt, repo, summary, risk)
             now = self.clock.now()
             ended_at = now
@@ -1321,8 +1326,45 @@ class CallService:
     async def caller_dtmf(self, call_id: str, digit: str) -> None:
         return None  # DTMF is received but never interpreted: no menu, and never a place to collect credentials
 
+    # ---- hooks for provider-driven audio (real telephony). Nobody is signed in on these paths: the call id is the key.
+    async def submit_provider_turn(
+        self,
+        call_id: str,
+        text: str,
+        *,
+        language_hint: str | None = None,
+        stt_confidence: float | None = None,
+        stt_ms: float | None = None,
+    ) -> TurnResult | None:
+        """A caller turn recognised by the provider/STT pipeline. ``None`` when the call is gone or the text is empty."""
+        rt = self._runtimes.get(call_id)
+        if rt is None:
+            return None
+        try:
+            return await self._submit_turn(rt, text, TurnSource.PROVIDER_STT, language_hint, stt_confidence, stt_ms)
+        except (Conflict, InvalidInput):
+            return None
+
+    async def provider_partial(self, call_id: str, text: str, language_hint: str | None) -> None:
+        rt = self._runtimes.get(call_id)
+        if rt is not None:
+            with contextlib.suppress(Conflict):
+                await self._emit_partial(rt, text, language_hint)
+
+    async def provider_barge_in(self, call_id: str) -> InterruptResult:
+        """The caller started talking while the assistant was speaking: stop the playback promptly."""
+        rt = self._runtimes.get(call_id)
+        if rt is None:
+            return InterruptResult(interrupted=False)
+        async with self._locked(rt):
+            return await self._barge_in_locked(rt)
+
+    def audio_expected(self, call_id: str) -> bool:
+        rt = self._runtimes.get(call_id)
+        return rt is not None and rt.pipeline is not None
+
     # ======================================================================================== queries
-    def _capabilities_for(self, provider_name: str, *, ended: bool) -> CallCapabilities:
+    def _capabilities_for(self, provider_name: str, *, ended: bool, call_id: str | None = None) -> CallCapabilities:
         if provider_name == ProviderKind.ANDROID_SCREENING.value:
             return CallCapabilities(
                 can_take_over=False,
@@ -1334,18 +1376,44 @@ class CallService:
                 two_way_audio=False,
                 audio_note="Android call screening has no access to call audio.",
             )
-        return self._provider_by_name(provider_name).capabilities.call_capabilities(ended=ended)
+        provider = self._provider_by_name(provider_name)
+        per_call = getattr(provider, "capabilities_for_call", None)  # e.g. ACS: two-way audio only while media is live
+        caps = per_call(call_id) if (per_call is not None and call_id) else provider.capabilities
+        return caps.call_capabilities(ended=ended)
+
+    async def _load_detail(self, repo: Repository, principal: Principal, call_id: str) -> tuple[CallDetail, int]:
+        row = await repo.get_call_row(principal.id, call_id)
+        detail = await repo.load_detail(principal.id, call_id) if row is not None else None
+        if row is None or detail is None:
+            raise NotFound("Call not found.")
+        detail.capabilities = self._capabilities_for(
+            detail.provider.value, ended=detail.status != CallStatus.ACTIVE, call_id=call_id
+        )
+        detail.timeline = build_timeline(detail, await repo.risk_history(call_id))
+        return detail, int(row.event_seq)
 
     async def get_call(self, principal: Principal, call_id: str) -> CallDetail:
         async with self.db.uow() as repo:
-            detail = await repo.load_detail(principal.id, call_id)
-            if detail is None:
-                raise NotFound("Call not found.")
-            detail.capabilities = self._capabilities_for(
-                detail.provider.value, ended=detail.status != CallStatus.ACTIVE
-            )
-            detail.timeline = build_timeline(detail, await repo.risk_history(call_id))
+            detail, _ = await self._load_detail(repo, principal, call_id)
         return detail
+
+    async def assert_owner(self, principal: Principal, call_id: str) -> None:
+        async with self.db.uow() as repo:
+            if await repo.get_call_row(principal.id, call_id) is None:
+                raise NotFound("Call not found.")
+
+    async def snapshot_event(self, principal: Principal, call_id: str) -> LiveEvent:
+        """``call.snapshot`` for a late joiner: the full call plus the last event sequence it already contains."""
+        async with self.db.uow() as repo:
+            detail, last_seq = await self._load_detail(repo, principal, call_id)
+        return LiveEvent(
+            type=EventType.CALL_SNAPSHOT.value,
+            call_id=call_id,
+            seq=last_seq,
+            ts=self.clock.now(),
+            simulated=detail.simulated,
+            data={"call": detail.model_dump(mode="json")},
+        )
 
     async def list_calls(self, principal: Principal, flt: CallFilter) -> tuple[list[CallListItem], str | None]:
         async with self.db.uow() as repo:

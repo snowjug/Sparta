@@ -75,6 +75,15 @@ class Database:
             return False
         return True
 
+    async def schema_ready(self) -> bool:
+        """The database answers *and* the schema exists (a fresh server that was never migrated is not ready)."""
+        try:
+            async with self.engine.connect() as conn:
+                await conn.execute(text("SELECT 1 FROM users LIMIT 1"))
+        except Exception:
+            return False
+        return True
+
     async def dispose(self) -> None:
         await self.engine.dispose()
 

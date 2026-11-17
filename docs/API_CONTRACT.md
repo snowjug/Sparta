@@ -22,7 +22,8 @@ wins**; please report the mismatch. DTO field names equal the Python attribute n
 | Unknown request fields | Rejected with 422 (`extra = forbid`) |
 | Honesty | Responses never imply a capability the provider lacks. Unsupported actions return 409 `unsupported_by_provider` and `CallDetail.capabilities` explains why |
 
-Number privacy: raw phone numbers are **never returned**. `caller_display` is a masked rendering such as `+91 98••• ••21`.
+Number privacy: raw phone numbers are **never returned**. `caller_display` is a masked rendering such as `+91 98•••• ••21`
+(country code, first two and last two national digits; short numbers keep only their last digit).
 Raw numbers are only stored (encrypted) if `retention.store_full_caller_number` is true.
 
 ## System

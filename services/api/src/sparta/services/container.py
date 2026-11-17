@@ -17,6 +17,7 @@ from sparta.db.types import has_cipher, set_cipher
 from sparta.observability.metrics import Metrics
 from sparta.observability.tracing import UnitCosts
 from sparta.orchestrator.engine import ConversationEngine
+from sparta.services.audio import AudioService
 from sparta.services.calls import CallService
 from sparta.services.ids import DeterministicIds, IdFactory, RandomIds
 from sparta.services.kv import KeyValueStore, MemoryKV, RedisKV
@@ -25,6 +26,7 @@ from sparta.services.notifier import LoggingPushNotifier, PushNotifier
 from sparta.services.owner import OwnerService
 from sparta.services.providers import ProviderSet, build_providers
 from sparta.services.ratelimit import RateLimiter
+from sparta.services.retention import RetentionService
 from sparta.services.simulator import SimulatorService
 
 log = logging.getLogger("sparta.container")
@@ -57,6 +59,8 @@ class Container:
     calls: CallService
     owner: OwnerService
     simulator: SimulatorService
+    audio: AudioService
+    retention: RetentionService
     hermetic: bool = False
     started: bool = False
 
@@ -132,7 +136,9 @@ class Container:
         )
 
         async def replay_container() -> Self:
-            return await cls.build(settings, hermetic=True)
+            replay = await cls.build(settings, hermetic=True)
+            await replay.start()  # creates the in-memory schema and binds the simulator telephony
+            return replay
 
         simulator = SimulatorService(
             settings=settings,
@@ -143,6 +149,8 @@ class Container:
             providers=providers,
             replay_factory=replay_container,
         )
+        audio = AudioService(settings=settings, calls=calls, stt=providers.stt, metrics=metrics)
+        retention = RetentionService(db, clock)
         return cls(
             settings=settings,
             clock=clock,
@@ -159,6 +167,8 @@ class Container:
             calls=calls,
             owner=owner,
             simulator=simulator,
+            audio=audio,
+            retention=retention,
             hermetic=hermetic,
         )
 

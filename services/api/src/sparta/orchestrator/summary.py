@@ -4,6 +4,8 @@ An LLM provider may rewrite the wording (feature flag), but the rules summary is
 fallback, so a summary can never mention something the engine did not observe.
 """
 
+from datetime import datetime
+
 from sparta.domain.enums import (
     CallCategory,
     OwnerActionType,
@@ -176,13 +178,20 @@ def _owner_sentence(ctx: ConversationContext, risk: RiskAssessment) -> tuple[str
 
 
 def build_summary(
-    call_id: str, ctx: ConversationContext, risk: RiskAssessment | None, *, simulated: bool = False
+    call_id: str,
+    ctx: ConversationContext,
+    risk: RiskAssessment | None,
+    *,
+    simulated: bool = False,
+    now: datetime | None = None,
 ) -> CallSummary:
+    """One-sentence factual summary. ``now`` is the injected clock's time (deterministic replays)."""
+    created = now or utcnow()
     if risk is None:
         return CallSummary(
             call_id=call_id,
             text="The call ended before Sparta could assess it.",
-            created_at=utcnow(),
+            created_at=created,
         )
     signals = [s for s in risk.signals if s.kind in (SignalKind.RISK, SignalKind.LEGITIMATE)]
     who = _who(ctx, signals)
@@ -198,5 +207,5 @@ def build_summary(
         action_taken=ctx.action_taken,
         owner_action_required=attention,
         generated_by="rules-v1",
-        created_at=utcnow(),
+        created_at=created,
     )
