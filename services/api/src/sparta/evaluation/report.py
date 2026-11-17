@@ -13,6 +13,7 @@ from sparta.evaluation.runner import run_scenario
 from sparta.orchestrator.engine import ConversationEngine
 
 REPORT_VERSION = 1
+MIN_TAG_SLICE = 5  # smaller tag slices are noise in the Markdown view; the JSON report keeps every slice
 NOISE_LEVELS = (0.1, 0.2, 0.3)
 LIMITATIONS = [
     "The dataset is synthetic and written by the project (LLM-authored, not reviewed by native speakers); it "
@@ -210,10 +211,15 @@ def render_markdown(report: dict[str, Any]) -> str:
         "",
         "#### Slices",
         "",
+        f"Tag slices with fewer than {MIN_TAG_SLICE} scenarios are left out here (the JSON report has them all); "
+        "intervals on the rest are wide.",
+        "",
         "| Slice | n | All checks | Scam flagged | Legitimate ended |",
         "| --- | --- | --- | --- | --- |",
     ]
     for name, m in report["slices"].items():
+        if name.startswith("tag:") and m["n"] < MIN_TAG_SLICE:
+            continue
         scam = (
             "-"
             if m["scam_flagged"] is None
