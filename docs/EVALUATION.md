@@ -98,9 +98,18 @@ truncated words).
 
 1. Rules, lexicons and thresholds were tuned on `dev` only, over many iterations. The `dev` numbers are therefore
    **training-set numbers**, published for transparency and not as a result.
-2. The `test` split was run **once**, with the final code, in a single invocation that also ran the noise sweep. The
-   engine, risk, language and orchestrator code is unchanged since; only the Markdown renderer changed afterwards
-   (`MIN_TAG_SLICE`, commit `ef1e21f`).
+2. The `test` split was run **once**, in a single invocation that also ran the noise sweep, with the engine as of commit
+   `b09c936`. Rules, lexicons, thresholds and policy have not changed since (policy 2026.11.2). Later commits did change
+   code the run exercises: `ef1e21f` (the Markdown renderer only, `MIN_TAG_SLICE`), `f263382` (the summary no longer
+   repeats a generic organisation word, "a bank (Bank)"), `ac59c3e` (no behaviour change: a hashing flag and comments)
+   and `117752e` (security review: bounded input work, deletion of invisible characters and folding of look-alike
+   letters in `language/text.py`, `risk/matchers.py` and `orchestrator/engine.py`; see
+   [`SECURITY_REVIEW.md`](SECURITY_REVIEW.md)).
+   The `test` split was **not re-run** after them. Two checks stand in for a re-run, and neither is one: the `dev`
+   report regenerated with the final code is identical to the committed one apart from timestamps and timings, and a
+   character scan of both splits (counts only, no reading of scenarios) found no compatibility forms, no Cyrillic or
+   Greek letters, no turn longer than 223 characters, and only U+200C, always next to Indic letters, where the handling
+   is unchanged by design. If a re-run is ever published it must be labelled as a second run.
 3. Failing `test` scenarios are withheld from the report (`--details` exists and must not be used for tuning). If the
    split is ever used for tuning, it is burned and a new held-out split has to be written.
 4. The gap between the two splits is reported as it came out.
