@@ -1,0 +1,12 @@
+version = "1"
+
+# PLANNED: script-level recognition only (see mr.toml).
+[meta]
+code = "bn-IN"
+iso = "bn"
+name = "Bengali"
+native_name = "বাংলা"
+scripts = ["Beng"]
+status = "planned"
+stt_locale = "bn-IN"
+tts_locale = "bn-IN"

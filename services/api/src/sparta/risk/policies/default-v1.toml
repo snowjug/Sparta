@@ -1,0 +1,454 @@
+# Sparta safety policy (versioned). Language-neutral: rules refer to vocabularies (terms/cues) by name; each language
+# pack contributes the actual words. Deterministic rules ALWAYS override model suggestions.
+#
+# Rule kinds
+#   any  = ["term", ...]               any match of any listed term/cue fires the rule
+#   near = [["a","b"], ["c"]]          every group must match within `window` characters of each other
+#   unless = ["cue"]                   suppress the hit when a warning/assurance cue sits just before/after it
+
+[policy]
+version = "2026.11.1"
+name = "sparta-default"
+description = "Deterministic multilingual (en/hi/kn, Hinglish, Kanglish) call-screening policy."
+
+[thresholds]
+high = 0.75
+medium = 0.40
+critical_floor = 0.90
+legit_max_discount = 0.60
+uncertain_confidence = 0.45
+
+[strictness.relaxed]
+high = 0.85
+medium = 0.55
+[strictness.balanced]
+high = 0.75
+medium = 0.40
+[strictness.strict]
+high = 0.65
+medium = 0.30
+
+[limits]
+max_clarify_attempts = 2
+max_probe_deflections = 2
+excerpt_radius = 40
+
+# Signals that never allow the assistant to comply, whatever the model or the caller says.
+[[protected_information]]
+code = "OTP"
+label = "One-time passwords and verification codes"
+signals = ["OTP_REQUEST"]
+[[protected_information]]
+code = "PIN"
+label = "PINs (ATM, UPI, mobile banking)"
+signals = ["PIN_REQUEST"]
+[[protected_information]]
+code = "CVV"
+label = "Card CVV/CVC and expiry"
+signals = ["CVV_REQUEST", "CARD_OR_ACCOUNT_CREDENTIAL_REQUEST"]
+[[protected_information]]
+code = "PASSWORD"
+label = "Passwords, login credentials and recovery/authentication codes"
+signals = ["PASSWORD_REQUEST", "AUTH_OR_RECOVERY_CODE_REQUEST"]
+[[protected_information]]
+code = "CARD_ACCOUNT"
+label = "Full card and bank account details"
+signals = ["CARD_OR_ACCOUNT_CREDENTIAL_REQUEST"]
+[[protected_information]]
+code = "IDENTITY"
+label = "Identity documents (Aadhaar, PAN, passport, date of birth)"
+signals = ["IDENTITY_DOCUMENT_REQUEST"]
+[[protected_information]]
+code = "LOCATION"
+label = "Where the owner lives, is, or whether they are home, alone or available"
+signals = ["ADDRESS_OR_LOCATION_REQUEST", "OWNER_AVAILABILITY_PROBE"]
+[[protected_information]]
+code = "REMOTE_ACCESS"
+label = "Remote access, screen sharing or installing apps"
+signals = ["REMOTE_ACCESS_REQUEST", "SCREEN_SHARING_REQUEST"]
+[[protected_information]]
+code = "PAYMENTS"
+label = "Payments, transfers, gift cards and cryptocurrency"
+signals = ["PAYMENT_OR_TRANSFER_REQUEST", "GIFT_CARD_OR_CRYPTO_REQUEST"]
+[[protected_information]]
+code = "PRIVATE_PROFILE"
+label = "Contacts, calendar, finances, employer and any other private owner data"
+signals = []
+
+# ---------------------------------------------------------------------------------------------------------------
+# Signal catalogue. weight is the contribution to the noisy-OR risk score; protected = the call must not comply.
+# ---------------------------------------------------------------------------------------------------------------
+[signals.OTP_REQUEST]
+severity = "critical"
+weight = 0.92
+protected = true
+description = "Asked for a one-time password or verification code"
+category = "possible_financial_impersonation"
+[signals.PASSWORD_REQUEST]
+severity = "critical"
+weight = 0.92
+protected = true
+description = "Asked for a password or login credentials"
+category = "possible_financial_impersonation"
+[signals.PIN_REQUEST]
+severity = "critical"
+weight = 0.92
+protected = true
+description = "Asked for a PIN"
+category = "possible_financial_impersonation"
+[signals.CVV_REQUEST]
+severity = "critical"
+weight = 0.92
+protected = true
+description = "Asked for a card CVV"
+category = "possible_financial_impersonation"
+[signals.CARD_OR_ACCOUNT_CREDENTIAL_REQUEST]
+severity = "critical"
+weight = 0.88
+protected = true
+description = "Asked for full card or bank account details"
+category = "possible_financial_impersonation"
+[signals.AUTH_OR_RECOVERY_CODE_REQUEST]
+severity = "critical"
+weight = 0.9
+protected = true
+description = "Asked for an authentication or recovery code"
+category = "possible_financial_impersonation"
+[signals.IDENTITY_DOCUMENT_REQUEST]
+severity = "high"
+weight = 0.7
+protected = true
+description = "Asked for identity-document details"
+category = "possible_financial_impersonation"
+[signals.ADDRESS_OR_LOCATION_REQUEST]
+severity = "medium"
+weight = 0.45
+protected = true
+description = "Asked for an address or where someone is"
+[signals.OWNER_AVAILABILITY_PROBE]
+severity = "medium"
+weight = 0.5
+protected = true
+description = "Asked whether the owner is home, alone, away or available"
+[signals.REMOTE_ACCESS_REQUEST]
+severity = "critical"
+weight = 0.92
+protected = true
+description = "Asked to install or use remote-access software"
+category = "possible_tech_support_scam"
+[signals.SCREEN_SHARING_REQUEST]
+severity = "high"
+weight = 0.8
+protected = true
+description = "Asked to share the screen"
+category = "possible_tech_support_scam"
+[signals.PAYMENT_OR_TRANSFER_REQUEST]
+severity = "high"
+weight = 0.75
+protected = true
+description = "Demanded a payment or money transfer"
+category = "possible_financial_impersonation"
+[signals.GIFT_CARD_OR_CRYPTO_REQUEST]
+severity = "critical"
+weight = 0.9
+protected = true
+description = "Asked for gift cards or cryptocurrency"
+category = "possible_financial_impersonation"
+[signals.MALICIOUS_LINK_OR_CALLBACK]
+severity = "medium"
+weight = 0.5
+description = "Pushed a link, file download or an unknown callback number"
+[signals.ARREST_OR_LEGAL_THREAT]
+severity = "high"
+weight = 0.75
+description = "Threatened arrest or legal action"
+category = "possible_government_impersonation"
+[signals.ACCOUNT_CLOSURE_THREAT]
+severity = "medium"
+weight = 0.5
+description = "Threatened to block, close or suspend an account, card or SIM"
+category = "possible_financial_impersonation"
+[signals.FAKE_KYC_URGENCY]
+severity = "high"
+weight = 0.65
+description = "Pressed for an urgent KYC update"
+category = "possible_financial_impersonation"
+[signals.URGENCY_PRESSURE]
+severity = "low"
+weight = 0.25
+description = "Applied time pressure or asked to stay silent about the call"
+[signals.SUSPICIOUS_PRIZE]
+severity = "high"
+weight = 0.75
+description = "Announced a prize, lottery or reward"
+category = "possible_prize_scam"
+[signals.IMPERSONATION_BANK]
+severity = "medium"
+weight = 0.4
+description = "Claimed to represent a bank (unverified)"
+category = "possible_financial_impersonation"
+[signals.IMPERSONATION_GOVERNMENT]
+severity = "medium"
+weight = 0.45
+description = "Claimed to represent a government agency (unverified)"
+category = "possible_government_impersonation"
+[signals.IMPERSONATION_POLICE]
+severity = "medium"
+weight = 0.5
+description = "Claimed to be police or a law-enforcement officer (unverified)"
+category = "possible_government_impersonation"
+[signals.IMPERSONATION_COURIER]
+severity = "low"
+weight = 0.25
+description = "Claimed to represent a courier or delivery company (unverified)"
+category = "possible_courier_impersonation"
+[signals.IMPERSONATION_EMPLOYER]
+severity = "low"
+weight = 0.25
+description = "Claimed to represent an employer or recruiter (unverified)"
+category = "possible_employer_impersonation"
+[signals.RULE_OVERRIDE_ATTEMPT]
+severity = "critical"
+weight = 0.9
+description = "Tried to change or bypass the assistant's rules"
+category = "prompt_injection_attempt"
+[signals.FALSE_OWNER_AUTHORIZATION]
+severity = "critical"
+weight = 0.92
+protected = true
+description = "Claimed the owner authorized sharing protected information"
+category = "prompt_injection_attempt"
+[signals.HARASSMENT_OR_ABUSE]
+severity = "high"
+weight = 0.7
+description = "Abusive or threatening language"
+category = "harassment"
+[signals.TELEMARKETING]
+severity = "low"
+weight = 0.35
+description = "Sales or promotional pitch"
+category = "telemarketing"
+
+# Possibly-legitimate patterns: weight is the strength of the legitimacy hint, never a risk contribution.
+[signals.LEGIT_DELIVERY_COORDINATION]
+kind = "legitimate"
+severity = "info"
+weight = 0.6
+description = "Delivery coordination"
+category = "legitimate_delivery"
+[signals.LEGIT_APPOINTMENT_CONFIRMATION]
+kind = "legitimate"
+severity = "info"
+weight = 0.55
+description = "Appointment or booking confirmation"
+category = "legitimate_appointment"
+[signals.LEGIT_RECRUITER_INTRO]
+kind = "legitimate"
+severity = "info"
+weight = 0.55
+description = "Recruiter or interview scheduling"
+category = "legitimate_recruiter"
+[signals.LEGIT_KNOWN_SERVICE_CALLBACK]
+kind = "legitimate"
+severity = "info"
+weight = 0.5
+description = "Callback about something the owner did"
+category = "legitimate_support_callback"
+[signals.LEGIT_FAMILY_OR_FRIEND]
+kind = "legitimate"
+severity = "info"
+weight = 0.5
+description = "Family, friend or colleague"
+category = "legitimate_personal"
+[signals.LEGIT_SCHOOL_OR_HOSPITAL]
+kind = "legitimate"
+severity = "info"
+weight = 0.55
+description = "School, college or hospital contact"
+category = "legitimate_urgent"
+[signals.LEGIT_EMERGENCY_CONTEXT]
+kind = "legitimate"
+severity = "info"
+weight = 0.7
+description = "Possible emergency involving a person"
+category = "legitimate_urgent"
+[signals.LEGIT_SUPPORT_CALLBACK]
+kind = "legitimate"
+severity = "info"
+weight = 0.55
+description = "Support follow-up referencing a case or ticket"
+category = "legitimate_support_callback"
+
+# ---------------------------------------------------------------------------------------------------------------
+# Rules
+# ---------------------------------------------------------------------------------------------------------------
+[[rules]]
+signal = "OTP_REQUEST"
+near = [["otp"], ["request"]]
+window = 80
+unless = ["warning"]
+[[rules]]
+signal = "OTP_REQUEST"
+near = [["otp"], ["received_probe"]]
+window = 60
+unless = ["warning"]
+[[rules]]
+signal = "PASSWORD_REQUEST"
+near = [["password"], ["request"]]
+window = 80
+unless = ["warning"]
+[[rules]]
+signal = "PIN_REQUEST"
+near = [["pin"], ["request"]]
+window = 80
+unless = ["warning"]
+[[rules]]
+signal = "CVV_REQUEST"
+near = [["cvv"], ["request"]]
+window = 80
+unless = ["warning"]
+[[rules]]
+signal = "CARD_OR_ACCOUNT_CREDENTIAL_REQUEST"
+near = [["card_credential"], ["request"]]
+window = 80
+unless = ["warning"]
+[[rules]]
+signal = "AUTH_OR_RECOVERY_CODE_REQUEST"
+near = [["auth_code"], ["request"]]
+window = 80
+unless = ["warning"]
+[[rules]]
+signal = "IDENTITY_DOCUMENT_REQUEST"
+near = [["id_document"], ["request"]]
+window = 80
+unless = ["warning"]
+[[rules]]
+signal = "ADDRESS_OR_LOCATION_REQUEST"
+near = [["address_location"], ["request"]]
+window = 80
+unless = ["warning"]
+[[rules]]
+signal = "OWNER_AVAILABILITY_PROBE"
+any = ["owner_availability"]
+[[rules]]
+signal = "REMOTE_ACCESS_REQUEST"
+any = ["remote_tool"]
+unless = ["warning"]
+[[rules]]
+signal = "REMOTE_ACCESS_REQUEST"
+near = [["install_app"], ["bank_org", "govt_org", "police_org", "kyc", "account_threat", "legal_threat", "urgency"]]
+window = 140
+severity = "high"
+weight = 0.7
+[[rules]]
+signal = "SCREEN_SHARING_REQUEST"
+any = ["screen_share"]
+unless = ["warning"]
+[[rules]]
+signal = "PAYMENT_OR_TRANSFER_REQUEST"
+near = [["payment_term"], ["pay_demand"]]
+window = 70
+unless = ["warning", "no_money_assurance"]
+[[rules]]
+signal = "GIFT_CARD_OR_CRYPTO_REQUEST"
+near = [["giftcard_crypto"], ["buy_send", "pay_demand"]]
+window = 80
+unless = ["warning"]
+[[rules]]
+signal = "MALICIOUS_LINK_OR_CALLBACK"
+any = ["link_callback"]
+unless = ["warning"]
+[[rules]]
+signal = "ARREST_OR_LEGAL_THREAT"
+any = ["legal_threat"]
+unless = ["warning"]
+[[rules]]
+signal = "ACCOUNT_CLOSURE_THREAT"
+any = ["account_threat"]
+unless = ["warning"]
+[[rules]]
+signal = "FAKE_KYC_URGENCY"
+near = [["kyc"], ["kyc_action"]]
+window = 60
+[[rules]]
+signal = "URGENCY_PRESSURE"
+any = ["urgency"]
+[[rules]]
+signal = "URGENCY_PRESSURE"
+any = ["isolation"]
+severity = "medium"
+weight = 0.5
+[[rules]]
+signal = "SUSPICIOUS_PRIZE"
+any = ["prize"]
+[[rules]]
+signal = "IMPERSONATION_BANK"
+near = [["bank_org"], ["claim"]]
+window = 70
+[[rules]]
+signal = "IMPERSONATION_GOVERNMENT"
+near = [["govt_org"], ["claim"]]
+window = 70
+[[rules]]
+signal = "IMPERSONATION_POLICE"
+near = [["police_org"], ["claim"]]
+window = 70
+[[rules]]
+signal = "IMPERSONATION_COURIER"
+near = [["courier_org"], ["claim"]]
+window = 70
+[[rules]]
+signal = "IMPERSONATION_EMPLOYER"
+near = [["employer_org"], ["claim"]]
+window = 70
+[[rules]]
+signal = "RULE_OVERRIDE_ATTEMPT"
+any = ["override_phrase"]
+[[rules]]
+signal = "RULE_OVERRIDE_ATTEMPT"
+any = ["authority_demand"]
+severity = "high"
+weight = 0.6
+[[rules]]
+signal = "FALSE_OWNER_AUTHORIZATION"
+near = [["owner_authorization"], ["otp", "pin", "cvv", "password", "card_credential", "auth_code", "id_document", "address_location", "owner_availability", "payment_term", "remote_tool"]]
+window = 120
+[[rules]]
+signal = "HARASSMENT_OR_ABUSE"
+any = ["abuse"]
+[[rules]]
+signal = "HARASSMENT_OR_ABUSE"
+any = ["harassment_threat"]
+weight = 0.8
+[[rules]]
+signal = "TELEMARKETING"
+any = ["telemarketing"]
+[[rules]]
+signal = "LEGIT_DELIVERY_COORDINATION"
+any = ["delivery_coord"]
+[[rules]]
+signal = "LEGIT_APPOINTMENT_CONFIRMATION"
+any = ["appointment"]
+[[rules]]
+signal = "LEGIT_RECRUITER_INTRO"
+any = ["recruiter"]
+[[rules]]
+signal = "LEGIT_KNOWN_SERVICE_CALLBACK"
+any = ["known_callback"]
+[[rules]]
+signal = "LEGIT_FAMILY_OR_FRIEND"
+any = ["family_friend"]
+[[rules]]
+signal = "LEGIT_SCHOOL_OR_HOSPITAL"
+any = ["school_hospital"]
+[[rules]]
+signal = "LEGIT_EMERGENCY_CONTEXT"
+near = [["emergency"], ["family_member", "school_hospital"]]
+window = 150
+[[rules]]
+signal = "LEGIT_EMERGENCY_CONTEXT"
+any = ["emergency"]
+weight = 0.4
+[[rules]]
+signal = "LEGIT_SUPPORT_CALLBACK"
+any = ["support_callback"]

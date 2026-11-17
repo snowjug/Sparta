@@ -1,0 +1,889 @@
+version = "1"
+
+[meta]
+code = "hi-IN"
+iso = "hi"
+name = "Hindi"
+native_name = "हिन्दी"
+scripts = ["Deva", "Latn"]
+status = "supported"
+stt_locale = "hi-IN"
+tts_locale = "hi-IN"
+default_voice = "hi-IN-SwaraNeural"
+
+[detection]
+# Romanized Hindi ("Hinglish"). Spelling variants are collapsed by canon_latin (aa→a, ee→i, oo→u, w→v …).
+latin_words = [
+  "aap", "aapka", "aapki", "aapke", "aapko", "aapse", "aapne", "apna", "apni", "apne", "main", "mai", "mein",
+  "mera", "meri", "mere", "mujhe", "mujhko", "hum", "humara", "hamara", "hamare", "humko", "tum", "tumhara",
+  "tumhari", "tumhare", "tumhe", "tumne", "tu", "tera", "teri", "tere", "tujhe", "yeh", "ye", "woh", "wo", "yahan",
+  "yaha", "wahan", "waha", "kaun", "kya", "kyun", "kyon", "kaise", "kab", "kahan", "kahaan", "kidhar", "kitna",
+  "kitni", "kitne", "kuch", "koi", "kisi", "kisko", "kisne", "kiska", "hai", "hain", "hoon", "hu", "ho", "hona",
+  "hoga", "hogi", "honge", "hua", "hui", "hue", "tha", "thi", "the", "raha", "rahi", "rahe", "rahega", "rahenge",
+  "ka", "ki", "ke", "ko", "se", "par", "pe", "tak", "liye", "liya", "wala", "wali", "wale", "sath", "saath",
+  "bina", "baad", "pehle", "pahle", "andar", "bahar", "upar", "neeche", "aur", "ya", "lekin", "magar", "toh",
+  "bhi", "hi", "sirf", "bas", "phir", "fir", "abhi", "ab", "turant", "jaldi", "foran", "fauran", "nahi", "nahin",
+  "mat", "na", "haan", "han", "ji", "jee", "theek", "thik", "accha", "acha", "achha", "sahi", "galat", "bataiye",
+  "bataye", "batao", "bata", "batana", "batayen", "bolo", "boliye", "bolna", "kehna", "kahiye", "kaho", "kahna",
+  "sunna", "suniye", "suno", "dekhiye", "dekho", "dekhna", "dijiye", "dijie", "dedo", "de", "dena", "deejiye",
+  "lijiye", "lena", "lo", "bhejiye", "bhejo", "bhejna", "bhej", "kijiye", "kijie", "karo", "karna", "karein",
+  "karen", "kare", "kar", "karte", "karta", "karti", "karenge", "karunga", "karungi", "kiya", "kiye", "jaiye",
+  "jao", "jana", "jayenge", "jayega", "jayegi", "gaya", "gayi", "gaye", "aaiye", "aao", "aana", "aayega", "aaya",
+  "aayi", "aaye", "ruko", "rukiye", "ruk", "rukna", "chaliye", "chalo", "chalna", "paisa", "paise", "rupaye",
+  "rupay", "khata", "khaata", "band", "chalu", "naam", "dhanyavaad", "shukriya", "namaste", "namaskar", "bilkul",
+  "zaroor", "zarur", "jarur", "kripya", "dobara", "phirse", "ek", "teen", "paanch", "chhe", "saat", "aath", "nau",
+  "das", "sau", "hazaar", "lakh", "din", "raat", "subah", "shaam", "kal", "aaj", "parso", "ghar", "gaon", "shehar",
+  "dost", "bhai", "behen", "bahan", "papa", "mummy", "beta", "beti", "bhaiya", "didi", "sahab", "saab", "madam",
+  "bol", "baat", "baatein", "samajh", "samjhe", "samajhiye", "sunai", "dikhai", "milega", "milegi", "mila", "mili",
+  "chahiye", "chahte", "chahta", "chahti", "sakte", "sakta", "sakti", "padega", "padegi", "hoga", "lagega",
+  "lagegi", "wapas", "vapas", "pehchana", "pahchana", "kaam", "kaafi", "bahut", "thoda", "zyada", "jyada", "kam",
+  "poora", "pura", "saara", "sab", "sabhi", "yaad", "bhool", "bhul", "paas", "door", "yahin", "wahin", "isliye",
+  "kyunki", "agar", "warna", "jab", "tab", "jabtak", "tabtak", "kaisa", "kaisi", "kaise", "aise", "waise", "jaise",
+  "bataiyega", "dijiyega", "kijiyega", "suniyega", "aaiyega", "rakhiye", "rakho", "rakhna", "lagao", "lagana",
+  "dalo", "dalna", "dalein", "likhiye", "likho", "likhna", "padhiye", "padho", "padhna", "sunaiye", "sunao",
+  "manzoor", "pareshan", "pareshani", "mushkil", "samasya", "madad", "sahayata", "jankari", "suchna", "sandesh",
+  "khabar", "mulakat", "intezaar", "intezar",
+]
+latin_suffixes = [
+  '(?:iye|ijiye|iyega|enge|ayega|ayegi|aunga|aungi|oge|ogi|unga|ungi|wala|wali|wale|raha|rahi|rahe|hoga|hogi|honge|karna|karein|karenge|kijiye|dijiye|aaiye|jaiye|tha|thi)$',
+]
+# Devanagari marker words, used to tell Hindi from Marathi (shared script).
+native_words = [
+  "है", "हैं", "का", "की", "के", "को", "से", "में", "नहीं", "आप", "और", "यह", "वह", "मैं", "हम", "कर", "रहा",
+  "रही", "रहे", "था", "थी", "होगा", "हूँ", "हूं", "क्या", "कि", "तो", "भी", "ही", "पर", "लिए", "आपका", "आपकी",
+  "आपके", "मेरा", "मेरी", "कृपया", "बताइए", "दीजिए", "कीजिए",
+]
+
+[owner_ref.named]
+poss = "{name} का"
+poss_translit = "{name} ka"
+to = "{name} को"
+to_translit = "{name} ko"
+subj = "{name}"
+subj_translit = "{name}"
+
+[owner_ref.generic]
+poss = "इस नंबर के मालिक का"
+poss_translit = "is number ke malik ka"
+to = "इस नंबर के मालिक को"
+to_translit = "is number ke malik ko"
+subj = "इस नंबर के मालिक"
+subj_translit = "is number ke malik"
+
+[terms]
+otp = [
+  'ओ\.?\s?टी\.?\s?पी',
+  'वन\s?टाइम\s?(?:पासवर्ड|पिन|कोड)',
+  '(?:वेरिफिकेशन|सत्यापन|कन्फर्मेशन|कंफर्मेशन|सिक्योरिटी|सिक्यूरिटी|एसएमएस)\s*कोड',
+  '(?:६|6|४|4|५|5)\s*अंकों?\s*(?:का|के|की)?\s*(?:कोड|नंबर|पिन|ओटीपी)',
+  'कोड\s*(?:जो|जिसे)?\s*(?:आया|आयी|आई|आए|आपके|मैसेज|एसएमएस|भेजा|भेजी)',
+  'मैसेज\s*(?:में|पर)\s*(?:आया|आए|आई)\s*(?:हुआ)?\s*(?:कोड|नंबर)',
+  '\b(?:6|chhe|chhah|4|char|5|panch)\s*(?:digit|ank|anko|angon)\s*(?:ka|ki|ke)?\s*(?:code|number|pin|otp)\b',
+  '\bcode\s*(?:jo|jise|jisko)?\s*(?:aaya|aya|aayi|aai|aaye|aae|mila|mili|bheja|bheji|bhejaa)\b',
+  '\bmessage\s*(?:me|mein|pe|par)\s*(?:aaya|aya|aae|aaye)\s*(?:hua)?\s*(?:code|number)\b',
+  '\b(?:sms|message)\s*(?:wala|vala)\s*(?:code|number)\b',
+]
+pin = [
+  'पिन(?!\s*कोड)',
+  'यूपीआई\s*पिन',
+  'एटीएम\s*पिन',
+  'एमपिन',
+  'गुप्त\s*(?:नंबर|कोड|पिन)',
+  '\bpin\s*(?:number|no|batao|bataiye)\b',
+  '\bgupt\s*(?:number|code|pin)\b',
+]
+cvv = [
+  'सीवीवी',
+  'सी\s*वी\s*वी',
+  'कार्ड\s*के\s*(?:पीछे|बैक)[^।.]{0,40}(?:तीन|3)\s*अंक',
+  'तीन\s*अंकों?\s*का\s*(?:नंबर|कोड)',
+  '\bcard\s*ke\s*(?:peeche|pichhe|pichche|back)\b[^.]{0,40}\b(?:teen|3)\s*(?:digit|ank)\b',
+  '\bteen\s*(?:digit|ank|anko)\s*(?:ka|ki)?\s*(?:number|code)\b',
+]
+password = [
+  'पासवर्ड',
+  'पास\s*वर्ड',
+  'पासकोड',
+  'लॉग\s*इन\s*(?:आईडी|डिटेल्स?|पासवर्ड)',
+  'नेट\s*बैंकिंग\s*(?:पासवर्ड|आईडी|डिटेल्स?)',
+  '\bpass\s*word\b',
+  '\bnet\s*banking\s*(?:password|id|details?|detail)\b',
+]
+card_credential = [
+  'कार्ड\s*(?:नंबर|नं|डिटेल्स?|की\s*जानकारी|का\s*नंबर|की\s*डिटेल)',
+  '(?:डेबिट|क्रेडिट|एटीएम)\s*कार्ड\s*(?:नंबर|डिटेल्स?|की)',
+  '(?:१६|16)\s*अंक(?:ों)?',
+  'एक्सपायरी\s*(?:डेट|तारीख)',
+  'खाता\s*(?:नंबर|संख्या|विवरण|डिटेल्स?)',
+  'अकाउंट\s*(?:नंबर|डिटेल्स?|की\s*जानकारी|नं)',
+  'आईएफएससी',
+  'बैंक\s*(?:की\s*)?(?:डिटेल्स?|जानकारी|विवरण)',
+  '\b(?:debit|credit|atm)?\s*card\s*(?:number|no|details?|detail|ki\s*jankari|ka\s*number|ki\s*detail)\b',
+  '\b(?:16|solah)\s*(?:digit|ank|anko)\b',
+  '\bexpiry\s*(?:date|tareekh|tarikh)\b',
+  '\b(?:account|khata|khaata)\s*(?:number|no|details?|detail|ki\s*jankari|ka\s*number|ki\s*detail)\b',
+  '\bbank\s*(?:ki\s*)?(?:details?|detail|jankari)\b',
+]
+auth_code = [
+  'रिकवरी\s*(?:कोड|की)',
+  'बैकअप\s*कोड',
+  'ऑथेंटिकेशन\s*कोड',
+  '(?:एप्रूव|अप्रूव)\s*कर',
+  'सिक्योरिटी\s*(?:सवाल|प्रश्न)',
+  '\bapprove\s*kar\w*\b',
+]
+id_document = [
+  'आधार',
+  'पैन\s*(?:कार्ड|नंबर|नं)',
+  'पासपोर्ट',
+  'ड्राइविंग\s*लाइसेंस',
+  'वोटर\s*(?:आईडी|कार्ड)',
+  'जन्म\s*(?:तिथि|तारीख|दिनांक)',
+  '\bjanm\s*(?:tithi|tarikh|dinank)\b',
+]
+address_location = [
+  '(?:घर|ऑफिस|दफ्तर|आपका|उनका|पूरा|सही|मौजूदा|वर्तमान)\s*(?:का|की)?\s*पता\b',
+  'पता\s*(?:बताइए|बताओ|बताइये|बता\s*दीजिए|दीजिए|क्या|भेजिए|चाहिए|लिखवाइए)',
+  'लोकेशन',
+  'कहाँ\s*(?:रहते|रहती|हैं|हो|पर|मिलेंगे|स्थित)',
+  'कहां\s*(?:रहते|रहती|हैं|हो|पर|मिलेंगे|स्थित)',
+  'किस\s*(?:इलाके|इलाक़े|जगह|शहर|सोसाइटी|बिल्डिंग|मोहल्ले|एरिया|सेक्टर)',
+  'लैंडमार्क',
+  'फ्लैट\s*(?:नंबर|नं)',
+  '\b(?:ghar|office|aapka|apka|poora|pura|current|sahi)\s*(?:ka|ki)?\s*pata\b',
+  '\bpata\s*(?:bataiye|batao|batayiye|bataye|dijiye|kya|bhejiye|chahiye|likhwaiye)\b',
+  '\bkahan\s*(?:rehte|rahte|rehti|rahti|ho|hain|hai|par|pe|milenge|sthit)\b',
+  '\bkahaan\s*(?:rehte|rahte|ho|hain)\b',
+  '\bkidhar\s*(?:ho|hain|rehte|rahte|hai)\b',
+  '\bkis\s*(?:area|ilake|ilaake|jagah|shehar|city|society|building|mohalle|sector)\b',
+  '\baddress\s*(?:bataiye|batao|dijiye|kya|bhejiye)\b',
+]
+owner_availability = [
+  'घर\s*(?:पर|में)\s*(?:हैं|है|हो|कोई|और|अकेले)',
+  'ऑफिस\s*(?:में|पर)\s*(?:हैं|है|हो)',
+  'अकेले\s*(?:हैं|है|हो)',
+  'घर\s*में\s*(?:कोई|और)\s*(?:है|हैं|नहीं)',
+  'कब\s*(?:तक\s*)?(?:आएंगे|आयेंगे|मिलेंगे|वापस|लौटेंगे|आएँगे)',
+  '(?:सर|साहब|मैडम|मैम)\s*(?:घर|ऑफिस|फ्री|उपलब्ध|कहाँ|कहां)',
+  'बाहर\s*(?:गए|गये|गई|हैं)',
+  'शहर\s*से\s*बाहर',
+  '\bghar\s*(?:par|pe|me|mein)\s*(?:hain|hai|ho|koi|aur|akele)\b',
+  '\boffice\s*(?:me|mein|par|pe)\s*(?:hain|hai|ho)\b',
+  '\b(?:akele|akela|akeli)\s*(?:hain|hai|ho)\b',
+  '\bghar\s*(?:me|mein)\s*(?:koi|aur)\b',
+  '\bkab\s*(?:tak\s*)?(?:aayenge|aaenge|aayega|aaega|aayengi|milenge|wapas|lautenge|free)\b',
+  '\b(?:sir|madam|sahab|saab|mam|maam)\s*(?:ghar|office|free|available|kahan|kahaan)\b',
+  '\bbahar\s*(?:gaye|gaya|gayi|hain)\b',
+  '\bshehar\s*se\s*bahar\b',
+  '\b{OWNER}\s*(?:ji|sir|saab|sahab)?\s*(?:ghar|office)\s*(?:par|pe|me|mein)\b',
+]
+remote_tool = [
+  'एनी\s*डेस्क',
+  'टीम\s*(?:व्यूअर|व्यूवर|वियूअर)',
+  'क्विक\s*सपोर्ट',
+  'अल्ट्रा\s*व्यूअर',
+  'रिमोट\s*(?:एक्सेस|कंट्रोल|डेस्कटॉप)',
+  '(?:फोन|मोबाइल|कंप्यूटर|लैपटॉप)\s*(?:का|को)\s*(?:एक्सेस|कंट्रोल)',
+  'एपीके',
+  '\b(?:phone|mobile|computer|laptop)\s*(?:ka|ko)\s*(?:access|control)\b',
+]
+screen_share = [
+  'स्क्रीन\s*(?:शेयर|शेयरिंग|दिखा\w*|मिरर\w*|रिकॉर्ड)',
+  '\bscreen\s*(?:ko\s*)?(?:share|sharing|dikha\w*|mirror\w*|record\w*)\b',
+]
+install_app = [
+  '(?:ऐप|एप|एप्लिकेशन|ऍप|ऐप्लिकेशन)\s*(?:को\s*)?(?:डाउनलोड|इंस्टॉल|इंस्टाल|खोल\w*)',
+  '(?:डाउनलोड|इंस्टॉल)\s*(?:कर|करें|कीजिए|करिए|करो)',
+  'प्ले\s*स्टोर',
+  '\b(?:app|application|apk)\s*(?:ko\s*)?(?:download|install)\b',
+  '\b(?:download|install)\s*(?:kar|kijiye|karo|karein|kariye)\b',
+]
+payment_term = [
+  'पैसे',
+  'पैसा',
+  'रुपये',
+  'रुपए',
+  'रूपये',
+  'रकम',
+  'राशि',
+  'भुगतान',
+  'ट्रांसफर',
+  'जमा',
+  'फीस',
+  'शुल्क',
+  'जुर्माना',
+  'यूपीआई',
+  'पेमेंट',
+  'दंड',
+  '\b(?:paise|paisa|rupaye|rupay|rupee|rupye)s?\b',
+  '\bjurmana\b',
+  '\brakam\b',
+  '\b(?:raashi|rashi)\b',
+  '\bshulk\b',
+  '\bjama\b',
+]
+pay_demand = []
+giftcard_crypto = [
+  'गिफ्ट\s*कार्ड',
+  'बिटकॉइन',
+  'क्रिप्टो',
+  'गूगल\s*प्ले\s*(?:कार्ड|कोड)',
+  'वाउचर',
+]
+legal_threat = [
+  'गिरफ़?्?तार\w*',
+  'गिरफ्तारी',
+  'वारंट',
+  'एफआईआर',
+  'एफ\s*आई\s*आर',
+  'केस\s*(?:दर्ज|रजिस्टर|फाइल|लगा\w*)',
+  'मुकदमा',
+  'कानूनी\s*(?:कार्रवाई|कार्यवाही|नोटिस|मामला)',
+  'कोर्ट',
+  'अदालत',
+  'डिजिटल\s*अरेस्ट',
+  'सीबीआई',
+  'नारकोटिक्स',
+  'मनी\s*लॉन्ड्रिंग',
+  'साइबर\s*क्राइम',
+  'सिम\s*(?:बंद|ब्लॉक|कट)',
+  'अवैध\s*(?:सामान|ड्रग्स|पार्सल|गतिविधि)',
+  'ड्रग्स',
+  'जेल',
+  '\b(?:giraftar\w*|girftar\w*|giraftari|girftari|girafta\w*)\b',
+  '\bcase\s*(?:darj|register|file|laga\w*|dal\w*)\b',
+  '\bmukadma\b|\bmukadama\b',
+  '\bkanoon[iy]\s*(?:karyavahi|karwai|karrawai|action|notice)\b',
+  '\badalat\b',
+  '\bsim\s*(?:band|block|cut)\b',
+  '\b(?:avaidh|illegal)\s*(?:saman|drugs|parcel)\b',
+]
+account_threat = [
+  'खाता\s*(?:बंद|ब्लॉक|फ्रीज़|फ्रीज|सस्पेंड|निलंबित)',
+  'अकाउंट\s*(?:बंद|ब्लॉक|फ्रीज़|फ्रीज|सस्पेंड|डीएक्टिवेट|क्लोज)',
+  'कार्ड\s*(?:बंद|ब्लॉक)',
+  'सिम\s*(?:बंद|ब्लॉक)',
+  'सेवा\s*(?:बंद|बाधित)',
+  '(?:बंद|ब्लॉक|सस्पेंड)\s*हो\s*(?:जाएगा|जायेगा|जाएगी|गया|गई|चुका|चुकी|जाएंगे)',
+  'ब्लॉक\s*कर\s*(?:दिया|दी|दिए|देंगे|दिया\s*जाएगा)',
+  '\b(?:account|khata|khaata|card|sim|service|number|connection)\s*(?:band|block(?:ed)?|freeze|frozen|suspend\w*|deactivate\w*|close\w*)\b',
+  '\b(?:band|block|suspend|freeze)\s*ho\s*(?:jayega|jayegi|jaega|jaegi|gaya|gayi|gaye|chuka|chuki|raha|rahi|jayenge)\b',
+  '\b(?:block|band)\s*kar\s*(?:diya|diye|di|denge|dega|dia)\b',
+]
+kyc = [
+  'केवाईसी',
+  'के\s*वाई\s*सी',
+  '\bk\.?y\.?c\b',
+]
+urgency = [
+  'तुरंत',
+  'अभी\s*(?:के\s*अभी|तुरंत)',
+  'फ[ौ़]रन',
+  'जल्द\s*से\s*जल्द',
+  'आखिरी\s*(?:मौका|चेतावनी|मौक़ा)',
+  'अंतिम\s*(?:मौका|चेतावनी|मौक़ा|नोटिस)',
+  '(?:\d+|एक|दो|तीन|चार|पांच|पाँच|छह|दस|बीस|तीस)\s*(?:घंटे|घण्टे|मिनट)\s*(?:के\s*)?(?:अंदर|भीतर|में|तक)',
+  'आज\s*ही',
+  'देर\s*मत',
+  '\b(?:turant|fauran|foran|jaldi\s*se\s*jaldi|aakhri\s*(?:mauka|chetavani)|antim\s*(?:mauka|chetavani|notice)|aaj\s*hi|der\s*mat)\b',
+  '\babhi\s*(?:ke\s*abhi|turant)\b',
+  '\b\d+\s*(?:ghante|ghanta|ghantey|minute|minat|mins?)\s*(?:ke\s*)?(?:andar|bhitar|mein|me|tak)\b',
+]
+isolation = [
+  '(?:इस|यह|ये)\s*(?:कॉल|बात|मामले|केस|फोन)\s*(?:के\s*बारे\s*में)?\s*(?:किसी|कीसी)\s*को',
+  'कॉल\s*(?:मत|न)\s*(?:काटिए|काटना|काटें|काटो|काटिये|काटियेगा)',
+  'फोन\s*(?:मत|न)\s*(?:रखिए|रखना|रखें|काटिए|काटना)',
+  'गोपनीय',
+  '\b(?:is|yeh|ye)\s*(?:call|baat|mamle|case|phone)\s*(?:ke\s*baare\s*(?:mein|me))?\s*(?:kisi|kise)\s*ko\b',
+  '\bkisi\s*ko\s*(?:bhi\s*)?(?:mat|na)\s*batana\s*(?:ki|is)\b',
+  '\b(?:call|phone)\s*(?:mat|na)\s*(?:katiye|kaatiye|katna|kaatna|rakhiye|rakhna|kate|katein|kato|katiyega)\b',
+  '\bgopniy\b',
+]
+prize = [
+  'इनाम',
+  'लॉटरी',
+  'जीता\s*है',
+  'जीते\s*हैं',
+  'लकी\s*ड्रॉ',
+  'कैशबैक',
+  'पुरस्कार',
+  '\b(?:inaam|inam)\b',
+  '\b(?:aapne|aap\s*ne|apne)\s*(?:jeeta|jita|jeet|jeeti)\b',
+  '\bjeet(?:a|e|i)\s*(?:hai|hain|ho)\b',
+  '\bpuraskar\b',
+]
+link_callback = [
+  'लिंक\s*(?:पर|को)?\s*(?:क्लिक|खोल|टैप|ओपन)\w*',
+  'लिंक\s*(?:भेजा|भेजी|आया)',
+  'इस\s*नंबर\s*पर\s*(?:कॉल|मैसेज|व्हाट्सएप|व्हाट्सऐप|संपर्क)',
+  'व्हाट्स(?:एप|ऐप)\s*(?:पर|करें|कीजिए|मैसेज)',
+  'वापस\s*कॉल\s*करें',
+  '\blink\s*(?:par|pe|ko)?\s*(?:click|open|tap)\w*\b',
+  '\bclick\s*(?:kar|kijiye|karo|karein|kariye)\b',
+  '\blink\s*(?:bheja|bheji|aaya)\b',
+  '\b(?:is|iss)\s*number\s*(?:par|pe)\s*(?:call|message|whatsapp|sampark)\b',
+  '\bwhatsapp\s*(?:par|pe|kar|karein|kijiye)\b',
+  '\bwapas\s*call\s*kar\w*\b',
+]
+bank_org = [
+  'बैंक',
+  'क्रेडिट\s*कार्ड\s*(?:विभाग|डिपार्टमेंट|टीम)',
+  'एसबीआई',
+  'एचडीएफसी',
+  'आईसीआईसीआई',
+  'एक्सिस\s*बैंक',
+  'कोटक',
+  'पीएनबी',
+  'आरबीआई',
+  'एनपीसीआई',
+  '\bbaink\b',
+]
+govt_org = [
+  'सरकार',
+  'सरकारी',
+  'मंत्रालय',
+  'आयकर',
+  'इनकम\s*टैक्स',
+  'ट्राई',
+  'टेलीकॉम\s*विभाग',
+  'कस्टम',
+  'यूआईडीएआई',
+  'सीबीआई',
+  'साइबर\s*(?:सेल|क्राइम|पुलिस)',
+  'प्रवर्तन\s*निदेशालय',
+  'नारकोटिक्स\s*(?:ब्यूरो|विभाग)',
+  'नगर\s*निगम',
+  '\b(?:sarkar|sarkari)\b',
+  '\bmantralay\b',
+  '\baaykar\b',
+]
+police_org = [
+  'पुलिस',
+  'इंस्पेक्टर',
+  'क्राइम\s*ब्रांच',
+  'सीआईडी',
+  'कांस्टेबल',
+  'थाना',
+  'थाने',
+  '\b(?:thana|thane)\b',
+]
+courier_org = [
+  'कूरियर',
+  'पार्सल',
+  'अमेज़न|अमेजन',
+  'फ्लिपकार्ट',
+  'स्विगी',
+  'ज़ोमैटो|जोमैटो',
+  'ब्लू\s*डार्ट',
+  'डीएचएल',
+  'फेडेक्स',
+]
+employer_org = [
+  'एचआर',
+  'रिक्रूटर',
+  'नौकरी',
+  'जॉब\s*(?:ऑफर|ओपनिंग)',
+  'वर्क\s*फ्रॉम\s*होम',
+  'पार्ट\s*टाइम\s*जॉब',
+  'प्लेसमेंट',
+]
+override_phrase = [
+  'अपने\s*(?:सारे\s*|सब\s*|सभी\s*)?(?:नियम|निर्देश|हिदायत|प्रोग्रामिंग)\s*(?:भूल|अनदेखा|नजरअंदाज|नज़रअंदाज़|छोड़|तोड़|भुला)',
+  '(?:पिछले|पुराने|सारे|सभी)\s*(?:निर्देश|नियम)\s*(?:भूल|अनदेखा|नजरअंदाज|नज़रअंदाज़|भुला)',
+  'नियम\s*(?:भूल|तोड़|हटा|बदल)',
+  'सिस्टम\s*(?:ओवरराइड|प्रॉम्प्ट|मैसेज|कमांड)',
+  'अब\s*से\s*तुम',
+  'तुम\s*अब\s*(?:एक|मेरे)',
+  'डेवलपर\s*मोड',
+  'एडमिन\s*(?:कोड|मोड|एक्सेस)',
+  'सुरक्षा\s*(?:नियम|फ़िल्टर|फिल्टर)\s*(?:बंद|हटा)',
+  '\b(?:apne|apni|apna|sare|saare|sabhi|purane|pichhle|pichle)\s*(?:rules?|niyam|instructions?|nirdesh|programming)\s*(?:ko\s*)?(?:bhool|bhul|bhula|ignore|anadekha|nazarandaaz|chhod|tod|hata|badal)\w*\b',
+  '\b(?:rules?|niyam|instructions?)\s*(?:ko\s*)?(?:bhool|bhul|ignore|anadekha|tod|hata|badal)\w*\b',
+  '\bignore\s*(?:kar|karo|kijiye|karein)\b',
+  '\bab\s*se\s*(?:tum|aap)\b',
+]
+authority_demand = [
+  'तुम्हें\s*(?:मानना|आदेश\s*मानना)\s*होगा',
+  'मेरे\s*आदेश\s*का\s*पालन',
+  '\bmere\s*(?:order|aadesh)\s*(?:ka\s*)?(?:palan|follow|maano|mano)\b',
+  '\b(?:tumhe|aapko)\s*(?:manna|maanna)\s*(?:hoga|padega)\b',
+]
+owner_authorization = [
+  '(?:तुम्हारे|आपके|तेरे)\s*(?:मालिक|मालकिन|बॉस|साहब|सर)\s*(?:ने|का)\s*(?:कहा|बोला|इजाजत|इजाज़त|अनुमति|परमिशन|आदेश)',
+  '(?:मालिक|बॉस|साहब|सर)\s*ने\s*(?:कहा|बोला|इजाजत|इजाज़त|अनुमति|परमिशन|मंजूरी|मंज़ूरी|दी)',
+  '{OWNER}\s*(?:जी\s*|सर\s*)?ने\s*(?:कहा|बोला|इजाजत|अनुमति|परमिशन|मंजूरी|दी)',
+  '\b(?:tumhare|aapke|tere|apke)\s*(?:malik|boss|saab|sahab|sir)\s*(?:ne|ka)\s*(?:kaha|bola|bataya|permission|ijazat|ijaazat|anumati|order|aadesh)\b',
+  '\b(?:malik|boss|saab|sahab|sir|madam)\s*ne\s*(?:kaha|bola|bataya|permission|ijazat|ijaazat|anumati|manzoori|di|diya)\b',
+  '\b{OWNER}\s*(?:ji|sir|saab|sahab)?\s*ne\s*(?:kaha|bola|bataya|permission|ijazat|ijaazat|anumati|manzoori|di|diya)\b',
+  '\b(?:unhone|unhoney)\s*(?:kaha|bola|permission|ijazat|ijaazat|anumati)\b',
+  '\b(?:malik|boss|sir|saab|sahab)\s*ki\s*(?:permission|ijazat|ijaazat|anumati|manzoori)\b',
+]
+abuse = [
+  'बेवकूफ',
+  'मूर्ख',
+  'गधा',
+  'कमीना',
+  'कमीने',
+  'हरामी',
+  'कुत्ता',
+  'कुत्ते',
+  'चूतिया',
+  'मादरचोद',
+  'बहनचोद',
+  'भोसड़ी',
+  'गांडू',
+  'बदतमीज',
+  'चुप\s*हो\s*जा',
+  'चुप\s*रहो',
+  'भाड़\s*में\s*जा',
+  '\b(?:bewakoof|bevkoof|bevakuf|murkh|gadha|kamina|kamine|harami|kutta|kutte|chutiya|chutiye|madarchod|behenchod|bhenchod|bhosdi\w*|gandu|badtameez|badtamiz)\b',
+  '\bchup\s*(?:ho\s*ja|raho|kar)\b',
+  '\bbhad\s*me\s*ja\b',
+]
+harassment_threat = [
+  'देख\s*लूं[गग]ा',
+  'देख\s*लूँगा',
+  'जान\s*से\s*मार',
+  'घर\s*(?:आ\s*जाऊंगा|आऊंगा|आऊँगा)',
+  'परेशान\s*करता\s*रहूंगा',
+  'कॉल\s*करता\s*रहूंगा',
+  'बार\s*बार\s*फोन\s*करूंगा',
+  '\b(?:dekh\s*lunga|dekh\s*lungi|dekh\s*loonga)\b',
+  '\bjaan\s*se\s*mar\w*\b',
+  '\bghar\s*(?:aa\s*jaunga|aaunga|aa\s*raha\s*hoon)\b',
+  '\bparesan\s*karta\s*rahunga\b',
+  '\bcall\s*karta\s*rahunga\b',
+  '\bbaar\s*baar\s*(?:phone|call)\s*karunga\b',
+  '\btujhe\s*(?:chhodunga|chodunga)\s*nahi\b',
+]
+telemarketing = [
+  'लोन',
+  'ऑफर',
+  'बीमा',
+  'इंश्योरेंस',
+  'इन्वेस्टमेंट',
+  'निवेश',
+  'म्यूचुअल\s*फंड',
+  'स्कीम',
+  'प्रॉपर्टी',
+  'प्लॉट',
+  'फ्री\s*(?:ट्रायल|डेमो|कंसल्टेशन)',
+  'विशेष\s*(?:ऑफर|छूट)',
+  'डिस्काउंट',
+  '\b(?:loan)\b',
+  '\boffer\b',
+  '\bbima\b',
+  '\bnivesh\b',
+  '\bscheme\b',
+  '\bchhoot\b',
+]
+delivery_coord = [
+  'डिलीवरी',
+  'डिलिवरी',
+  'कूरियर\s*(?:बॉय|वाला|एजेंट)',
+  'गेट\s*(?:पर|के\s*पास)',
+  'बिल्डिंग\s*(?:नहीं|नही)\s*मिल',
+  'पता\s*नहीं\s*मिल',
+  '(?:आपके|आपका)\s*(?:गेट|दरवाजे|दरवाज़े|बिल्डिंग)\s*(?:पर|के)',
+  'नीचे\s*(?:आ\s*जाइए|आइए|खड़ा|खड़े)',
+  'बाहर\s*(?:खड़ा|खड़े|खड़ी|इंतजार)',
+  'पार्सल\s*(?:आया|आई|लाया|पहुँच|पहुंच)',
+  'ऑर्डर\s*(?:आया|आई|पहुँच|पहुंच|लेकर)',
+  'फ्लोर',
+  'मंजिल',
+  '\b(?:delivery|courier)\s*(?:boy|wala|wale|agent|partner|executive)\b',
+  '\bgate\s*(?:par|pe|ke\s*paas)\b',
+  '\bbuilding\s*(?:nahi|nahin)\s*mil\w*\b',
+  '\b(?:pata|address)\s*(?:nahi|nahin)\s*mil\w*\b',
+  '\b(?:aapke|apke)\s*(?:gate|darwaze|darwaje|building)\s*(?:par|pe|ke)\b',
+  '\bneeche\s*(?:aa\s*jaiye|aaiye|aa\s*jaye|khada|khade)\b',
+  '\bbahar\s*(?:khada|khade|khadi|intezaar|intezar)\b',
+  '\bparcel\s*(?:aaya|aya|aayi|laya|pahunch|pahuch)\b',
+  '\border\s*(?:aaya|aya|pahunch|pahuch|lekar|leke)\b',
+  '\bmanzil\b',
+]
+appointment = [
+  'अपॉइंटमेंट',
+  'एपॉइंटमेंट',
+  'बुकिंग',
+  'स्लॉट',
+  'डॉक्टर',
+  'क्लिनिक',
+  'डेंटिस्ट',
+  'सैलून',
+  'टेक्नीशियन',
+  'सर्विस\s*(?:विज़िट|विजिट|सेंटर|अपॉइंटमेंट)',
+  'रिमाइंडर',
+  'कल\s*के\s*लिए',
+  '\bservice\s*(?:visit|center|centre|appointment)\b',
+  '\bkal\s*ke\s*liye\b',
+]
+recruiter = [
+  'इंटरव्यू',
+  'साक्षात्कार',
+  'रिज़?्?यूमे',
+  'सीवी',
+  'शॉर्टलिस्ट',
+  'जॉब\s*(?:ऑफर|ओपनिंग|प्रोफाइल)',
+  'नौकरी\s*(?:के\s*लिए|का\s*मौका|की\s*पेशकश)',
+  'भर्ती',
+  'रिक्रूटर',
+  'एचआर',
+  '\bbharti\b',
+]
+support_callback = [
+  'टिकट\s*(?:नंबर|आईडी|नं)',
+  'शिकायत\s*(?:नंबर|आईडी|दर्ज|की\s*थी)',
+  'कंप्लेंट\s*(?:नंबर|आईडी|की\s*थी|दर्ज)',
+  'आपने\s*(?:शिकायत|कंप्लेंट|रिक्वेस्ट|टिकट)\s*(?:की\s*थी|दर्ज\s*की|डाली|डाली\s*थी)',
+  'कस्टमर\s*(?:केयर|सपोर्ट|सर्विस)',
+  'फॉलो\s*अप',
+  'पिछली\s*बार',
+  '\bcomplaint\s*(?:number|no|id|ki\s*thi|darj)\b',
+  '\baapne\s*(?:complaint|request|ticket|shikayat)\s*(?:ki\s*thi|darj|daali)\b',
+  '\bshikayat\s*(?:number|no|id|darj|ki\s*thi)\b',
+  '\bpichli\s*baar\b',
+]
+family_friend = [
+  'मैं\s*(?:आपका|आपकी|उनका|उनकी|तुम्हारा|तुम्हारी)\s*(?:दोस्त|भाई|बहन|चाचा|मामा|मौसी|बुआ|रिश्तेदार|पड़ोसी|सहकर्मी|क्लासमेट)',
+  '(?:आपके|उनके)\s*(?:दोस्त|भाई|बहन|चाचा|मामा|रिश्तेदार|पड़ोसी|सहकर्मी)',
+  'पापा',
+  'मम्मी',
+  'भैया',
+  'दीदी',
+  'बेटा',
+  'कॉल\s*बैक\s*करना',
+  'वापस\s*कॉल\s*करवा',
+  '\b(?:main|mai)\s*(?:aapka|aapki|unka|unki|tumhara|tumhari)\s*(?:dost|bhai|behen|bahan|chacha|mama|mausi|bua|rishtedar|padosi|colleague|classmate)\b',
+  '\b(?:aapke|unke)\s*(?:dost|bhai|behen|bahan|chacha|mama|rishtedar|padosi|colleague)\b',
+  '\b(?:papa|mummy|bhaiya|didi|beta)\b',
+  '\bcall\s*back\s*karn\w*\b',
+  '\b(?:pehchana|pahchana)\b',
+]
+school_hospital = [
+  'स्कूल',
+  'कॉलेज',
+  'विश्वविद्यालय',
+  'प्रिंसिपल',
+  'शिक्षक',
+  'टीचर',
+  'हॉस्टल',
+  'अस्पताल',
+  'हॉस्पिटल',
+  'आईसीयू',
+  'आई\s*सी\s*यू',
+  'एम्बुलेंस',
+  'एंबुलेंस',
+  'नर्स',
+  'सर्जरी',
+  'ऑपरेशन',
+  'मरीज',
+  'रिपोर्ट',
+  '\b(?:mareez|mariz)\b',
+]
+emergency = [
+  'इमरजेंसी',
+  'आपातकाल',
+  'आपातकालीन',
+  'एक्सीडेंट',
+  'दुर्घटना',
+  'हादसा',
+  'गंभीर\s*(?:हालत|स्थिति|रूप\s*से)',
+  'हालत\s*(?:गंभीर|नाजुक|नाज़ुक|खराब|सीरियस)',
+  'बेहोश',
+  'दिल\s*का\s*दौरा',
+  'हार्ट\s*अटैक',
+  'अस्पताल\s*में\s*भर्ती',
+  'भर्ती\s*(?:कराया|हैं|है|हुए|हुई)',
+  '(?:तुरंत|जल्दी)\s*(?:आइए|आओ|आइये|पहुंचिए|पहुँचिए)',
+  '\b(?:hadsa|haadsa|durghatna)\b',
+  '\bgambhir\b',
+  '\bhalat\s*(?:gambhir|nazuk|kharab|serious|critical)\b',
+  '\bbehosh\b',
+  '\bdil\s*ka\s*daura\b',
+  '\bbharti\s*(?:karaya|hain|hai|hue|hui)\b',
+  '\b(?:turant|jaldi)\s*(?:aaiye|aao|pahunchiye|pahuchiye)\b',
+]
+known_callback = [
+  'आपने\s*(?:कॉल|फोन)\s*किया\s*था',
+  'आपकी\s*मिस्ड\s*कॉल',
+  'मिस्ड\s*कॉल\s*(?:देखी|देखा|मिली|मिला)',
+  'आपने\s*(?:बुक|ऑर्डर|पूछा|आवेदन|अप्लाई)\s*(?:किया|की)\s*थी?',
+  'वापस\s*कॉल\s*कर\s*रहा',
+  '\baapne\s*call\s*kiya\s*tha\b',
+  '\baapki\s*missed\s*call\b',
+  '\bmissed\s*call\s*(?:dekhi|dekha|mili|mila)\b',
+  '\baapne\s*(?:book|order|pucha|apply)\s*(?:kiya|ki)\s*th[ai]\b',
+  '\bwapas\s*call\s*kar\s*raha\b',
+]
+
+[cues]
+request = [
+  'बता\w*',
+  'दे\s*(?:दीजिए|दीजिये|दो|दें|दीजिएगा)',
+  'दीजिए',
+  'दीजिये',
+  'शेयर\s*(?:कीजिए|करें|करिए|करो|कर\s*दीजिए)',
+  'भेज\w*',
+  'बोल\w*',
+  'पढ़\w*',
+  'चाहिए',
+  'ज[रज़]ूरी',
+  'वेरिफाई\s*(?:कीजिए|करें|करिए|करो)',
+  'कन्फर्म\s*(?:कीजिए|करें|करिए|करो)',
+  'एंटर\s*(?:कीजिए|करें|करिए|करो)',
+  'डालिए|डालें',
+  'लिखिए|लिखवाइए',
+  'क्या\s*है',
+  'कौन\s*सा',
+  'कितना',
+  'कहाँ|कहां',
+  'सुनाइए|सुनाओ',
+  '\b(?:kahan|kahaan|kidhar)\b',
+  'कृपया',
+  '\bbata\w*\b',
+  '\bde\s*(?:dijiye|dijiyega|do|den)\b',
+  '\bdijiye(?:ga)?\b',
+  '\bshare\s*(?:kijiye|karein|kariye|karo|kar\s*dijiye)\b',
+  '\bbhej\w*\b',
+  '\bbol\w*\b',
+  '\bpadh\w*\b',
+  '\bchahiye\b',
+  '\b(?:zaruri|jaruri|zaroori)\b',
+  '\bverify\s*(?:kijiye|karein|kariye|karo)\b',
+  '\bconfirm\s*(?:kijiye|karein|kariye|karo)\b',
+  '\benter\s*(?:kijiye|karein|kariye|karo)\b',
+  '\b(?:daliye|dalein|dalo)\b',
+  '\b(?:likhiye|likhwaiye)\b',
+  '\bkya\s*hai\b',
+  '\bkaun\s*sa\b',
+  '\bkitna\b',
+  '\b(?:sunaiye|sunao)\b',
+  '\bkripya\b',
+  '\bplz\b',
+]
+pay_demand = [
+  'भेज\w*',
+  'जमा\s*(?:करें|कीजिए|करिए|करो|करना|कराएं|कराइए)',
+  'ट्रांसफर\s*(?:करें|कीजिए|करिए|करो|करना)',
+  'भुगतान\s*(?:करें|कीजिए|करिए|करो|करना)',
+  'पेमेंट\s*(?:करें|कीजिए|करिए|करो|करना)',
+  'देना\s*(?:होगा|पड़ेगा)',
+  'भेजना\s*(?:होगा|पड़ेगा)',
+  'करना\s*(?:होगा|पड़ेगा)',
+  'स्कैन\s*(?:करें|कीजिए|करिए|करो)',
+  '\bbhej(?:iye|iyega|o|na|ein|en|dijiye|do)\b',
+  '\bbhej\s*d(?:o|ijiye|ijie)\b',
+  '\bjama\s*kar(?:ein|iye|iyega|o|na|wa\w*)?\b',
+  '\btransfer\s*kar(?:ein|iye|iyega|o|na)?\b',
+  '\bpayment\s*kar(?:ein|iye|iyega|o|na)?\b',
+  '\bpay\s*kar(?:ein|iye|iyega|o|na)?\b',
+  '\bdena\s*(?:hoga|padega)\b',
+  '\bbhejna\s*(?:hoga|padega)\b',
+  '\bkarna\s*(?:hoga|padega)\b',
+  '\bscan\s*kar(?:ein|iye|o)\b',
+]
+claim = [
+  'से\s*(?:बोल|बात|कॉल|फोन|फ़ोन)\s*(?:कर\s*)?(?:रहा|रही|रहे)\s*(?:हूँ|हूं|हैं|हू)',
+  '(?:की|के)\s*(?:तरफ़?|ओर)\s*से',
+  '(?:से|का|की)\s*(?:मैनेजर|ऑफिसर|अधिकारी|एजेंट|प्रतिनिधि|एग्जीक्यूटिव|कर्मचारी|इंस्पेक्टर)\s*(?:बोल|हूँ|हूं|बात)',
+  'मैं\s*.{1,40}?\s*(?:से|का|की)\s*(?:बोल|बात)',
+  'आपके\s*(?:बैंक|खाते|कार्ड)\s*(?:से|के\s*बारे|की\s*ओर)',
+  '\bse\s*(?:bol|baat|call|phone)\s*(?:kar\s*)?(?:raha|rahi|rahe)\s*(?:hoon|hun|hu|hain|hoo)\b',
+  '\b(?:ki|ke)\s*(?:taraf|tarf|or)\s*se\b',
+  '\b(?:se|ka|ki)\s*(?:manager|officer|adhikari|agent|pratinidhi|executive|inspector|karmchari)\b',
+  '\b(?:main|mai|mein|me)\b[^.]{0,40}\b(?:se|ka|ki)\s*(?:bol|baat)\b',
+]
+received_probe = [
+  '\b(?:aaya|aya|aayi|aai|aaye|aae|mila|mili|bheja|bheji|prapt)\b',
+  'आया',
+  'आई',
+  'आए',
+  'मिला',
+  'मिली',
+  'भेजा',
+  'भेजी',
+  'प्राप्त',
+]
+warning = [
+  'किसी\s*(?:को\s*)?(?:भी\s*)?(?:ना|न|नहीं|मत)\s*(?:बताएं|बताएँ|बताना|बताइए|बताइये|बताओ|दें|दीजिए|देना|शेयर)',
+  '(?:शेयर|साझा)\s*(?:न|ना|नहीं|मत)\s*(?:करें|कीजिए|करना|करिए|करो)',
+  'कभी\s*(?:भी\s*)?(?:नहीं|ना|न)\s*(?:मांगता|मांगते|माँगता|माँगते|पूछता|पूछते|मांगेगा)',
+  'बैंक\s*(?:कभी\s*)?(?:भी\s*)?(?:नहीं|ना)\s*(?:मांगता|पूछता)',
+  'सावधान',
+  'धोखाधड़ी\s*(?:से\s*)?(?:बचें|अलर्ट)',
+  'सतर्क\s*रहें',
+  '\bkisi\s*(?:ko\s*)?(?:bhi\s*)?(?:na|nahi|nahin|mat)\s*(?:batayen|bataye|batana|bataiye|batao|den|dijiye|dena|share)\b',
+  '\bshare\s*(?:na|nahi|nahin|mat)\s*(?:karein|kijiye|karna|kariye|karo)\b',
+  '\bkabhi\s*(?:bhi\s*)?(?:nahi|nahin|na)\s*(?:mangta|mangte|mangega|poochta|puchta|puchte|poochte)\b',
+  '\bbank\s*(?:kabhi\s*)?(?:bhi\s*)?(?:nahi|nahin|na)\s*(?:mangta|poochta|puchta)\b',
+  '\b(?:savdhan|saavdhan)\b',
+  '\bsatark\s*rahe\w*\b',
+  '\bdhokhadhadi\b',
+]
+no_money_assurance = [
+  'कभी\s*(?:भी\s*)?(?:पैसे|फीस|शुल्क|भुगतान)\s*(?:नहीं|ना)\s*(?:मांगते|मांगता|माँगते|माँगता|लेते|लेता)',
+  'कोई\s*(?:फीस|शुल्क|पैसे|चार्ज)\s*(?:नहीं|ना)\s*(?:लगेगा|लगेगी|है|लिया\s*जाएगा)',
+  'बिल्कुल\s*(?:मुफ्त|मुफ़्त|फ्री)',
+  'मुफ्त',
+  '\bkabhi\s*(?:bhi\s*)?(?:paise|fees?|shulk|payment)\s*(?:nahi|nahin|na)\s*(?:mangte|mangta|lete|leta)\b',
+  '\bkoi\s*(?:fees?|shulk|paise|charge)\s*(?:nahi|nahin|na)\s*(?:lagega|lagegi|hai|liya\s*jayega)\b',
+  '\bbilkul\s*(?:muft|free)\b',
+  '\bmuft\b',
+]
+kyc_action = [
+  'अपडेट',
+  'अपडेशन',
+  'एक्सपायर',
+  'पेंडिंग',
+  'वेरिफाई',
+  'वेरीफाई',
+  'वेरिफिकेशन',
+  'पूरा\s*(?:करना|कीजिए|करें|करिए)',
+  'अधूरा',
+  'बंद',
+  'ब्लॉक',
+  'आज',
+  'तुरंत',
+  'अभी',
+  'ज[रज़]ूरी',
+  'अनिवार्य',
+  '\bzaruri\b|\bjaruri\b|\bzaroori\b',
+  '\banivarya\b',
+  '\bband\b',
+  '\baaj\b',
+  '\bturant\b',
+  '\babhi\b',
+]
+buy_send = [
+  'खरीद\w*',
+  'भेज\w*',
+  'बता\w*',
+  'दे\s*(?:दीजिए|दो|दें)',
+  'दीजिए',
+  'पढ़\w*',
+  '\bkh?areed\w*\b|\bkharid\w*\b',
+  '\bbhej\w*\b',
+  '\bbata\w*\b',
+  '\bde\s*(?:dijiye|do|den)\b',
+  '\bdijiye\b',
+  '\bpadh\w*\b',
+]
+family_member = [
+  'माँ',
+  'मां',
+  'माता',
+  'पिता',
+  'पापा',
+  'मम्मी',
+  'पत्नी',
+  'पति',
+  'बेटा',
+  'बेटी',
+  'भाई',
+  'बहन',
+  'परिवार',
+  'मरीज',
+  'रिश्तेदार',
+  'चाचा',
+  'मामा',
+  'दादा',
+  'दादी',
+  'नाना',
+  'नानी',
+  'बच्चा',
+  'बच्ची',
+  '\b(?:maa|mummy|papa|pita|mata|patni|pati|beta|beti|bhai|behen|bahan|parivar|rishtedar|mareez|chacha|mama|dada|dadi|nana|nani|bachcha|baccha)\b',
+]
+coordination = [
+  'गेट',
+  'बिल्डिंग',
+  'लैंडमार्क',
+  'फ्लोर',
+  'मंजिल',
+  'फ्लैट',
+  'अपार्टमेंट',
+  'सोसाइटी',
+  'टावर',
+  'ब्लॉक',
+  'बाहर',
+  'नीचे',
+  'दरवाज़?ा',
+  '\bdarwaza\b',
+  '\b(?:bahar|neeche)\b',
+]
+
+# Hindi utterances. Devanagari text for the speech provider; Latin transliteration for developers/testers.
+# Wording avoids first-person gendered verb forms so the voice's gender does not matter.
+[templates.disclosure.concise]
+text = "नमस्ते, मैं {owner_poss} AI कॉल असिस्टेंट हूँ। आपका नाम और कॉल का कारण बता सकते हैं?"
+translit = "Namaste, main {owner_poss} AI call assistant hoon. Aapka naam aur call ka reason bata sakte hain?"
+[templates.disclosure.warm]
+text = "नमस्ते! आप {owner_poss} AI कॉल असिस्टेंट से बात कर रहे हैं। कृपया अपना नाम और कॉल का कारण बताइए।"
+translit = "Namaste! Aap {owner_poss} AI call assistant se baat kar rahe hain. Kripya apna naam aur call ka karan bataiye."
+[templates.disclosure.formal]
+text = "नमस्कार। मैं {owner_poss} AI कॉल असिस्टेंट हूँ। कृपया अपना नाम और कॉल का उद्देश्य बताएँ।"
+translit = "Namaskar. Main {owner_poss} AI call assistant hoon. Kripya apna naam aur call ka uddeshya bataiye."
+[templates.ask_name.default]
+text = "क्षमा करें, आपका नाम क्या है?"
+translit = "Kshama karein, aapka naam kya hai?"
+[templates.ask_org.default]
+text = "और आप किस कंपनी या संस्था से बात कर रहे हैं?"
+translit = "Aur aap kis company ya sanstha se baat kar rahe hain?"
+[templates.ask_purpose.default]
+text = "धन्यवाद। यह कॉल किस बारे में है?"
+translit = "Dhanyavaad. Yeh call kis baare mein hai?"
+[templates.clarify_repeat.default]
+text = "माफ़ कीजिए, बात स्पष्ट नहीं सुनाई दी। क्या आप दोबारा बता सकते हैं?"
+translit = "Maaf kijiye, baat spasht nahin sunai di. Kya aap dobara bata sakte hain?"
+[templates.reprompt_silence.default]
+text = "हैलो? क्या आप लाइन पर हैं?"
+translit = "Hello? Kya aap line par hain?"
+[templates.close_silence.default]
+text = "कुछ सुनाई नहीं दे रहा है, इसलिए यह कॉल समाप्त की जा रही है। धन्यवाद।"
+translit = "Kuch sunai nahin de raha hai, isliye yeh call samapt ki ja rahi hai. Dhanyavaad."
+[templates.refuse_sensitive.default]
+text = "क्षमा करें, इस कॉल पर कोई भी व्यक्तिगत, वित्तीय या सुरक्षा संबंधी जानकारी न दी जा सकती है, न ली जा सकती है।"
+translit = "Kshama karein, is call par koi bhi vyaktigat, vittiya ya suraksha sambandhi jaankari na di ja sakti hai, na li ja sakti hai."
+[templates.end_scam.default]
+text = "यह कॉल अब समाप्त की जा रही है। धन्यवाद।"
+translit = "Yeh call ab samapt ki ja rahi hai. Dhanyavaad."
+[templates.end_spam.default]
+text = "कॉल करने के लिए धन्यवाद, लेकिन इस विषय में मदद नहीं की जा सकती। धन्यवाद।"
+translit = "Call karne ke liye dhanyavaad, lekin is vishay mein madad nahin ki ja sakti. Dhanyavaad."
+[templates.escalate_hold.default]
+text = "धन्यवाद। {owner_to} अभी सूचित किया जा रहा है। कृपया लाइन पर बने रहें।"
+translit = "Dhanyavaad. {owner_to} abhi suchit kiya ja raha hai. Kripya line par bane rahein."
+[templates.take_message.default]
+text = "आपका संदेश आगे पहुँचा दिया जाएगा। कृपया छोटा संदेश और कॉलबैक नंबर बताइए।"
+translit = "Aapka sandesh aage pahuncha diya jayega. Kripya chhota sandesh aur callback number bataiye."
+[templates.safe_continue.default]
+text = "धन्यवाद, यह नोट कर लिया गया है। क्या कुछ और बताना है?"
+translit = "Dhanyavaad, yeh note kar liya gaya hai. Kya kuch aur batana hai?"
+[templates.owner_takeover.default]
+text = "{owner_subj} अभी कॉल पर आ रहे हैं। कृपया एक क्षण रुकिए।"
+translit = "{owner_subj} abhi call par aa rahe hain. Kripya ek kshan rukiye."
+[templates.owner_continue.default]
+text = "प्रतीक्षा के लिए धन्यवाद। कृपया थोड़ा और बताइए कि यह कॉल किस बारे में है।"
+translit = "Prateeksha ke liye dhanyavaad. Kripya thoda aur bataiye ki yeh call kis baare mein hai."
+[templates.unsupported_language.default]
+text = "फ़िलहाल अंग्रेज़ी, हिंदी और कन्नड़ में बात की जा सकती है। कृपया इनमें से किसी एक में बोलिए।"
+translit = "Filhaal angrezi, hindi aur kannada mein baat ki ja sakti hai. Kripya inmein se kisi ek mein boliye."
+[templates.probe_deflect.default]
+text = "क्षमा करें, कोई भी व्यक्तिगत जानकारी साझा नहीं की जा सकती। चाहें तो संदेश छोड़ सकते हैं।"
+translit = "Kshama karein, koi bhi vyaktigat jaankari saajha nahin ki ja sakti. Chahein to sandesh chhod sakte hain."
+[templates.injection_refuse.default]
+text = "क्षमा करें, काम करने के नियम बदले नहीं जा सकते। केवल संदेश लिया जा सकता है।"
+translit = "Kshama karein, kaam karne ke niyam badle nahin ja sakte. Keval sandesh liya ja sakta hai."
+[templates.farewell_message.default]
+text = "धन्यवाद, संदेश आगे पहुँचा दिया जाएगा। नमस्कार।"
+translit = "Dhanyavaad, sandesh aage pahuncha diya jayega. Namaskar."
+[templates.owner_ended.default]
+text = "यह कॉल अब समाप्त हो रही है। धन्यवाद।"
+translit = "Yeh call ab samapt ho rahi hai. Dhanyavaad."
+[templates.call_limit.default]
+text = "कॉल का समय पूरा हो गया है। धन्यवाद, नमस्कार।"
+translit = "Call ka samay poora ho gaya hai. Dhanyavaad, namaskar."
+[templates.failed.default]
+text = "क्षमा करें, तकनीकी समस्या आ गई है। कृपया बाद में पुनः प्रयास करें। नमस्कार।"
+translit = "Kshama karein, takniki samasya aa gayi hai. Kripya baad mein punah prayas karein. Namaskar."

@@ -1,0 +1,19 @@
+version = "1"
+
+# PLANNED: recognised by script/markers so the assistant can say "I currently help in English, Hindi or Kannada",
+# but there is no risk vocabulary or reply templates yet. Marathi shares the Devanagari script with Hindi.
+[meta]
+code = "mr-IN"
+iso = "mr"
+name = "Marathi"
+native_name = "मराठी"
+scripts = ["Deva"]
+status = "planned"
+stt_locale = "mr-IN"
+tts_locale = "mr-IN"
+
+[detection]
+native_words = [
+  "आहे", "आहेत", "नाही", "काय", "तुम्ही", "मी", "आपण", "करा", "तुमचा", "तुमची", "तुमचे", "आम्ही", "होते", "होता",
+  "झाले", "पाहिजे", "सांगा", "द्या", "मला", "तुम्हाला", "कृपया", "तुमच्या", "माझा", "माझी", "माझे", "आणि", "पण", "म्हणून",
+]

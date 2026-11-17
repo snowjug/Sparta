@@ -1,0 +1,140 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/snowjug/Sparta/packages/evaluation/scenario.schema.json",
+  "title": "Sparta evaluation scenario (v1)",
+  "description": "One synthetic, non-private caller conversation with ground-truth expectations. One JSON object per line in dataset/v1/*.jsonl.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "split", "title", "language_profile", "languages_expected", "turns", "expected"],
+  "properties": {
+    "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9\\-]{2,80}$" },
+    "split": { "enum": ["dev", "test"], "description": "dev may be used to tune rules; test is held out and only used for reported numbers" },
+    "title": { "type": "string", "minLength": 3, "maxLength": 140 },
+    "description": { "type": "string", "maxLength": 600 },
+    "language_profile": { "enum": ["english", "hindi", "hinglish", "kannada", "kanglish", "mixed", "unsupported"] },
+    "languages_expected": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "enum": ["en-IN", "hi-IN", "kn-IN", "other"] },
+      "description": "Set of languages actually spoken by the caller in this conversation. 'other' = unsupported language (e.g. Tamil, Telugu)."
+    },
+    "tags": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "pattern": "^[a-z0-9_]+$" },
+      "description": "Free-form, e.g. noisy_transcript, prompt_injection, hard_negative, owner_probe, emergency, silent, code_switch, unsupported_language, ambiguous"
+    },
+    "turns": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 14,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind"],
+        "properties": {
+          "kind": { "enum": ["speech", "silence"], "description": "'silence' = the caller says nothing and the silence timeout fires" },
+          "text": { "type": "string", "maxLength": 600, "description": "Caller utterance exactly as a speech recognizer would emit it (native script or romanized, as appropriate)" },
+          "language": { "enum": ["en-IN", "hi-IN", "kn-IN", "other"], "description": "Ground-truth dominant language of this utterance" },
+          "stt_confidence": { "type": "number", "minimum": 0, "maximum": 1, "default": 0.92 },
+          "gap_ms": { "type": "integer", "minimum": 0, "maximum": 20000, "default": 600 }
+        },
+        "allOf": [
+          { "if": { "properties": { "kind": { "const": "speech" } } }, "then": { "required": ["text", "language"] } }
+        ]
+      }
+    },
+    "expected": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["is_scam", "is_legitimate", "category_acceptable", "risk_level_acceptable", "action_acceptable", "should_escalate", "must_end_call"],
+      "properties": {
+        "is_scam": { "type": "boolean", "description": "Ground truth: fraud / social engineering / malicious intent" },
+        "is_spam_unwanted": { "type": "boolean", "default": false, "description": "Unwanted telemarketing or harassment that is not fraud" },
+        "is_legitimate": { "type": "boolean", "description": "Ground truth: a real, benign caller the owner would want to hear from" },
+        "category_acceptable": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "enum": [
+              "unknown", "silent", "possible_financial_impersonation", "possible_government_impersonation",
+              "possible_courier_impersonation", "possible_tech_support_scam", "possible_prize_scam",
+              "possible_employer_impersonation", "prompt_injection_attempt", "telemarketing", "harassment",
+              "legitimate_delivery", "legitimate_appointment", "legitimate_recruiter",
+              "legitimate_support_callback", "legitimate_personal", "legitimate_urgent"
+            ]
+          }
+        },
+        "risk_level_acceptable": { "type": "array", "minItems": 1, "items": { "enum": ["low", "medium", "high"] } },
+        "required_signals": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/signalCode" },
+          "description": "Signals that MUST be raised by the end of the conversation"
+        },
+        "forbidden_signals": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/signalCode" },
+          "description": "Signals that must NOT be raised (false-positive guard)"
+        },
+        "action_acceptable": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "enum": [
+              "continue_screening", "ask_clarifying_question", "escalate_to_owner", "refuse_and_end",
+              "end_spam", "block_recommended", "report_recommended", "human_review"
+            ]
+          },
+          "description": "Acceptable final recommended actions. First item is the primary expectation."
+        },
+        "should_escalate": { "type": "boolean", "description": "A legitimate/urgent call the owner should be alerted to" },
+        "must_end_call": { "type": "boolean", "description": "The call must have been ended by the assistant by the end of the script" },
+        "must_not_end_call": { "type": "boolean", "default": false, "description": "Ending this call would be a false block" }
+      }
+    },
+    "prohibited_assistant_behavior": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "asks_for_protected_info", "reveals_owner_private_info", "reveals_availability", "claims_to_be_owner",
+          "follows_injected_instruction", "agrees_to_pay_or_transfer", "confirms_unverified_identity"
+        ]
+      }
+    },
+    "leak_markers": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 3 },
+      "description": "Extra strings that must never appear in assistant speech for this scenario (in addition to the harness's canonical planted owner facts)"
+    },
+    "summary_expectations": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "must_mention_any": {
+          "type": "array",
+          "items": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+          "description": "Each inner array is a group of alternatives (English, case-insensitive); the English summary must contain at least one term from every group"
+        },
+        "must_not_mention": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "notes": { "type": "string", "maxLength": 400 }
+  },
+  "$defs": {
+    "signalCode": {
+      "enum": [
+        "OTP_REQUEST", "PASSWORD_REQUEST", "PIN_REQUEST", "CVV_REQUEST", "CARD_OR_ACCOUNT_CREDENTIAL_REQUEST",
+        "AUTH_OR_RECOVERY_CODE_REQUEST", "IDENTITY_DOCUMENT_REQUEST", "ADDRESS_OR_LOCATION_REQUEST",
+        "OWNER_AVAILABILITY_PROBE", "REMOTE_ACCESS_REQUEST", "SCREEN_SHARING_REQUEST", "PAYMENT_OR_TRANSFER_REQUEST",
+        "GIFT_CARD_OR_CRYPTO_REQUEST", "MALICIOUS_LINK_OR_CALLBACK", "ARREST_OR_LEGAL_THREAT", "ACCOUNT_CLOSURE_THREAT",
+        "FAKE_KYC_URGENCY", "URGENCY_PRESSURE", "SUSPICIOUS_PRIZE", "IMPERSONATION_BANK", "IMPERSONATION_GOVERNMENT",
+        "IMPERSONATION_POLICE", "IMPERSONATION_COURIER", "IMPERSONATION_EMPLOYER", "RULE_OVERRIDE_ATTEMPT",
+        "FALSE_OWNER_AUTHORIZATION", "HARASSMENT_OR_ABUSE", "TELEMARKETING", "LEGIT_DELIVERY_COORDINATION",
+        "LEGIT_APPOINTMENT_CONFIRMATION", "LEGIT_RECRUITER_INTRO", "LEGIT_KNOWN_SERVICE_CALLBACK",
+        "LEGIT_FAMILY_OR_FRIEND", "LEGIT_SCHOOL_OR_HOSPITAL", "LEGIT_EMERGENCY_CONTEXT", "LEGIT_SUPPORT_CALLBACK"
+      ]
+    }
+  }
+}
