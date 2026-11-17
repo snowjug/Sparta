@@ -1,0 +1,89 @@
+# Dependencies & virtual environments
+node_modules/
+.venv/
+venv/
+env/
+.pnp.*
+.yarn/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+dist/
+build/
+*.whl
+
+# Node / web
+.next/
+out/
+.turbo/
+.vercel/
+*.tsbuildinfo
+next-env.d.ts
+coverage/
+playwright-report/
+test-results/
+blob-report/
+playwright/.cache/
+
+# Android / Gradle
+.gradle/
+**/build/
+!**/src/**/build/
+local.properties
+*.apk
+*.aab
+*.keystore
+*.jks
+captures/
+.cxx/
+.externalNativeBuild/
+
+# Environment & secrets (never commit)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+secrets/
+*.secret
+service-account*.json
+
+# Local data
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal
+*.log
+/data/
+/var/
+uploads/
+tmp/
+.tmp/
+
+# IDE / OS
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+*.iml
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Terraform / Bicep local state
+.terraform/
+*.tfstate
+*.tfstate.*
+*.bicepparam.local
