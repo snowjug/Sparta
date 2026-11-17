@@ -303,6 +303,9 @@ class ConversationContext(SpartaModel):
     low_confidence_streak: int = 0
     escalation_id: str | None = None
     escalated_at: datetime | None = None
+    escalation_closed: bool = Field(
+        default=False, description="The owner decided (or the owner window expired): never alert them again"
+    )
     owner_decision: OwnerActionType | None = None
     risk: RiskAssessment | None = None
     signals: list[RiskSignal] = Field(default_factory=list)

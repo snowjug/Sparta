@@ -25,6 +25,10 @@ def _require_cipher() -> FieldCipher:
     return _cipher
 
 
+def has_cipher() -> bool:
+    return _cipher is not None
+
+
 class UTCDateTime(TypeDecorator[datetime]):
     """Always stores and returns timezone-aware UTC (SQLite drops tzinfo; PostgreSQL keeps it)."""
 

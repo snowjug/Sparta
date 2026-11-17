@@ -107,6 +107,10 @@ class Settings(BaseSettings):
     provider_timeout_s: float = 6.0
     provider_max_retries: int = 2
     simulator_enabled: bool = True
+    telephony_plugin: str | None = Field(
+        default=None,
+        description="With TELEPHONY_PROVIDER=other: 'package.module:factory' returning a TelephonyProvider",
+    )
     feature_llm_replies: bool = False
     max_active_calls: int = 5
     telephony_owner_user_id: str | None = Field(
@@ -165,6 +169,8 @@ class Settings(BaseSettings):
             out.append(
                 "TELEPHONY_PROVIDER=azure requires SPARTA_ACS_CONNECTION_STRING and SPARTA_ACS_CALLBACK_BASE_URL"
             )
+        if self.telephony_provider == "other" and not self.telephony_plugin:
+            out.append("TELEPHONY_PROVIDER=other requires SPARTA_TELEPHONY_PLUGIN='package.module:factory'")
         if self.stt_provider == "azure" and not (self.azure_speech_key and self.azure_speech_region):
             out.append("SPARTA_STT_PROVIDER=azure requires SPARTA_AZURE_SPEECH_KEY and SPARTA_AZURE_SPEECH_REGION")
         if self.tts_provider == "azure" and not (self.azure_speech_key and self.azure_speech_region):

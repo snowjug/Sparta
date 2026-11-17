@@ -32,9 +32,7 @@ from sparta.domain.enums import (
     FeedbackKind,
     OwnerActionType,
     ProviderKind,
-    RecommendedAction,
     RiskLevel,
-    SignalKind,
     Speaker,
     TurnSource,
 )
@@ -52,7 +50,6 @@ from sparta.domain.models import (
     LiveEvent,
     OwnerAction,
     RiskAssessment,
-    SpeechPlan,
     TrustedCaller,
     UserPreferences,
     VersionInfo,
@@ -604,10 +601,20 @@ class CallService:
         rt.speaking_started = self.clock.monotonic()
         rt.speaking_est_ms = playback.duration_ms
         rt.speaking_until = rt.speaking_started + playback.duration_ms / 1000.0
+        if playback.playback_id in rt.early_finished:  # the provider reported completion before we recorded the id
+            rt.early_finished.discard(playback.playback_id)
+            task = asyncio.create_task(self.playback_finished(rt.call_id, playback.playback_id))
+            rt.background.add(task)
+            task.add_done_callback(rt.background.discard)
 
     async def playback_finished(self, call_id: str, playback_id: str) -> None:
         rt = self._runtimes.get(call_id)
-        if rt is None or rt.playback_id != playback_id:
+        if rt is None:
+            return
+        if rt.playback_id != playback_id:
+            if len(rt.early_finished) > 32:
+                rt.early_finished.clear()
+            rt.early_finished.add(playback_id)
             return
         async with self._locked(rt):
             if rt.playback_id != playback_id:
@@ -623,7 +630,8 @@ class CallService:
                 await repo.update_call(call_id, context=ctx.model_dump(mode="json"))
                 ev = self._buffer(repo, call_id, rt.simulated)
                 await ev.emit(EventType.ASSISTANT_FINISHED, {"turn_id": turn_id})
-                await ev.emit(EventType.CALL_LISTENING, {})
+                if not rt.pending_finalize:
+                    await ev.emit(EventType.CALL_LISTENING, {})
             await self._publish(rt.user_id, ev.items)
             if rt.pending_finalize:
                 await self._finalize_locked(rt)
@@ -1399,6 +1407,3 @@ class CallService:
             "provider_events": [{"type": e.event_type, "provider": e.provider} for e in detail.provider_events],
             "contains_transcript": False,
         }
-
-
-__all__ = ["CallService", "RecommendedAction", "SignalKind", "SpeechPlan"]

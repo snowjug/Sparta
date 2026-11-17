@@ -533,7 +533,8 @@ class ConversationEngine:
 
         # (3) legitimate or urgent: alert the owner, never hand anything over ---------------------------------------
         if action is RecommendedAction.ESCALATE_TO_OWNER:
-            if risk.category in cfg.escalation.escalate_categories:
+            alert = risk.category in cfg.escalation.escalate_categories
+            if alert and not ctx.escalation_closed:
                 first = ctx.escalation_id is None
                 declining = (
                     (["decline_personal"] if new_codes <= PROBE_CODES | {S.URGENCY_PRESSURE} else ["refuse_sensitive"])
@@ -543,7 +544,14 @@ class ConversationEngine:
                 keys = declining + (["escalate_hold"] if first else ["escalate_waiting"])
                 targets = ([S_.REFUSE_SENSITIVE_REQUEST] if new_protected else []) + [S_.ESCALATE]
                 return _Decision(keys, targets, escalate=first, attention=True, action_taken="escalated_to_owner")
-            return self._take_message(ctx, attention=True)
+            if not alert:
+                return self._take_message(ctx, attention=True)
+            if new_protected:  # the owner already decided, but a protected request is still never left unanswered
+                keys = ["decline_personal"] if new_codes <= PROBE_CODES | {S.URGENCY_PRESSURE} else ["refuse_sensitive"]
+                return _Decision(
+                    keys, [S_.REFUSE_SENSITIVE_REQUEST, S_.SAFE_CONTINUE], attention=True, action_taken="refused"
+                )
+            # The owner already chose (or their window expired): carry on collecting details below, no second alert.
 
         # (4) owner probes: deflect once, then end -------------------------------------------------------------------
         if new_codes & PROBE_CODES:
@@ -699,6 +707,7 @@ class ConversationEngine:
         elif action is OwnerActionType.CONTINUE:
             self._move(ctx, CallState.IDENTIFY_PURPOSE, result.state_path)
             ctx.owner_decision = OwnerActionType.CONTINUE
+            ctx.escalation_closed = True
             ctx.safe_turns = 0
             ctx.action_taken = "owner_let_sparta_continue"
             keys = ["owner_continue"]
@@ -728,6 +737,7 @@ class ConversationEngine:
             result.notes.append("not_waiting_for_owner")
             return result
         self._move(ctx, CallState.SAFE_CONTINUE, result.state_path)
+        ctx.escalation_closed = True
         ctx.safe_turns = 1
         ctx.action_taken = "owner_unavailable_took_message"
         plan, keys = self._say(ctx, cfg, ["take_message"], ctx.language, result)

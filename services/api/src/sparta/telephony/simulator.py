@@ -58,6 +58,7 @@ class SimulatorTelephonyProvider:
         playback_id = f"pb_{call.call_id[-8:]}_{next(self._counter)}"
         duration = max(plan.est_duration_ms, 1)
         self._tasks[playback_id] = asyncio.create_task(self._finish(call.call_id, playback_id, duration))
+        await asyncio.sleep(0)  # arm the completion timer now, so a virtual clock measures from this moment
         return Playback(playback_id=playback_id, call_id=call.call_id, duration_ms=duration, simulated=True)
 
     async def _finish(self, call_id: str, playback_id: str, duration_ms: int) -> None:

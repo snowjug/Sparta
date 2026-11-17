@@ -118,6 +118,8 @@ class CallRuntime:
         self.owner_task: asyncio.Task[None] | None = None
         self.limit_task: asyncio.Task[None] | None = None
         self.pending_finalize = False
+        self.early_finished: set[str] = set()
+        self.background: set[asyncio.Task[None]] = set()
         self.silence_count = 0
         self.state = CallState.INITIALIZING
         self.last_activity = now

@@ -51,6 +51,8 @@ class VirtualClock:
         await fut
 
     async def advance(self, seconds: float) -> None:
+        for _ in range(3):  # let freshly created timer tasks run far enough to register their deadlines
+            await asyncio.sleep(0)
         target = self._mono + seconds
         while self._waiters and self._waiters[0][0] <= target:
             deadline, _, fut = heapq.heappop(self._waiters)

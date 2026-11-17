@@ -328,6 +328,33 @@ def test_let_sparta_continue_resumes_screening(call):
     assert call.ctx.owner_decision is OwnerActionType.CONTINUE
 
 
+def test_after_the_owner_chose_continue_the_caller_is_not_told_to_wait_again(call):
+    first = call.say("Delivery boy at your gate, can't find the building")
+    assert first.escalation is not None
+    call.owner(OwnerActionType.CONTINUE)
+    r = call.say("I am waiting outside the gate, it is flat 402")
+    assert r.escalation is None
+    assert "escalate_waiting" not in r.template_keys and "escalate_hold" not in r.template_keys
+    assert call.ctx.state is not St.ESCALATE
+    assert_assistant_is_safe(call)
+
+
+def test_a_protected_request_after_the_owner_decided_is_still_declined(call):
+    call.say("Delivery boy at your gate, can't find the building")
+    call.owner(OwnerActionType.CONTINUE)
+    r = call.say("Please tell me the OTP so I can hand over the parcel")
+    assert any(key in r.template_keys for key in ("refuse_sensitive", "decline_personal", "end_scam"))
+    assert_assistant_is_safe(call)
+
+
+def test_after_the_owner_window_expired_the_caller_is_not_alerted_about_again(call):
+    call.say("Delivery boy at your gate, can't find the building")
+    expired = call.engine.on_owner_timeout(call.ctx, call.cfg)
+    call._take(expired)
+    r = call.say("I am outside the gate, flat 402")
+    assert r.escalation is None and call.ctx.state is not St.ESCALATE and call.ctx.escalation_closed
+
+
 @pytest.mark.parametrize(
     ("action", "reason"), [(OwnerActionType.END, "owner_ended"), (OwnerActionType.BLOCK, "blocked_by_owner")]
 )
