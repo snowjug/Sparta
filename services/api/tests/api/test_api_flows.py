@@ -568,6 +568,26 @@ async def test_replay_is_deterministic_isolated_and_honest_about_its_checksum(en
     assert (await env.client.post(f"{API}/simulator/replay", json={"scenario_id": "missing"})).status_code == 404
 
 
+async def test_overlapping_replays_all_succeed_and_agree(env: ApiEnv):
+    runs = await asyncio.gather(
+        *(env.client.post(f"{API}/simulator/replay", json={"scenario_id": "language-switch-journey"}) for _ in range(5))
+    )
+    assert [r.status_code for r in runs] == [200] * 5, [r.text for r in runs if r.status_code != 200]
+    assert len({r.json()["checksum"] for r in runs}) == 1
+
+
+async def test_a_replay_that_cannot_finish_in_time_is_a_503_and_not_an_unhandled_error(env: ApiEnv, monkeypatch):
+    from sparta.services import simulator
+
+    async def too_slow(*_args, **_kwargs):
+        raise TimeoutError("the replayed call did not go quiet")
+
+    monkeypatch.setattr(simulator.ReplayDriver, "run", too_slow)
+    r = await env.client.post(f"{API}/simulator/replay", json={"scenario_id": "bank-otp-en"})
+    assert r.status_code == 503 and r.json()["error"]["code"] == "provider_unavailable"
+    assert "too long" in r.json()["error"]["message"]
+
+
 @pytest.mark.parametrize("scenario_id", sorted(curated_scenarios()))
 async def test_every_curated_scenario_replays_deterministically_and_does_what_it_advertises(env: ApiEnv, scenario_id):
     expected = curated_scenarios()[scenario_id].expected_action

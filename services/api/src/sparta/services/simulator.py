@@ -10,6 +10,7 @@ import hashlib
 import json
 import logging
 import re
+import time
 from collections.abc import Awaitable, Callable, Coroutine
 from functools import lru_cache
 from importlib import resources
@@ -23,7 +24,7 @@ from sparta.domain.models import CallDetail, LiveEvent
 from sparta.providers.stt.simulator import partial_events
 from sparta.services.calls import CallService
 from sparta.services.dto import CreateCallRequest, Principal
-from sparta.services.errors import Conflict, InvalidInput, NotFound
+from sparta.services.errors import Conflict, InvalidInput, NotFound, ProviderUnavailableError
 from sparta.services.ids import IdFactory
 from sparta.services.providers import ProviderSet
 from sparta.services.views import (
@@ -50,6 +51,8 @@ CHECKSUM_COVERS = (
     "aggregate metrics) and the trace id are excluded because they differ between runs by nature."
 )
 PARTIAL_STEP_S = 0.12
+REPLAY_STEP_TIMEOUT_S = 30.0  # wall clock: how long one replay step may take on a slow or shared host
+REPLAY_POLL_S = 0.004
 MAX_CUSTOM_SCENARIOS = 50
 LANGUAGE_TAG = re.compile(r"[a-z]{2,3}(-[A-Z][A-Za-z]{1,3})?")
 
@@ -108,10 +111,13 @@ class ReplayDriver:
         self.clock: VirtualClock = container.clock
         self.p = principal
 
-    async def _idle(self, call_id: str, rounds: int = 1500) -> None:
+    async def _idle(self, call_id: str, timeout_s: float = REPLAY_STEP_TIMEOUT_S) -> None:
+        # A real deadline, not a number of polls: how long a poll takes depends on the platform's timer resolution (on
+        # Windows a 4 ms sleep returns at once) and on how many replays share the event loop.
+        deadline = time.monotonic() + timeout_s
         stable = 0
-        for _ in range(rounds):
-            await asyncio.sleep(0.004)
+        while time.monotonic() < deadline:
+            await asyncio.sleep(REPLAY_POLL_S)
             busy = self.c.calls.is_busy(call_id)
             stable = 0 if busy else stable + 1
             if stable >= 4:
@@ -130,20 +136,19 @@ class ReplayDriver:
         else:
             await self._idle(call_id)
 
-    async def _drive(self, coro: Coroutine[Any, Any, T]) -> T:
+    async def _drive(self, coro: Coroutine[Any, Any, T], timeout_s: float = REPLAY_STEP_TIMEOUT_S) -> T:
         """Await ``coro`` while granting exactly the simulated network latency it asks the virtual clock for."""
         task = asyncio.ensure_future(coro)
-        for _ in range(40_000):
-            if task.done():
-                break
+        deadline = time.monotonic() + timeout_s
+        while not task.done():
+            if time.monotonic() >= deadline:
+                task.cancel()
+                raise TimeoutError("the replayed step did not finish")
             delta = self.clock.next_delta("net")
             if delta is not None:
                 await self.clock.advance(delta)
             else:
                 await asyncio.sleep(0.002)
-        else:
-            task.cancel()
-            raise TimeoutError("the replayed step did not finish")
         return await task
 
     async def run(
@@ -462,6 +467,9 @@ class SimulatorService:
                         await repo.save_assistant_profile(principal.id, profile, container.clock.now())
                 driver = ReplayDriver(container, principal)
                 call, events = await driver.run(scenario, mode, req.network_profile)
+            except TimeoutError as exc:
+                # The host was too slow or too busy to finish within the deadline; this is not a bug in the request.
+                raise ProviderUnavailableError("The replay took too long on this server. Please try again.") from exc
             finally:
                 await container.stop()
         return ReplayResult(
