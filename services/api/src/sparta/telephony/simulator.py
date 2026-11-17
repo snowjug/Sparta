@@ -63,7 +63,7 @@ class SimulatorTelephonyProvider:
 
     async def _finish(self, call_id: str, playback_id: str, duration_ms: int) -> None:
         try:
-            await self._clock.sleep(duration_ms / 1000.0)
+            await self._clock.sleep(duration_ms / 1000.0, tag="playback")
             if self._sink is not None:
                 await self._sink.playback_finished(call_id, playback_id)
         except asyncio.CancelledError:
