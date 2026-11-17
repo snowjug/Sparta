@@ -368,7 +368,11 @@ class UserPreferences(StrictInputModel):
     primary_language: str = "en-IN"
     enabled_languages: list[str] = Field(default_factory=lambda: ["en-IN", "hi-IN", "kn-IN"])
     auto_detect_language: bool = True
-    translate_transcripts_to: str | None = "en-IN"
+    translate_transcripts_to: str | None = Field(
+        default="en-IN",
+        description="Stored for a future translation provider; no provider translates caller speech yet "
+        "(`/system/status` features.translation is false). Assistant lines always carry an English rendering.",
+    )
     strictness: ScreeningStrictness = ScreeningStrictness.BALANCED
     trusted_contact_behavior: Literal["allow_directly", "screen_anyway"] = "allow_directly"
     unknown_caller_behavior: Literal["screen", "silence", "allow"] = "screen"

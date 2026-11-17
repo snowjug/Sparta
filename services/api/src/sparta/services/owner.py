@@ -161,7 +161,7 @@ class OwnerService:
                 simulator=self.settings.simulator_enabled,
                 personal_voice=self.settings.feature_personal_voice,
                 llm_summaries=self.settings.feature_llm_summaries,
-                translation=self.settings.feature_translation,
+                translation=False,  # machine translation of caller speech is not implemented (no provider does it)
             ),
             policy_version=self.engine.policy.version,
             language_pack_version=self._registry.version(),

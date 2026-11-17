@@ -3824,6 +3824,7 @@
               }
             ],
             "default": "en-IN",
+            "description": "Stored for a future translation provider; no provider translates caller speech yet (`/system/status` features.translation is false). Assistant lines always carry an English rendering.",
             "title": "Translate Transcripts To"
           },
           "trusted_contact_behavior": {

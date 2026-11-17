@@ -21,6 +21,7 @@ async def test_system_status_is_public_and_flags_the_dev_identity(env: ApiEnv):
     assert body["dev_banner"] is True and body["auth_mode"] == "dev"
     assert body["telephony"]["simulated"] is True and body["telephony"]["live_calls_supported"] is False
     assert body["features"]["raw_audio_storage"] is False
+    assert body["features"]["translation"] is False  # caller-speech translation is not implemented
     assert {lang["code"] for lang in body["languages"] if lang["status"] == "supported"} == {"en-IN", "hi-IN", "kn-IN"}
     assert body["policy_version"] and body["language_pack_version"]
 
