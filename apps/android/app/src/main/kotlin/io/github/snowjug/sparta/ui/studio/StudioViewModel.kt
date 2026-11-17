@@ -69,6 +69,8 @@ data class StudioUiState(
     val voices: List<VoiceOptionDto> = emptyList(),
     val voiceStatus: VoiceProfileViewDto? = null,
     val languages: List<LanguageInfoDto> = emptyList(),
+    /** `/system/status` features.translation. False until the backend says otherwise: the target chooser is then read-only. */
+    val translationAvailable: Boolean = false,
     val saving: Boolean = false,
     val message: UiMessage? = null,
     val preview: PreviewState = PreviewState.Idle,
@@ -116,10 +118,9 @@ class StudioViewModel @Inject constructor(
 
                 val profileResult = profile.await()
                 val prefsResult = prefs.await()
-                val statusResult = status.await()
-                val languages = (statusResult as? ApiResult.Success)?.value?.languages?.takeIf { it.isNotEmpty() }
-                    ?: system.cachedStatus.first()?.status?.languages?.takeIf { it.isNotEmpty() }
-                    ?: DEFAULT_LANGUAGES
+                // A successful refresh also refreshes the cache, so the cache is only ever the fallback.
+                val backendStatus = (status.await() as? ApiResult.Success)?.value ?: system.cachedStatus.first()?.status
+                val languages = backendStatus?.languages?.takeIf { it.isNotEmpty() } ?: DEFAULT_LANGUAGES
 
                 val failure = (profileResult as? ApiResult.Failure)?.error
                 val doc = (profileResult as? ApiResult.Success)?.value
@@ -135,6 +136,7 @@ class StudioViewModel @Inject constructor(
                         voices = (voices.await() as? ApiResult.Success)?.value.orEmpty(),
                         voiceStatus = (voiceStatus.await() as? ApiResult.Success)?.value,
                         languages = languages,
+                        translationAvailable = backendStatus?.features?.translation ?: false,
                     )
                 }
             }
@@ -173,20 +175,29 @@ class StudioViewModel @Inject constructor(
     }
 
     /** The primary language cannot be switched off, and at least one language always stays enabled. */
-    fun toggleLanguage(tag: String) = edit { d ->
-        when {
-            tag in d.enabledLanguages && (tag == d.primaryLanguage || d.enabledLanguages.size == 1) -> d
-            tag in d.enabledLanguages -> d.copy(
-                enabledLanguages = d.enabledLanguages - tag,
-                translateTo = d.translateTo?.takeIf { it != tag },
-            )
-            else -> d.copy(enabledLanguages = d.enabledLanguages + tag)
+    fun toggleLanguage(tag: String) {
+        // Switching a language off drops it as the translation target, unless translation is unavailable: then the stored
+        // target is not ours to change.
+        val clearsTarget = _state.value.translationAvailable
+        edit { d ->
+            when {
+                tag in d.enabledLanguages && (tag == d.primaryLanguage || d.enabledLanguages.size == 1) -> d
+                tag in d.enabledLanguages -> d.copy(
+                    enabledLanguages = d.enabledLanguages - tag,
+                    translateTo = if (clearsTarget) d.translateTo?.takeIf { it != tag } else d.translateTo,
+                )
+                else -> d.copy(enabledLanguages = d.enabledLanguages + tag)
+            }
         }
     }
 
     fun setAutoDetect(value: Boolean) = edit { it.copy(autoDetectLanguage = value) }
 
-    fun setTranslateTo(tag: String?) = edit { it.copy(translateTo = tag) }
+    /** Ignored while the backend offers no translation: the stored target stays exactly as it is. */
+    fun setTranslateTo(tag: String?) {
+        if (!_state.value.translationAvailable) return
+        edit { it.copy(translateTo = tag) }
+    }
 
     fun setPreviewText(value: String) = _state.update { it.copy(previewText = value.take(MAX_PREVIEW)) }
 
@@ -211,11 +222,13 @@ class StudioViewModel @Inject constructor(
                 return@launch
             }
             profileDoc = (profileResult as ApiResult.Success).value
-            val patch = PreferencesPatch()
+            val languagePatch = PreferencesPatch()
                 .primaryLanguage(draft.primaryLanguage)
                 .enabledLanguages(draft.enabledLanguages)
                 .autoDetectLanguage(draft.autoDetectLanguage)
-                .translateTranscriptsTo(draft.translateTo)
+            // Without a translation provider the stored target is not written at all: the backend document it was merged
+            // onto carries it back unchanged (also when the key was absent).
+            val patch = if (current.translationAvailable) languagePatch.translateTranscriptsTo(draft.translateTo) else languagePatch
             val message = when (val saved = preferences.save(patch)) {
                 SaveResult.Synced -> UiMessage.Text(R.string.studio_saved)
                 is SaveResult.SavedOnDevice -> UiMessage.Text(R.string.common_saved_on_phone, listOf(saved.error.message))

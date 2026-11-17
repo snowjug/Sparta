@@ -416,7 +416,11 @@ fun <T> ChoiceGroup(
             ) {
                 RadioButton(selected = value == selected, onClick = null, enabled = enabled)
                 Column {
-                    Text(label, style = MaterialTheme.typography.bodyLarge)
+                    Text(
+                        label,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = if (enabled) Color.Unspecified else SpartaTheme.extras.textSecondary,
+                    )
                     descriptions[value]?.let {
                         Text(it, style = MaterialTheme.typography.bodySmall, color = SpartaTheme.extras.textSecondary)
                     }

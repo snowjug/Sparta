@@ -151,15 +151,30 @@ class StudioContentTest {
     }
 
     @Test
-    fun `automatic language detection and translation have controls`() {
+    fun `automatic language detection and an available translation have controls`() {
         var auto: Boolean? = null
         var translate: String? = "unset"
-        show(ready(), StudioActions(onAutoDetect = { auto = it }, onTranslateTo = { translate = it }))
+        show(ready { copy(translationAvailable = true) }, StudioActions(onAutoDetect = { auto = it }, onTranslateTo = { translate = it }))
         node("studio_auto_detect").performClick()
         assertEquals(false, auto)
-        node("studio_translate_null").assertIsSelected()
+        node("studio_translate_unavailable").assertDoesNotExist()
+        node("studio_translate_null").assertIsEnabled().assertIsSelected()
         node("studio_translate_hi-IN").performClick()
         assertEquals("hi-IN", translate)
+    }
+
+    @Test
+    fun `translation the backend does not offer is read only and says why`() {
+        var translate: String? = "unset"
+        val stored = baseDraft.copy(translateTo = "en-IN")
+        show(ready { copy(saved = stored, draft = stored) }, StudioActions(onTranslateTo = { translate = it }))
+
+        node("studio_translate_unavailable").assertTextContains("needs a language-model provider and is not available in this build", substring = true)
+        node("studio_translate_unavailable").assertTextContains("Assistant lines always include an English rendering.", substring = true)
+        node("studio_translate_en-IN").assertIsNotEnabled().assertIsSelected()
+        node("studio_translate_null").assertIsNotEnabled()
+        node("studio_translate_hi-IN").assertIsNotEnabled().performClick()
+        assertEquals("a disabled chooser reports nothing", "unset", translate)
     }
 
     @Test

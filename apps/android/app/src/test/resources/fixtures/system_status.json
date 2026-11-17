@@ -14,7 +14,7 @@
   "tts_provider": "simulator",
   "llm_provider": "rules",
   "llm_model": null,
-  "features": {"simulator": true, "personal_voice": false, "llm_summaries": false, "translation": true, "raw_audio_storage": false},
+  "features": {"simulator": true, "personal_voice": false, "llm_summaries": false, "translation": false, "raw_audio_storage": false},
   "policy_version": "default-v1",
   "language_pack_version": "2026.11",
   "languages": [

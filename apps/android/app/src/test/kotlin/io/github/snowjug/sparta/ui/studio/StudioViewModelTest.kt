@@ -49,6 +49,8 @@ class StudioViewModelTest {
         configured: Boolean = true,
         profileResponse: () -> MockResponse = { json(profile) },
         putProfile: () -> MockResponse = { json(profile) },
+        prefsDoc: String = prefs,
+        translationAvailable: Boolean = false,
     ): StudioViewModel {
         val harness = VmHarness(configured).also { h = it }
         harness.api.server.dispatcher = object : Dispatcher() {
@@ -57,11 +59,11 @@ class StudioViewModelTest {
                 return when (request.method to request.path) {
                     "GET" to "/api/v1/assistant-profile" -> profileResponse()
                     "PUT" to "/api/v1/assistant-profile" -> putProfile()
-                    "GET" to "/api/v1/preferences" -> json(prefs)
-                    "PUT" to "/api/v1/preferences" -> json(prefs)
+                    "GET" to "/api/v1/preferences" -> json(prefsDoc)
+                    "PUT" to "/api/v1/preferences" -> json(prefsDoc)
                     "GET" to "/api/v1/voices" -> json(voices)
                     "GET" to "/api/v1/voice/status" -> json(voiceStatus)
-                    "GET" to "/api/v1/system/status" -> json(Fixtures.text("system_status.json"))
+                    "GET" to "/api/v1/system/status" -> json(statusJson(translationAvailable))
                     "POST" to "/api/v1/assistant-profile/preview" ->
                         json("""{"disclosure":{"text":"Hello, I'm Atharv's AI call assistant.","locale":"en-IN"},"reply":{"text":"I cannot share that.","locale":"en-IN"},"detected_language":"en-IN"}""")
                     else -> MockResponse().setResponseCode(404)
@@ -71,9 +73,19 @@ class StudioViewModelTest {
         return StudioViewModel(harness.preferences, harness.system, harness.settings)
     }
 
+    /** The recorded backend status says translation is off (as the real backend always does); tests flip it explicitly. */
+    private fun statusJson(translation: Boolean): String {
+        val recorded = Fixtures.text("system_status.json")
+        check("\"translation\": false" in recorded) { "the status fixture no longer has features.translation = false" }
+        return recorded.replace("\"translation\": false", "\"translation\": $translation")
+    }
+
     private fun json(body: String) = MockResponse().setResponseCode(200).setHeader("Content-Type", "application/json").setBody(body)
 
     private fun StudioViewModel.loaded() = state.await { !it.loading && it.draft != null }
+
+    private fun preferencesPutBody(): JsonObject =
+        SpartaJson.parseToJsonElement(requests.first { it.method == "PUT" && it.path == "/api/v1/preferences" }.body.readUtf8()).jsonObject
 
     @Test
     fun `without a backend the studio has nothing to load`() {
@@ -134,12 +146,81 @@ class StudioViewModelTest {
     }
 
     @Test
-    fun `switching off the translation target language clears the target`() {
-        val vm = create()
+    fun `when translation is available switching off the translation target language clears the target`() {
+        val vm = create(translationAvailable = true)
         vm.loaded()
         vm.setTranslateTo("hi-IN")
         vm.toggleLanguage("hi-IN")
         assertNull(vm.state.value.draft!!.translateTo)
+    }
+
+    @Test
+    fun `translation is reported unavailable when the backend status says so`() {
+        val state = create().loaded()
+        assertFalse(state.translationAvailable)
+    }
+
+    @Test
+    fun `translation is reported available only when the backend status offers it`() {
+        val state = create(translationAvailable = true).loaded()
+        assertTrue(state.translationAvailable)
+    }
+
+    @Test
+    fun `without translation the stored target is read only even when its own language is switched off`() {
+        val vm = create(prefsDoc = prefs.replace("\"translate_transcripts_to\":\"en-IN\"", "\"translate_transcripts_to\":\"hi-IN\""))
+        vm.loaded()
+
+        vm.setTranslateTo("en-IN")
+        vm.setTranslateTo(null)
+        vm.toggleLanguage("hi-IN")
+
+        val draft = vm.state.value.draft!!
+        assertEquals("hi-IN", draft.translateTo)
+        assertEquals(listOf("en-IN"), draft.enabledLanguages)
+    }
+
+    @Test
+    fun `saving without translation sends the stored target unchanged`() {
+        val vm = create(prefsDoc = prefs.replace("\"translate_transcripts_to\":\"en-IN\"", "\"translate_transcripts_to\":\"hi-IN\""))
+        vm.loaded()
+        vm.setTranslateTo("kn-IN") // ignored
+        vm.setAutoDetect(false)
+
+        vm.save()
+        vm.state.await { !it.saving && it.message != null }
+
+        val body = preferencesPutBody()
+        assertEquals("hi-IN", body.getValue("translate_transcripts_to").jsonPrimitive.content)
+        assertEquals("false", body.getValue("auto_detect_language").jsonPrimitive.content)
+        assertTrue("fields this app does not know are still carried", "future_pref" in body)
+    }
+
+    @Test
+    fun `saving without translation does not invent a target that was never stored`() {
+        val noTarget = prefs.replace(",\"translate_transcripts_to\":\"en-IN\"", "")
+        check("translate_transcripts_to" !in noTarget)
+        val vm = create(prefsDoc = noTarget)
+        vm.loaded()
+        vm.setAutoDetect(false)
+
+        vm.save()
+        vm.state.await { !it.saving && it.message != null }
+
+        assertFalse("translate_transcripts_to" in preferencesPutBody())
+    }
+
+    @Test
+    fun `with translation available the chosen target is stored and sent`() {
+        val vm = create(translationAvailable = true)
+        vm.loaded()
+        vm.setTranslateTo("hi-IN")
+        assertEquals("hi-IN", vm.state.value.draft!!.translateTo)
+
+        vm.save()
+        vm.state.await { !it.saving && it.message != null }
+
+        assertEquals("hi-IN", preferencesPutBody().getValue("translate_transcripts_to").jsonPrimitive.content)
     }
 
     @Test

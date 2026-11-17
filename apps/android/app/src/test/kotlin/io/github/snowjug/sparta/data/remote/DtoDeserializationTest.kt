@@ -169,11 +169,19 @@ class DtoDeserializationTest {
         assertFalse(status.telephony.liveCallsSupported)
         assertNull(status.telephony.forwardingNumber)
         assertEquals("Simulator only: no phone number is attached.", status.telephony.note)
-        assertTrue(status.features.translation)
+        assertTrue(status.features.simulator)
+        assertFalse("nothing translates caller speech: the backend always reports false", status.features.translation)
         assertFalse(status.features.rawAudioStorage)
         assertEquals(listOf("supported", "supported", "supported", "planned"), status.languages.map { it.status })
         assertEquals("हिन्दी", status.languages[1].nativeName)
         assertEquals(900, status.limits.maxCallDurationS)
+    }
+
+    @Test
+    fun `features translation is read when the backend says it is available and is false otherwise`() {
+        val on = SpartaJson.decodeFromString(SystemStatusDto.serializer(), """{"features":{"translation":true}}""")
+        assertTrue(on.features.translation)
+        assertFalse(SpartaJson.decodeFromString(SystemStatusDto.serializer(), "{}").features.translation)
     }
 
     @Test

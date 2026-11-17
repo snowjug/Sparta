@@ -297,11 +297,21 @@ private fun LanguagesCard(state: StudioUiState, draft: StudioDraft, actions: Stu
             testTag = "studio_auto_detect",
         )
         Text(stringResource(R.string.studio_translate_title), style = MaterialTheme.typography.titleSmall)
+        if (!state.translationAvailable) {
+            Text(
+                stringResource(R.string.studio_translate_unavailable),
+                style = MaterialTheme.typography.bodySmall,
+                color = SpartaTheme.extras.textSecondary,
+                modifier = Modifier.testTag("studio_translate_unavailable"),
+            )
+        }
+        // The stored target stays visible but read-only while the backend offers no translation.
         ChoiceGroup(
             options = listOf<Pair<String?, String>>(null to stringResource(R.string.studio_translate_none)) +
                 supported.filter { it.code in draft.enabledLanguages }.map { it.code to languageTitle(it.code, it) },
             selected = draft.translateTo,
             onSelect = actions.onTranslateTo,
+            enabled = state.translationAvailable,
             testTagPrefix = "studio_translate",
         )
     }

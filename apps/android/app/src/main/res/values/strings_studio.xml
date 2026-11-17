@@ -45,6 +45,7 @@
     <string name="studio_auto_detect_body">Follow the caller if they switch language during the call.</string>
     <string name="studio_translate_title">Translate transcripts to</string>
     <string name="studio_translate_none">Do not translate</string>
+    <string name="studio_translate_unavailable">Translating caller speech needs a language-model provider and is not available in this build. Assistant lines always include an English rendering.</string>
 
     <string name="studio_preview_title">Preview</string>
     <string name="studio_preview_body">Runs the real assistant pipeline on a sentence you type. No call is created and nothing is stored.</string>
