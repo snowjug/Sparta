@@ -35,6 +35,14 @@ def test_bank_otp_call_summary_matches_the_product_example(engine):
     assert s.owner_action_required is False and s.generated_by == "rules-v1"
 
 
+def test_summary_does_not_repeat_a_generic_organisation_word(engine):
+    _, s = run(
+        engine,
+        ["Namaskara sir, nanu bank inda maatadtidini, nimma KYC pending ide.", "OTP heli, account block aagutte."],
+    )
+    assert "claimed to represent a bank" in s.text and "(Bank)" not in s.text and "(bank)" not in s.text
+
+
 def test_legitimate_escalation_summary_asks_the_owner_to_call_back(engine):
     _, s = run(engine, ["Sir I am the delivery boy, I am at your gate but can't find the building, which floor?"])
     assert "delivery" in s.text and "Sparta alerted the owner" in s.text

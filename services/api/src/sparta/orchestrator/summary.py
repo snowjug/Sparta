@@ -95,7 +95,10 @@ def _who(ctx: ConversationContext, signals: list[RiskSignal]) -> str:
     descriptors = [text for code, text in REPRESENTS.items() if code in present]
     if descriptors:
         base = f"{subject} claimed to represent {descriptors[0]}"
-        return f"{base} ({claim.organization})" if claim.organization else base
+        org = claim.organization
+        if org and org.strip().lower() in descriptors[0].lower().split():
+            org = None  # "a bank (Bank)" adds nothing
+        return f"{base} ({org})" if org else base
     if claim.organization:
         return f"{subject} from {claim.organization}"
     if claim.role:
