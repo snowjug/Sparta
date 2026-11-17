@@ -834,6 +834,18 @@ class Repository:
             stmt = stmt.where(m.CallSessionRow.simulated == simulated)
         return int(await self.s.scalar(stmt) or 0)
 
+    async def count_screening_events_since(self, user_id: str, since: datetime) -> int:
+        stmt = (
+            select(func.count())
+            .select_from(m.CallSessionRow)
+            .where(
+                m.CallSessionRow.user_id == user_id,
+                m.CallSessionRow.started_at >= since,
+                m.CallSessionRow.mode == CallMode.SCREENING_ONLY.value,
+            )
+        )
+        return int(await self.s.scalar(stmt) or 0)
+
     async def count_active_calls(self, user_id: str) -> int:
         stmt = (
             select(func.count())
@@ -943,10 +955,22 @@ class Repository:
             row.has_content = False
         await self.s.flush()
 
+    async def delete_idempotent_for_call(self, user_id: str, call_id: str) -> None:
+        """Forget cached responses of requests made against one call (they can carry transcript text or notes)."""
+        stmt = delete(m.IdempotencyRow).where(
+            m.IdempotencyRow.user_id == user_id,
+            or_(
+                m.IdempotencyRow.route.contains(f"/calls/{call_id}/", autoescape=True),
+                m.IdempotencyRow.route.endswith(f"/calls/{call_id}", autoescape=True),
+            ),
+        )
+        await self.s.execute(stmt)
+
     async def delete_call_content(self, user_id: str, call_id: str) -> bool:
         row = await self.get_call_row(user_id, call_id)
         if row is None:
             return False
+        await self.delete_idempotent_for_call(user_id, call_id)
         await self.s.execute(delete(m.CallTurnRow).where(m.CallTurnRow.call_id == call_id))
         await self.s.execute(delete(m.LiveEventRow).where(m.LiveEventRow.call_id == call_id))
         await self.s.execute(delete(m.RiskAssessmentRow).where(m.RiskAssessmentRow.call_id == call_id))
@@ -969,6 +993,7 @@ class Repository:
         return True
 
     async def delete_call(self, user_id: str, call_id: str) -> bool:
+        await self.delete_idempotent_for_call(user_id, call_id)
         res = await self.s.execute(
             delete(m.CallSessionRow).where(m.CallSessionRow.id == call_id, m.CallSessionRow.user_id == user_id)
         )

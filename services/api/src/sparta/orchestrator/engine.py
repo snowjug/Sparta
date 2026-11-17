@@ -9,8 +9,10 @@ Safety order inside a caller turn (see docs/SAFETY_MODEL.md):
 No model output is consulted before the decision is made, and nothing downstream can override a refusal.
 """
 
+import threading
 import time
 import unicodedata
+from collections import OrderedDict
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 
@@ -40,7 +42,7 @@ from sparta.domain.models import (
     SpeechPlan,
 )
 from sparta.language.detector import UNKNOWN, Detection, LanguageDetector, get_detector
-from sparta.language.text import mask_digits
+from sparta.language.text import mask_digits, settle_joiners, strip_invisible
 from sparta.orchestrator.planner import PlannerConfig, ReplyPlanner, clean_owner_name
 from sparta.orchestrator.state_machine import is_active, transition
 from sparta.orchestrator.validator import OutputValidator
@@ -51,6 +53,7 @@ from sparta.risk.policy import SafetyPolicy, load_default_policy
 
 S = SignalCode
 MAX_INPUT_CHARS = 1000
+MAX_OWNER_DETECTORS = 64  # per-owner-name matcher sets kept in memory (least recently used are dropped)
 PROBE_CODES = frozenset({S.ADDRESS_OR_LOCATION_REQUEST, S.OWNER_AVAILABILITY_PROBE})
 INJECTION_CODES = frozenset({S.RULE_OVERRIDE_ATTEMPT, S.FALSE_OWNER_AUTHORIZATION})
 # A model may add context signals but never the protected-information requests: those stay deterministic, so a
@@ -84,10 +87,20 @@ _SEVERITY_ORDER = [
 
 
 def sanitize_text(text: str) -> str:
-    """Caller text is untrusted: normalise, strip control characters, bound the length."""
-    text = unicodedata.normalize("NFC", text)
-    text = "".join(ch if (ch.isprintable() or ch in "\t\n") else " " for ch in text)
-    return " ".join(text.split())[:MAX_INPUT_CHARS]
+    """Caller text is untrusted: normalise, drop invisible and control characters, bound the length.
+
+    Compatibility forms (one U+FDFA becomes 18 characters) are expanded *before* the length cap so the cap is real.
+    Invisible characters are deleted rather than replaced by spaces, so they cannot split a keyword in two.
+    """
+    text = unicodedata.normalize("NFKC", text[: MAX_INPUT_CHARS * 4])[: MAX_INPUT_CHARS * 4]
+    text = settle_joiners(strip_invisible(text, keep_joiners=True))
+    kept: list[str] = []
+    for ch in text:
+        if ch.isprintable():
+            kept.append(ch)
+        elif ch in "\t\n\r" or unicodedata.category(ch) in {"Zs", "Zl", "Zp"}:
+            kept.append(" ")
+    return " ".join("".join(kept).split())[:MAX_INPUT_CHARS]
 
 
 @dataclass(frozen=True)
@@ -180,16 +193,35 @@ class ConversationEngine:
         self.risk_engine = risk_engine or RiskEngine(self.policy)
         self.planner = planner or ReplyPlanner()
         self.clock = clock or SystemClock()
-        self._signal_detectors: dict[str, SignalDetector] = {}
+        self._signal_detectors: OrderedDict[str, SignalDetector] = OrderedDict()
+        self._detector_lock = threading.Lock()
         self._protected = self.policy.protected_signal_codes()
         self._supported = set(self.planner.registry.supported_codes())
 
     # ================================================================== helpers
     def _signals_for(self, owner_name: str | None) -> SignalDetector:
+        """The matchers for one owner name. Building them takes about a second, so they are cached (bounded LRU)."""
         key = clean_owner_name(owner_name) or ""
-        if key not in self._signal_detectors:
-            self._signal_detectors[key] = SignalDetector(self.policy, self.planner.registry, owner_name=key or None)
-        return self._signal_detectors[key]
+        with self._detector_lock:
+            cached = self._signal_detectors.get(key)
+            if cached is not None:
+                self._signal_detectors.move_to_end(key)
+                return cached
+        detector = SignalDetector(self.policy, self.planner.registry, owner_name=key or None)  # slow: no lock held
+        with self._detector_lock:
+            self._signal_detectors[key] = detector
+            self._signal_detectors.move_to_end(key)
+            while len(self._signal_detectors) > MAX_OWNER_DETECTORS:
+                self._signal_detectors.popitem(last=False)
+        return detector
+
+    def is_warm(self, owner_name: str | None) -> bool:
+        with self._detector_lock:
+            return (clean_owner_name(owner_name) or "") in self._signal_detectors
+
+    def warm(self, owner_name: str | None) -> None:
+        """Build the owner's matchers now. Slow: call it from a worker thread, never from the event loop."""
+        self._signals_for(owner_name)
 
     def _validator(self, cfg: EngineConfig) -> OutputValidator:
         return OutputValidator(cfg.owner_private_markers)

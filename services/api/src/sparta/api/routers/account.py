@@ -1,9 +1,9 @@
 """Owner settings: preferences, assistant profile, voices and personal-voice consent."""
 
-from fastapi import APIRouter, Query, Request, Response
+from fastapi import APIRouter, Depends, Query, Request, Response
 from fastapi.responses import JSONResponse
 
-from sparta.api.deps import Ctr, Owner, run_idempotent
+from sparta.api.deps import Ctr, Owner, profile_write_limit, run_idempotent
 from sparta.api.errors import ERROR_RESPONSES
 from sparta.domain.models import AssistantProfile, UserPreferences, VoiceOption, VoiceProfileView
 from sparta.services.views import PreviewRequest, PreviewResult, VoiceConsentView, VoiceEnrollRequest
@@ -27,7 +27,7 @@ async def get_profile(owner: Owner, c: Ctr) -> AssistantProfile:
     return await c.owner.get_profile(owner)
 
 
-@router.put("/assistant-profile", response_model=AssistantProfile)
+@router.put("/assistant-profile", response_model=AssistantProfile, dependencies=[Depends(profile_write_limit)])
 async def put_profile(profile: AssistantProfile, owner: Owner, c: Ctr) -> AssistantProfile:
     """The AI disclosure is not part of the profile: it cannot be switched off. `use_personal_voice` is refused (409)
     unless the voice is `ready` and the feature is enabled."""

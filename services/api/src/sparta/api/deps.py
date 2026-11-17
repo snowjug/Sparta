@@ -20,6 +20,11 @@ from sparta.services.errors import Conflict, InvalidInput, NotFound, RateLimited
 
 IDEMPOTENCY_KEY = re.compile(r"[A-Za-z0-9_\-:.]{1,64}")
 IDEMPOTENCY_TTL = timedelta(hours=24)
+# Routes whose response carries what the caller said or what the owner wrote. A retry only makes sense for a short time,
+# so those responses are kept briefly, never when the owner chose not to store transcripts, and are deleted together
+# with the call's content (see ``Repository.delete_call_content``).
+CONTENT_ROUTE = re.compile(r"^[A-Z]+ \S*/calls/[^/\s]+/(?:turns|audio|silence|feedback)$")
+IDEMPOTENCY_CONTENT_TTL = timedelta(minutes=15)
 CALL_ID_PATTERN = r"^[A-Za-z0-9_\-]{1,64}$"
 
 
@@ -60,6 +65,10 @@ Owner = Annotated[Principal, Depends(current_owner)]
 
 async def create_call_limit(request: Request, owner: Owner, container: Ctr) -> None:
     await _hit(request, container, "create_call", owner.id, container.settings.call_create_rate_limit_per_minute)
+
+
+async def profile_write_limit(request: Request, owner: Owner, container: Ctr) -> None:
+    await _hit(request, container, "profile_write", owner.id, container.settings.profile_write_rate_limit_per_minute)
 
 
 async def require_simulator(container: Ctr) -> None:
@@ -103,6 +112,20 @@ async def run_idempotent[T](
             return JSONResponse(stored[2], status_code=stored[1], headers={"Idempotent-Replayed": "true"})
         result = await handler()
         payload = jsonable_encoder(result)
+        ttl, stored_status = IDEMPOTENCY_TTL, status_code
+        if CONTENT_ROUTE.match(route):
+            ttl = IDEMPOTENCY_CONTENT_TTL
+            if not (await container.owner.get_preferences(owner)).retention.store_transcripts:
+                # Nothing the caller said may be kept: remember only that the request was processed.
+                stored_status = 409
+                payload = {
+                    "error": {
+                        "code": "conflict",
+                        "message": "This request was already processed. Reload the call to see the result.",
+                        "trace_id": None,
+                        "details": None,
+                    }
+                }
         async with container.db.uow() as repo:
-            await repo.save_idempotent(owner.id, route, key, digest, status_code, payload, now, IDEMPOTENCY_TTL)
-        return JSONResponse(payload, status_code=status_code)
+            await repo.save_idempotent(owner.id, route, key, digest, stored_status, payload, now, ttl)
+        return JSONResponse(jsonable_encoder(result), status_code=status_code)

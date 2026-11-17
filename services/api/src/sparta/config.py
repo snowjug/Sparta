@@ -49,6 +49,11 @@ class Settings(BaseSettings):
 
     # --- authentication ------------------------------------------------------------
     auth_mode: Literal["dev", "oidc"] = "dev"
+    allow_network_dev_auth: bool = Field(
+        default=False,
+        description="Let `sparta serve` listen on a non-loopback address while the development identity is active "
+        "(anyone who can reach the server acts as the owner). Only for a trusted local network or container.",
+    )
     dev_user_id: str = "dev-owner"
     dev_user_name: str = "Atharv"
     oidc_issuer: str | None = None
@@ -127,7 +132,9 @@ class Settings(BaseSettings):
     # --- limits and guardrails -----------------------------------------------------
     rate_limit_per_minute: int = 240
     call_create_rate_limit_per_minute: int = 20
+    profile_write_rate_limit_per_minute: int = 12  # assistant-profile saves (a new owner name builds matchers)
     daily_call_cap: int = 200
+    daily_screening_event_cap: int = 2000  # native Android screening events per owner per UTC day
     max_call_duration_s: int = 600
     abandoned_call_timeout_s: int = 180
     reaper_interval_s: float = 15.0

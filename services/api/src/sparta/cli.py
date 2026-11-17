@@ -40,14 +40,22 @@ def cmd_serve(args: argparse.Namespace) -> int:
 
     settings = _settings()
     configure_logging(settings.log_level, settings.log_json)
-    if not _dependencies_ok(settings, redis=True):
-        return 2
     if settings.auth_mode == "dev" and args.host not in LOOPBACK:
+        if not settings.allow_network_dev_auth:
+            print(
+                f"error: refusing to listen on {args.host} with the development identity: anyone who can reach the "
+                "server would act as the owner. Bind 127.0.0.1, set SPARTA_AUTH_MODE=oidc, or (trusted network or "
+                "container only) set SPARTA_ALLOW_NETWORK_DEV_AUTH=true.",
+                file=sys.stderr,
+            )
+            return 2
         print(
             "WARNING: development identity is active and this server listens on a non-loopback address "
-            f"({args.host}). Anyone who can reach it acts as the owner. Use it only on a trusted network.",
+            f"({args.host}), as SPARTA_ALLOW_NETWORK_DEV_AUTH allows. Use it only on a trusted network.",
             file=sys.stderr,
         )
+    if not _dependencies_ok(settings, redis=True):
+        return 2
     uvicorn.run(
         "sparta.api.main:create_app",
         factory=True,

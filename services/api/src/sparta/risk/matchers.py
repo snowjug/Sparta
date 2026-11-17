@@ -11,6 +11,7 @@ exactly those occurrences. A denial can therefore never hide a different request
 """
 
 import re
+import unicodedata
 from bisect import bisect_left
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -34,6 +35,8 @@ from sparta.risk.policy import RuleDef, SafetyPolicy, load_default_policy
 NEVER_MATCH = "(?!x)x"
 GENERIC_OWNER_NAMES = {"the owner", "owner", "the", ""}
 CARVE_OUT_LOOKAHEAD = 80  # characters after a denial that are checked for "...except me"
+MAX_DETECT_CHARS = 2048  # one turn plus the previous one (each at most 1000 characters after sanitising)
+MAX_DENIAL_MENTIONS = 32  # denial matching is quadratic in the mentions; the rest are treated as not denied
 
 Span = tuple[int, int]
 
@@ -197,6 +200,8 @@ class RuleSet:
                 end -= 1
             if end > start:
                 mentions.append((start, end))
+            if len(mentions) >= MAX_DENIAL_MENTIONS:
+                break  # a flood of mentions: later ones are simply not denied, so their signals still fire
         if not mentions:
             return []
         pieces: list[str] = []
@@ -242,6 +247,8 @@ class SignalDetector:
             self._rules = RuleSet(self.policy, self.registry, owner_pattern)
 
     def detect(self, text: str, turn_id: str) -> list[RiskSignal]:
+        # Compatibility forms can expand a lot (U+FDFA -> 18 characters): expand first, then cap, so the cost is bounded.
+        text = unicodedata.normalize("NFKC", text[: MAX_DETECT_CHARS * 4])[:MAX_DETECT_CHARS]
         norm = normalize(text, lowercase=False)
         best: dict[str, tuple[float, RiskSignal]] = {}
         denied_by_key: dict[tuple[str, ...], list[Span]] = {}

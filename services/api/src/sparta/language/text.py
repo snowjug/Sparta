@@ -14,6 +14,41 @@ _INDIC_RANGE = "\u0900-\u0dff"
 _WORD_CLASS_BODY = rf"\w{_INDIC_RANGE}"
 
 _ZERO_WIDTH = dict.fromkeys(map(ord, "\u200b\u200c\u200d\u2060\ufeff"))
+
+# Characters that render as nothing. Text matching deletes them (never turns them into spaces) so that an invisible
+# character inside a keyword cannot split it: soft hyphen, bidi marks and controls, invisible operators, variation
+# selectors, interlinear annotation marks, language tags. Private-use characters are removed separately.
+_INVISIBLE = dict.fromkeys(
+    [
+        *_ZERO_WIDTH,
+        *map(ord, "\u00ad\u200e\u200f\u061c\u180e\u180f"),
+        *range(0x202A, 0x202F),
+        *range(0x2061, 0x2065),
+        *range(0x2066, 0x206A),
+        *range(0x180B, 0x180E),
+        *range(0xFE00, 0xFE10),
+        *range(0xFFF9, 0xFFFC),
+        *range(0xE0000, 0xE0080),
+        *range(0xE0100, 0xE01F0),
+    ]
+)
+_PRIVATE_USE = re.compile("[\ue000-\uf8ff\U000f0000-\U000ffffd\U00100000-\U0010fffd]")
+
+# Cyrillic and Greek letters that look like Latin ones ("оtp", "ОТР"). Words made only of Latin letters, digits,
+# punctuation and these look-alikes are folded to Latin for matching; other words (real Russian or Greek) stay as they
+# are.
+_LOOKALIKES = {
+    **dict(zip("авекмнорстухіјѕһԁԛԝѵӏ", "abekmhopctyxijshdqwvl", strict=True)),
+    **dict(zip("АВЕКМНОРСТХУІЈЅԀԚԜӀ", "ABEKMHOPCTXYIJSDQWI", strict=True)),
+    **dict(zip("αεικνορτυχγϲϳ", "aeikvoptuxycj", strict=True)),
+    **dict(zip("ΑΒΕΖΗΙΚΜΝΟΡΤΥΧϹ", "ABEZHIKMNOPTYXC", strict=True)),
+    **dict(zip("ıɑɡ", "iag", strict=True)),
+}
+_LOOKALIKE_TABLE = str.maketrans(_LOOKALIKES)
+_LOOKALIKE_CHARS = "".join(_LOOKALIKES)
+_HAS_LOOKALIKE = re.compile(f"[{_LOOKALIKE_CHARS}]")
+_FOLDABLE_WORD = re.compile(f"[A-Za-z0-9'’.,;:!?()\\-{_LOOKALIKE_CHARS}]+")
+_WORD_RUN = re.compile(r"\S+")
 _INDIC_DIGITS: dict[int, int] = {}
 for _base in (
     0x0966,
@@ -34,12 +69,55 @@ _MULTISPACE = re.compile(r"\s+")
 _REPEAT = re.compile(r"(?!\d)(.)\1{2,}")  # never collapse digits: "1000" must stay "1000"
 
 
+INDIC_JOINERS = "\u200c\u200d"  # zero-width non-joiner / joiner: they shape Indic conjuncts and are never visible
+_INVISIBLE_EXCEPT_JOINERS = {k: v for k, v in _INVISIBLE.items() if chr(k) not in INDIC_JOINERS}
+_JOINER_RUN = re.compile(f"[{INDIC_JOINERS}]+")
+
+
+def strip_invisible(text: str, keep_joiners: bool = False) -> str:
+    """Delete characters that render as nothing (see ``_INVISIBLE``) and private-use characters.
+
+    ``keep_joiners`` leaves the zero-width (non-)joiners for ``settle_joiners``.
+    """
+    text = text.translate(_INVISIBLE_EXCEPT_JOINERS if keep_joiners else _INVISIBLE)
+    return _PRIVATE_USE.sub("", text)
+
+
+def settle_joiners(text: str) -> str:
+    """Resolve zero-width (non-)joiners: a space next to an Indic letter, nothing anywhere else.
+
+    Kannada and Hindi writers put a ZWNJ between a word and the suffix attached to it (mobile + ge); treating it as a
+    word break is the tokenisation the lexicons and the published evaluation were built on. Between Latin letters or
+    digits it is invisible and must not split a keyword, so it is deleted.
+    """
+
+    def settle(match: re.Match[str]) -> str:
+        before = text[match.start() - 1] if match.start() else ""
+        after = text[match.end()] if match.end() < len(text) else ""
+        indic = "\u0900" <= before <= "\u0dff" or "\u0900" <= after <= "\u0dff"
+        return " " if indic and before and after else ""
+
+    return _JOINER_RUN.sub(settle, text)
+
+
+def fold_confusables(text: str) -> str:
+    """Fold Cyrillic/Greek look-alike letters to Latin inside words that contain nothing else but Latin text."""
+    if not _HAS_LOOKALIKE.search(text):
+        return text
+
+    def fold(match: re.Match[str]) -> str:
+        word = match.group()
+        return word.translate(_LOOKALIKE_TABLE) if _FOLDABLE_WORD.fullmatch(word) else word
+
+    return _WORD_RUN.sub(fold, text)
+
+
 def normalize(text: str, lowercase: bool = True) -> str:
-    """Canonical form for matching: NFC, no zero-width chars, ASCII digits, no nukta, tidy punctuation.
+    """Canonical form for matching: NFC, no invisible chars, ASCII digits, no nukta, tidy punctuation.
 
     ``lowercase=False`` keeps Latin case for readable evidence excerpts; patterns are case-insensitive anyway.
     """
-    text = unicodedata.normalize("NFC", text).translate(_ZERO_WIDTH)
+    text = fold_confusables(strip_invisible(unicodedata.normalize("NFC", text)))
     text = text.replace("’", "'").replace("‘", "'").replace("`", "'")
     text = text.translate(_INDIC_DIGITS)
     text = text.replace("\u093c", "")  # Devanagari nukta: ज़/फ़ match ज/फ

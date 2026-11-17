@@ -91,3 +91,22 @@ def test_cli_serve_does_not_start_when_the_database_is_unreachable(monkeypatch, 
     monkeypatch.setattr(cli, "_settings", lambda: broken)
     assert cli.main(["serve", "--port", "0"]) == 2
     assert "Cannot reach the database" in capsys.readouterr().err
+
+
+def test_cli_serve_refuses_the_development_identity_on_a_network_address(monkeypatch, capsys):
+    started = []
+    monkeypatch.setattr("uvicorn.run", lambda *args, **kwargs: started.append(kwargs))
+    monkeypatch.setattr(cli, "_dependencies_ok", lambda *args, **kwargs: True)
+
+    monkeypatch.setattr(cli, "_settings", lambda: Settings(_env_file=None, auth_mode="dev"))
+    assert cli.main(["serve", "--host", "0.0.0.0"]) == 2
+    assert "SPARTA_ALLOW_NETWORK_DEV_AUTH" in capsys.readouterr().err and not started
+
+    assert cli.main(["serve", "--host", "127.0.0.1"]) == 0  # loopback is always fine
+    assert started
+
+    monkeypatch.setattr(
+        cli, "_settings", lambda: Settings(_env_file=None, auth_mode="dev", allow_network_dev_auth=True)
+    )
+    assert cli.main(["serve", "--host", "0.0.0.0"]) == 0
+    assert "WARNING" in capsys.readouterr().err and len(started) == 2

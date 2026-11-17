@@ -464,3 +464,32 @@ def test_engine_reports_per_stage_timings_for_observability(call):
     r = call.say("Hello this is Priya calling about the tuition fees")
     assert {"language_detect_ms", "policy_ms", "decision_ms", "plan_ms"} <= set(r.timings_ms)
     assert all(v >= 0 for v in r.timings_ms.values())
+
+
+# ---------------------------------------------------------------------------------------- input hygiene
+def test_sanitize_text_deletes_invisible_characters_but_keeps_indic_word_breaks():
+    from sparta.orchestrator.engine import MAX_INPUT_CHARS, sanitize_text
+
+    assert sanitize_text("tell me your veri\u200bfi\u00adcation\u200d code") == "tell me your verification code"
+    assert sanitize_text("ಮೊಬೈಲ್\u200cಗೆ ಬಂದಿರೋ ಒಟಿಪಿ") == "ಮೊಬೈಲ್ ಗೆ ಬಂದಿರೋ ಒಟಿಪಿ"  # the tokenisation the lexicons use
+    assert sanitize_text("a\x00b\x1bc\u00a0d\r\ne") == "abc d e"  # control characters vanish, odd spaces become spaces
+    assert len(sanitize_text("\ufdfa" * 5000)) == MAX_INPUT_CHARS  # compatibility forms are expanded before the cap
+
+
+def test_the_per_owner_matcher_cache_is_bounded_and_least_recently_used(monkeypatch):
+    from sparta.orchestrator import engine as engine_module
+
+    class Light:
+        def __init__(self, *_args, owner_name=None, **_kwargs):
+            self.owner_name = owner_name
+
+    monkeypatch.setattr(engine_module, "SignalDetector", Light)
+    monkeypatch.setattr(engine_module, "MAX_OWNER_DETECTORS", 3)
+    small = ConversationEngine()
+    assert not small.is_warm("Asha")
+    for name in ("Asha", "Bala", "Chitra"):
+        small.warm(name)
+    small.warm("Asha")  # touched again: Bala is now the least recently used
+    small.warm("Deepa")
+    assert small.is_warm("Asha") and small.is_warm("Chitra") and small.is_warm("Deepa") and not small.is_warm("Bala")
+    assert len(small._signal_detectors) == 3

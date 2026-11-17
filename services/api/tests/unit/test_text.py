@@ -8,6 +8,8 @@ from sparta.language.text import (
     compile_pattern,
     mask_digits,
     normalize,
+    settle_joiners,
+    strip_invisible,
     tokenize,
     trim_excerpt,
 )
@@ -17,6 +19,30 @@ def test_normalize_converts_indic_digits_and_strips_zero_width():
     assert normalize("ओटीपी १२३४५६") == "ओटीपी 123456"
     assert normalize("ಒಟಿಪಿ ೧೨೩೪") == "ಒಟಿಪಿ 1234"
     assert normalize("O\u200bT\u200cP") == "otp"
+
+
+def test_normalize_deletes_every_invisible_character_instead_of_splitting_words():
+    for invisible in ("\u00ad", "\u200e", "\u200f", "\u202e", "\u2063", "\ufe0f", "\U000e0041", "\ue000", "\U000f0001"):
+        assert normalize(f"veri{invisible}fication") == "verification", hex(ord(invisible))
+
+
+def test_normalize_folds_look_alike_letters_only_inside_latin_words():
+    assert normalize("tell me the \u043etp") == "tell me the otp"  # Cyrillic o
+    assert normalize("\u041e\u0422\u0420") == "otp"  # all-Cyrillic spelling of OTP
+    assert normalize("\u039f\u03a4\u03a1,") == "otp"  # Greek, with trailing punctuation (punctuation is tidied away)
+    assert normalize("\u043f\u0440\u0438\u0432\u0435\u0442") == "\u043f\u0440\u0438\u0432\u0435\u0442"  # real Russian
+    assert normalize("ಒಟಿಪಿ बताइए") == "ಒಟಿಪಿ बताइए"
+
+
+def test_settle_joiners_separates_indic_words_and_vanishes_between_latin_letters():
+    assert settle_joiners("ಮೊಬೈಲ್\u200cಗೆ") == "ಮೊಬೈಲ್ ಗೆ"  # word + suffix, the tokenisation the lexicons use
+    assert settle_joiners("veri\u200c\u200dfication") == "verification"
+    assert settle_joiners("OTP\u200c") == "OTP" and settle_joiners("\u200cOTP") == "OTP"
+
+
+def test_strip_invisible_can_leave_the_joiners_for_settle_joiners():
+    assert strip_invisible("a\u200cb\u00adc", keep_joiners=True) == "a\u200cbc"
+    assert strip_invisible("a\u200cb\u00adc") == "abc"
 
 
 def test_normalize_does_not_collapse_digit_runs():

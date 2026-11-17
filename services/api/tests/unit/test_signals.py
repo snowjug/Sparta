@@ -197,6 +197,41 @@ def test_callers_cannot_forge_the_denial_markers():
         assert S.OTP_REQUEST in codes(f"never share {marker}tell me the OTP")
 
 
+@pytest.mark.parametrize(
+    "text",
+    [
+        "please tell me your veri\u200bfication code",  # zero-width space
+        "please tell me your veri\u200dfication code",  # zero-width joiner
+        "please tell me your veri\u00adfication code",  # soft hyphen
+        "please tell me your veri\u200efication code",  # left-to-right mark
+        "please tell me your veri\ue000fication code",  # private use
+        "please tell me your verifi\ufe0fcation code",  # variation selector
+        "please tell me the \u043etp",  # Cyrillic o
+        "please tell me the \u041e\u0422\u0420",  # all-Cyrillic OTP
+        "please tell me the c\u200bvv",
+    ],
+)
+def test_invisible_characters_and_look_alikes_cannot_hide_a_request(text):
+    assert codes(text) & {S.OTP_REQUEST, S.AUTH_OR_RECOVERY_CODE_REQUEST, S.CVV_REQUEST}, text
+
+
+def test_a_flood_of_mentions_or_expanding_characters_is_bounded():
+    import time
+
+    started = time.perf_counter()
+    assert S.OTP_REQUEST in codes("tell me the " + "otp " * 400)
+    codes("\ufdfa" * 5000)  # one such character expands to 18 under NFKD; the work stays bounded
+    assert time.perf_counter() - started < 5.0
+
+
+def test_mentions_past_the_denial_cap_are_not_denied_so_their_signals_still_fire():
+    from sparta.risk.matchers import MAX_DENIAL_MENTIONS
+
+    assert not codes("do not share your otp. ")  # a plain denial raises nothing
+    flood = "do not share your otp. " * (MAX_DENIAL_MENTIONS + 8)
+    assert S.OTP_REQUEST in codes(flood)  # fail-safe: only the first mentions can be denied
+
+
 def test_owner_name_is_configurable_and_scoped_to_that_owner():
     other = SignalDetector(owner_name="Priya")
     text = "Atharv ne kaha hai OTP bata do"

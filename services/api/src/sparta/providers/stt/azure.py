@@ -112,22 +112,31 @@ def pcm16_to_wav(pcm: bytes, sample_rate: int) -> bytes:
     return header + pcm
 
 
+_MAX_WAV_CHUNKS = 32  # a file of empty chunks must not keep the event loop busy
+
+
 def wav_duration_s(audio: bytes) -> float | None:
     """Upper bound on the seconds of audio in a RIFF/WAVE container, or ``None`` when it cannot be read cheaply.
 
     The declared ``data`` size is ignored (streamed WAVs declare 0 or 0xFFFFFFFF, and a lying header must not slip
-    past the duration limit): everything after the ``data`` chunk header counts.
+    past the duration limit): everything after the ``data`` chunk header counts. For PCM the byte rate is capped at
+    sample rate x channels x bits, and only the first few chunks are examined.
     """
     if len(audio) < 44 or audio[:4] != b"RIFF" or audio[8:12] != b"WAVE":
         return None
     byte_rate = 0
     pos = 12
-    while pos + 8 <= len(audio):
+    for _ in range(_MAX_WAV_CHUNKS):
+        if pos + 8 > len(audio):
+            return None
         chunk_id = audio[pos : pos + 4]
         size = int.from_bytes(audio[pos + 4 : pos + 8], "little")
         body = pos + 8
-        if chunk_id == b"fmt " and size >= 16 and body + 12 <= len(audio):
-            byte_rate = int.from_bytes(audio[body + 8 : body + 12], "little")
+        if chunk_id == b"fmt " and size >= 16 and body + 16 <= len(audio):
+            tag, channels, sample_rate, declared, _align, bits = struct.unpack("<HHIIHH", audio[body : body + 16])
+            byte_rate = declared
+            if tag in (1, 0xFFFE) and channels and sample_rate and bits and bits % 8 == 0 and declared:
+                byte_rate = min(declared, sample_rate * channels * bits // 8)
         elif chunk_id == b"data":
             return (len(audio) - body) / byte_rate if byte_rate else None
         pos = body + size + (size & 1)

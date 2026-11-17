@@ -36,15 +36,30 @@ def sniff(data: bytes) -> str | None:
     return None
 
 
+MAX_WAV_CHUNKS = 32  # header chunks examined before the audio data; real files have fewer than ten
+
+
 def wav_duration(data: bytes) -> float | None:
-    """Seconds of PCM audio from the WAV header, or ``None`` if the header cannot be parsed."""
+    """Upper bound on the seconds of PCM audio from the WAV header, or ``None`` if the header cannot be read.
+
+    Only the first ``MAX_WAV_CHUNKS`` chunks are examined (a file of empty chunks must not keep the server busy) and,
+    for PCM, the declared byte rate is checked against sample rate x channels x bits so a lying header cannot make a
+    long recording look short.
+    """
     try:
         pos, byte_rate = 12, 0
-        while pos + 8 <= len(data):
+        for _ in range(MAX_WAV_CHUNKS):
+            if pos + 8 > len(data):
+                return None
             chunk_id = data[pos : pos + 4]
             (size,) = struct.unpack("<I", data[pos + 4 : pos + 8])
             if chunk_id == b"fmt ":
-                (byte_rate,) = struct.unpack("<I", data[pos + 16 : pos + 20])
+                if size < 16:
+                    return None
+                tag, channels, sample_rate, declared, _align, bits = struct.unpack("<HHIIHH", data[pos + 8 : pos + 24])
+                byte_rate = declared
+                if tag in (1, 0xFFFE) and channels and sample_rate and bits and bits % 8 == 0:
+                    byte_rate = min(declared, sample_rate * channels * bits // 8) if declared else 0
             elif chunk_id == b"data":
                 data_size = min(size, len(data) - pos - 8)
                 return data_size / byte_rate if byte_rate else None
@@ -66,6 +81,8 @@ def validate_audio(data: bytes, declared_type: str | None, *, max_bytes: int, ma
     if sniff(data) != container:
         raise UnsupportedMedia("The file contents do not match the declared audio type.")
     duration = wav_duration(data) if container == "wav" else None
+    if container == "wav" and duration is None:
+        raise InvalidInput("The WAV header could not be read. Use a standard PCM WAV file.")
     if duration is not None and duration > max_seconds:
         raise PayloadTooLarge(f"Audio is longer than the {max_seconds} second limit.")
     return AudioInfo(container=container, content_type=base, size=len(data), duration_s=duration)

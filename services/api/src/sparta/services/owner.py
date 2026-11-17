@@ -38,7 +38,7 @@ from sparta.orchestrator.engine import CallerInput, ConversationEngine, EngineCo
 from sparta.services.audit import record_audit
 from sparta.services.calls import CallService
 from sparta.services.dto import Principal
-from sparta.services.errors import Conflict, InvalidInput, NotFound
+from sparta.services.errors import Conflict, InvalidInput, NotFound, RateLimited
 from sparta.services.ids import IdFactory
 from sparta.services.numbers import PRIVATE_DISPLAY, fingerprint, mask_number, normalize_number
 from sparta.services.providers import ProviderSet
@@ -307,12 +307,14 @@ class OwnerService:
                     )
             await repo.save_assistant_profile(principal.id, profile, now)
             await record_audit(repo, principal.id, "assistant_profile.updated", "assistant_profile", None, now=now)
+        await self.calls.warm_matchers(principal, profile)  # a new name builds its matchers here, off the event loop
         return profile
 
     async def preview(self, principal: Principal, req: PreviewRequest) -> PreviewResult:
         """Run the real conversation engine on sample text without creating a call or storing anything."""
         prefs = await self.get_preferences(principal)
         profile = await self.get_profile(principal)
+        await self.calls.warm_matchers(principal, profile)
         mode = self.calls.validate_language_mode(req.language, prefs)
         cfg = self.calls.engine_config("preview", principal, prefs, profile, mode)
         opening = self.engine.start(cfg)
@@ -534,6 +536,15 @@ class OwnerService:
             existing = await repo.find_call_by_client_event(principal.id, req.client_event_id)
             if existing is not None:
                 return list_item_from_row(existing)
+            midnight = now.replace(hour=0, minute=0, second=0, microsecond=0)
+            if (
+                await repo.count_screening_events_since(principal.id, midnight)
+                >= self.settings.daily_screening_event_cap
+            ):
+                raise RateLimited(
+                    "The daily limit for screening events has been reached.",
+                    retry_after_s=max(1, int((midnight + timedelta(days=1) - now).total_seconds())),
+                )
             blocked, trusted = await repo.caller_status(principal.id, fp)
             outcome = {"allow": "allowed", "silence": "silenced", "reject": "rejected"}[req.decision]
             text = f"Android screening {outcome} a call from {display}" + (f" ({reason})." if reason else ".")

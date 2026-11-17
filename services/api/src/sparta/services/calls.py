@@ -236,15 +236,33 @@ class CallService:
                 "The daily call limit has been reached.", retry_after_s=max(1, int((midnight - now).total_seconds()))
             )
 
-    def engine_config(
-        self, call_id: str, principal: Principal, prefs: UserPreferences, profile: AssistantProfile, language_mode: str
-    ) -> EngineConfig:
+    @staticmethod
+    def owner_name_for(principal: Principal, profile: AssistantProfile) -> str | None:
+        """The name the assistant uses for its owner (``None`` until a real one is known)."""
         owner = profile.owner_display_name
         if owner.strip().lower() == ASSISTANT_PROFILE_DEFAULT_NAME and principal.display_name:
             owner = principal.display_name
+        return None if owner.strip().lower() == ASSISTANT_PROFILE_DEFAULT_NAME else owner
+
+    async def warm_matchers(self, principal: Principal, profile: AssistantProfile | None = None) -> None:
+        """Build the owner's name-specific matchers in a worker thread (about a second the first time).
+
+        Doing it here keeps the event loop free; the conversation engine would otherwise build them inline on the
+        owner's first call or preview.
+        """
+        if profile is None:
+            async with self.db.uow() as repo:
+                profile = await repo.get_assistant_profile(principal.id) or AssistantProfile()
+        name = self.owner_name_for(principal, profile)
+        if not self.engine.is_warm(name):
+            await asyncio.to_thread(self.engine.warm, name)
+
+    def engine_config(
+        self, call_id: str, principal: Principal, prefs: UserPreferences, profile: AssistantProfile, language_mode: str
+    ) -> EngineConfig:
         return EngineConfig(
             call_id=call_id,
-            owner_name=None if owner.strip().lower() == ASSISTANT_PROFILE_DEFAULT_NAME else owner,
+            owner_name=self.owner_name_for(principal, profile),
             response_style=profile.response_style,
             speaking_rate=profile.speaking_rate,
             voice_ids=dict(profile.voice_ids),
@@ -296,6 +314,7 @@ class CallService:
         simulated = provider.capabilities.simulated
         raw_number = incoming.caller_number if incoming else req.caller_number
         e164 = normalize_number(raw_number)
+        await self.warm_matchers(principal)
         async with self.db.uow() as repo:
             await repo.ensure_user(principal.id, principal.display_name or principal.id, now)
             prefs = await repo.get_preferences(principal.id)
