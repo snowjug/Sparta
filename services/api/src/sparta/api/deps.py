@@ -26,6 +26,7 @@ IDEMPOTENCY_TTL = timedelta(hours=24)
 CONTENT_ROUTE = re.compile(r"^[A-Z]+ \S*/calls/[^/\s]+/(?:turns|audio|silence|feedback)$")
 IDEMPOTENCY_CONTENT_TTL = timedelta(minutes=15)
 CALL_ID_PATTERN = r"^[A-Za-z0-9_\-]{1,64}$"
+CALL_ID_VALUE = re.compile(CALL_ID_PATTERN)
 
 
 def get_container(conn: HTTPConnection) -> Container:
@@ -112,6 +113,10 @@ async def run_idempotent[T](
             return JSONResponse(stored[2], status_code=stored[1], headers={"Idempotent-Replayed": "true"})
         result = await handler()
         payload = jsonable_encoder(result)
+        created = payload.get("id") if isinstance(payload, dict) else None
+        call_id = created if isinstance(created, str) and created.startswith("call_") else None  # e.g. POST /calls
+        if call_id is not None and not CALL_ID_VALUE.fullmatch(call_id):
+            call_id = None
         ttl, stored_status = IDEMPOTENCY_TTL, status_code
         if CONTENT_ROUTE.match(route):
             ttl = IDEMPOTENCY_CONTENT_TTL
@@ -127,5 +132,5 @@ async def run_idempotent[T](
                     }
                 }
         async with container.db.uow() as repo:
-            await repo.save_idempotent(owner.id, route, key, digest, stored_status, payload, now, ttl)
+            await repo.save_idempotent(owner.id, route, key, digest, stored_status, payload, now, ttl, call_id)
         return JSONResponse(jsonable_encoder(result), status_code=status_code)

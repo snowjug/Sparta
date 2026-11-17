@@ -3,6 +3,7 @@
 import os
 import tempfile
 from collections.abc import AsyncIterator, Iterator
+from pathlib import Path
 
 import pytest
 import pytest_asyncio
@@ -43,14 +44,19 @@ def clock() -> VirtualClock:
     return VirtualClock()
 
 
-def _database_urls() -> list[str]:
-    urls = ["sqlite+aiosqlite:///:memory:"]
+def _database_params() -> list[object]:
+    """SQLite in memory, SQLite in a file (the development default, with real connection concurrency), PostgreSQL."""
+    file_db = Path(tempfile.mkdtemp(prefix="sparta-test-db-")) / "sparta-test.db"
+    params = [
+        pytest.param("sqlite+aiosqlite:///:memory:", id="sqlite-memory"),
+        pytest.param(f"sqlite+aiosqlite:///{file_db.as_posix()}", id="sqlite-file"),
+    ]
     if postgres := os.environ.get("SPARTA_TEST_POSTGRES_URL"):
-        urls.append(postgres)
-    return urls
+        params.append(pytest.param(postgres, id="postgresql"))
+    return params
 
 
-@pytest_asyncio.fixture(params=_database_urls(), ids=lambda url: url.split(":", 1)[0].split("+", 1)[0])
+@pytest_asyncio.fixture(params=_database_params())
 async def db(request: pytest.FixtureRequest) -> AsyncIterator[Database]:
     """A fresh schema on every database engine available (SQLite always; PostgreSQL when configured)."""
     database = Database(request.param)

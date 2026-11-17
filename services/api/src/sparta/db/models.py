@@ -271,6 +271,7 @@ class IdempotencyRow(Base):
     request_hash: Mapped[str] = mapped_column(String(64))
     status_code: Mapped[int] = mapped_column(Integer)
     response: Mapped[Any] = mapped_column(EncryptedJSON, nullable=True)
+    call_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)  # the call the response is about
     created_at: Mapped[datetime] = mapped_column(UTCDateTime)
     expires_at: Mapped[datetime] = mapped_column(UTCDateTime, index=True)
 

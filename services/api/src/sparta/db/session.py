@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Any
 from sqlalchemy import event, text
 from sqlalchemy.engine import make_url
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
-from sqlalchemy.pool import StaticPool
+from sqlalchemy.pool import AsyncAdaptedQueuePool
 
 from sparta.db.models import Base
 
@@ -22,8 +22,15 @@ MIGRATIONS_DIR = _PACKAGE_MIGRATIONS if _PACKAGE_MIGRATIONS.is_dir() else _SOURC
 ALEMBIC_INI = MIGRATIONS_DIR.parent / "alembic.ini"  # present in a source checkout only; logging setup is optional
 
 
+SQLITE_BUSY_TIMEOUT_MS = 15_000  # how long a writer waits for another one before "database is locked"
+
+
 def is_sqlite(url: str) -> bool:
     return url.startswith("sqlite")
+
+
+def is_sqlite_file(url: str) -> bool:
+    return is_sqlite(url) and ":memory:" not in url and not url.endswith("://")
 
 
 class DatabaseUnavailable(RuntimeError):
@@ -35,8 +42,16 @@ class Database:
         self.url = url
         kwargs: dict[str, Any] = {"echo": echo}
         if is_sqlite(url):
-            if ":memory:" in url or url.endswith("://"):
-                kwargs.update(poolclass=StaticPool, connect_args={"check_same_thread": False})
+            if not is_sqlite_file(url):
+                # One connection holds the whole in-memory database (every test and the deterministic replay), so
+                # units of work must take turns on it: sharing it between overlapping transactions lets one commit
+                # or roll back another's work.
+                kwargs.update(
+                    poolclass=AsyncAdaptedQueuePool,
+                    pool_size=1,
+                    max_overflow=0,
+                    connect_args={"check_same_thread": False},
+                )
             else:
                 parsed = make_url(url)
                 if parsed.database:
@@ -45,14 +60,28 @@ class Database:
             kwargs.update(pool_size=10, max_overflow=10, pool_pre_ping=True)
         self.engine: AsyncEngine = create_async_engine(url, **kwargs)
         if is_sqlite(url):
+            file_backed = is_sqlite_file(url)
 
             @event.listens_for(self.engine.sync_engine, "connect")
             def _pragmas(dbapi_conn: Any, _record: Any) -> None:
+                if file_backed:
+                    dbapi_conn.isolation_level = None  # transactions are started explicitly, see _begin_immediate
                 cur = dbapi_conn.cursor()
                 cur.execute("PRAGMA foreign_keys=ON")
-                if ":memory:" not in url:
+                if file_backed:
                     cur.execute("PRAGMA journal_mode=WAL")
+                    cur.execute(f"PRAGMA busy_timeout={SQLITE_BUSY_TIMEOUT_MS}")
                 cur.close()
+
+            if file_backed:
+
+                @event.listens_for(self.engine.sync_engine, "begin")
+                def _begin_immediate(conn: Any) -> None:
+                    # A deferred transaction that reads and later writes fails at once with "database is locked" when
+                    # another connection committed in between, and no busy timeout helps. Taking the write lock when
+                    # the transaction begins makes writers queue instead. Every unit of work here is short and never
+                    # waits on another one (see tests/unit/test_transactions.py), so queueing cannot deadlock.
+                    conn.exec_driver_sql("BEGIN IMMEDIATE")
 
         self._sessions = async_sessionmaker(self.engine, expire_on_commit=False, class_=AsyncSession)
 

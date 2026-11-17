@@ -1,5 +1,6 @@
 """Persistence behaviour on every available engine (SQLite always, PostgreSQL when SPARTA_TEST_POSTGRES_URL is set)."""
 
+import asyncio
 from datetime import UTC, datetime, timedelta
 
 import pytest
@@ -168,7 +169,9 @@ async def test_duplicate_provider_events_are_detected(db):
 
 @pytest.mark.asyncio
 async def test_ensure_user_survives_losing_the_insert_race(db, monkeypatch):
-    # Two requests both read "no such user"; the other one commits first, then ours inserts and hits the unique key.
+    # Another request already committed the user; ours read "no such user" earlier and now inserts into the unique key.
+    async with db.uow() as winner:
+        await winner.ensure_user("racer", "Racer", NOW)
     async with db.uow() as loser:
         real_get = loser.s.get
 
@@ -176,10 +179,33 @@ async def test_ensure_user_survives_losing_the_insert_race(db, monkeypatch):
             return None if entity is m.UserRow else await real_get(entity, ident, *args, **kwargs)
 
         monkeypatch.setattr(loser.s, "get", stale_get)
-        async with db.uow() as winner:
-            await winner.ensure_user("racer", "Racer", NOW)
         await loser.ensure_user("racer", "Racer", NOW)  # must not raise nor poison the transaction
         assert await loser.user_ids() == ["racer"]
+
+
+@pytest.mark.asyncio
+async def test_event_sequence_numbers_are_allocated_atomically_under_concurrency(db):
+    """Concurrent allocators (the unlocked partial-transcript path, timers, other workers) never share a number."""
+    await seed_user(db)
+    async with db.uow() as repo:
+        await repo.create_call(call_row("call_seq"))
+
+    async def allocate() -> int:
+        async with db.uow() as repo:
+            return await repo.next_event_seq("call_seq")
+
+    seqs = await asyncio.gather(*(allocate() for _ in range(40)))
+    assert sorted(seqs) == list(range(1, 41))
+    async with db.uow() as repo:
+        row = await repo.get_call_row("u1", "call_seq")
+        assert row is not None and row.event_seq == 40
+
+
+@pytest.mark.asyncio
+async def test_event_sequence_of_an_unknown_call_is_an_error_not_a_silent_zero(db):
+    async with db.uow() as repo:
+        with pytest.raises(LookupError):
+            await repo.next_event_seq("call_missing")
 
 
 @pytest.mark.asyncio

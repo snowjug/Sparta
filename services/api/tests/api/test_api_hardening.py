@@ -59,6 +59,37 @@ async def test_cached_turn_responses_are_forgotten_with_the_calls_content(env: A
     assert await idempotency_rows(env) == []
 
 
+async def end_call(env: ApiEnv, call_id: str) -> None:
+    assert (await env.client.post(f"{API}/calls/{call_id}/end", json={})).status_code == 200
+    await env.advance(60)
+
+
+async def test_deleting_a_call_forgets_the_cached_response_that_created_it(env: ApiEnv):
+    key = {"Idempotency-Key": "create-0001"}
+    body = {"caller_number": "+919876543213", "silence_timers": "off"}
+    created = await env.client.post(f"{API}/calls", json=body, headers=key)
+    assert created.status_code == 201
+    call_id = created.json()["id"]
+    assert [r.call_id for r in await idempotency_rows(env)] == [call_id]
+    again = await env.client.post(f"{API}/calls", json=body, headers=key)
+    assert again.headers["idempotent-replayed"] == "true" and again.json()["id"] == call_id
+
+    await end_call(env, call_id)
+    assert (await env.client.delete(f"{API}/calls/{call_id}")).status_code == 204
+    assert await idempotency_rows(env) == []
+    fresh = await env.client.post(f"{API}/calls", json=body, headers=key)  # nothing replays the deleted call
+    assert fresh.status_code == 201 and "idempotent-replayed" not in fresh.headers and fresh.json()["id"] != call_id
+
+
+async def test_deleting_only_the_content_also_forgets_the_creation_response(env: ApiEnv):
+    key = {"Idempotency-Key": "create-0002"}
+    body = {"caller_number": "+919876543214", "silence_timers": "off"}
+    call_id = (await env.client.post(f"{API}/calls", json=body, headers=key)).json()["id"]
+    await end_call(env, call_id)
+    assert (await env.client.delete(f"{API}/calls/{call_id}/content")).status_code == 204
+    assert await idempotency_rows(env) == []
+
+
 async def test_cached_turn_responses_are_short_lived(env: ApiEnv):
     call = await env.new_call(caller_number="+919876543211")
     await env.client.post(

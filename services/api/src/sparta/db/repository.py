@@ -509,11 +509,22 @@ class Repository:
         )
 
     async def next_event_seq(self, call_id: str) -> int:
-        row = await self.s.get(m.CallSessionRow, call_id, with_for_update=False)
-        assert row is not None
-        row.event_seq += 1
-        await self.s.flush()
-        return row.event_seq
+        """Allocate the next live-event sequence number of a call.
+
+        A single ``UPDATE ... RETURNING``: concurrent allocators (the partial-transcript path runs without the per-call
+        lock, as do timers and other workers) are serialised by the database instead of reading the same counter and
+        colliding on the ``(call_id, seq)`` key.
+        """
+        seq = await self.s.scalar(
+            update(m.CallSessionRow)
+            .where(m.CallSessionRow.id == call_id)
+            .values(event_seq=m.CallSessionRow.event_seq + 1)
+            .returning(m.CallSessionRow.event_seq)
+            .execution_options(synchronize_session=False)
+        )
+        if seq is None:
+            raise LookupError(f"call {call_id} does not exist")
+        return int(seq)
 
     async def add_turns(self, turns: list[CallTurn]) -> None:
         for t in turns:
@@ -956,10 +967,11 @@ class Repository:
         await self.s.flush()
 
     async def delete_idempotent_for_call(self, user_id: str, call_id: str) -> None:
-        """Forget cached responses of requests made against one call (they can carry transcript text or notes)."""
+        """Forget cached responses about one call: requests made against it, and the request that created it."""
         stmt = delete(m.IdempotencyRow).where(
             m.IdempotencyRow.user_id == user_id,
             or_(
+                m.IdempotencyRow.call_id == call_id,
                 m.IdempotencyRow.route.contains(f"/calls/{call_id}/", autoescape=True),
                 m.IdempotencyRow.route.endswith(f"/calls/{call_id}", autoescape=True),
             ),
@@ -1085,6 +1097,7 @@ class Repository:
         response: Any,
         now: datetime,
         ttl: timedelta,
+        call_id: str | None = None,
     ) -> None:
         self.s.add(
             m.IdempotencyRow(
@@ -1094,6 +1107,7 @@ class Repository:
                 request_hash=request_hash,
                 status_code=status_code,
                 response=response,
+                call_id=call_id,
                 created_at=now,
                 expires_at=now + ttl,
             )
