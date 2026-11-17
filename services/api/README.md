@@ -38,6 +38,7 @@ ruff format --check .
 mypy src
 ```
 
-Tests that need PostgreSQL or Redis are skipped unless `SPARTA_TEST_POSTGRES_URL` (for example
-`postgresql+asyncpg://user:password@localhost:5432/sparta_test`) or `SPARTA_TEST_REDIS_URL` is set. Configuration is
+The PostgreSQL and Redis variants of the tests only run when `SPARTA_TEST_POSTGRES_URL` (for example
+`postgresql+asyncpg://user:password@localhost:5432/sparta_test`) or `SPARTA_TEST_REDIS_URL` (for example
+`redis://localhost:6379/1`) is set; everything else runs on SQLite and an in-memory store. Configuration is
 read from `SPARTA_*` environment variables or a `.env` file; see `../../.env.example`.
