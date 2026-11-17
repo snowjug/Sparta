@@ -64,6 +64,15 @@ def test_wildcard_origins_and_raw_audio_storage_are_refused_in_production():
     assert "no '*'" in str(err.value) and "Raw audio storage" in str(err.value)
 
 
+def test_production_telephony_that_delivers_audio_needs_a_real_recogniser():
+    azure = {"telephony_provider": "azure", "acs_connection_string": "endpoint=x", "acs_callback_base_url": "https://x"}
+    with pytest.raises(ConfigurationError, match="SPARTA_STT_PROVIDER=azure"):
+        Settings(**prod(**azure), _env_file=None)
+    Settings(
+        **prod(**azure, stt_provider="azure", azure_speech_key="k", azure_speech_region="centralindia"), _env_file=None
+    )
+
+
 def test_selecting_a_real_provider_requires_its_credentials_in_any_environment():
     s = Settings(telephony_provider="azure", llm_provider="azure_openai", stt_provider="azure", _env_file=None)
     problems = " ".join(s.problems())

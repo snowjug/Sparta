@@ -187,6 +187,11 @@ class Settings(BaseSettings):
                 "SPARTA_AZURE_OPENAI_KEY and SPARTA_AZURE_OPENAI_DEPLOYMENT"
             )
         if self.is_production:
+            if self.telephony_provider == "azure" and self.stt_provider == "simulator":
+                out.append(
+                    "TELEPHONY_PROVIDER=azure delivers the caller's audio, which needs speech recognition: "
+                    "set SPARTA_STT_PROVIDER=azure"
+                )
             if self.auth_mode == "dev":
                 out.append("SPARTA_AUTH_MODE=dev is forbidden when SPARTA_ENV=production (use oidc)")
             if not self.data_keys:

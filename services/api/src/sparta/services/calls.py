@@ -76,6 +76,8 @@ from sparta.providers.base import (
     TurnEvaluationRequest,
 )
 from sparta.providers.resilience import ResilientCaller
+from sparta.providers.vad.energy import EnergyVad
+from sparta.services.audio_pipeline import AudioPipeline
 from sparta.services.audit import record_audit
 from sparta.services.dto import (
     CreateCallRequest,
@@ -159,6 +161,7 @@ class CallService:
     async def stop(self) -> None:
         for rt in list(self._runtimes.values()):
             rt.cancel_timers()
+            await self._close_pipeline(rt)
         self._runtimes.clear()
 
     def active_runtime_count(self) -> int:
@@ -376,6 +379,7 @@ class CallService:
         )
         rt.state = result.ctx.state
         self._runtimes[call_id] = rt
+        self._attach_pipeline(rt, row.trace_id)
         async with self._locked(rt):
             with contextlib.suppress(ProviderError):
                 await provider.answer(rt.ref)
@@ -1185,6 +1189,7 @@ class CallService:
     # ====================================================================================== finalize
     async def _finalize_locked(self, rt: CallRuntime, reason: str | None = None) -> None:
         rt.cancel_timers()
+        await self._close_pipeline(rt)
         async with self.db.uow() as repo:
             row = await repo.get_call_row(rt.user_id, rt.call_id)
             if row is None or row.status != CallStatus.ACTIVE.value:
@@ -1333,6 +1338,61 @@ class CallService:
         rt = self._runtimes.get(call_id)
         if rt is not None and rt.pipeline is not None:
             await rt.pipeline.feed(pcm16, sample_rate)
+
+    def _attach_pipeline(self, rt: CallRuntime, trace_id: str) -> None:
+        """Providers that deliver the caller's media need recognition; the simulator hands over text instead."""
+        if not rt.provider.capabilities.receives_caller_audio:
+            return
+        if self.stt.meta.simulated:
+            problem = ProviderError(
+                self.stt.meta.provider,
+                "stt",
+                "Caller audio is arriving but speech recognition is simulated; set SPARTA_STT_PROVIDER=azure.",
+            )
+            task = asyncio.create_task(self._report_provider_error(rt, problem, degraded=True))
+            rt.background.add(task)
+            task.add_done_callback(rt.background.discard)
+            return
+        rt.pipeline = AudioPipeline(
+            call_id=rt.call_id,
+            sink=self,
+            stt=self.stt,
+            vad=EnergyVad(),
+            locales=lambda: self._stt_locales(rt),
+            trace_id=trace_id,
+        )
+
+    def _stt_locales(self, rt: CallRuntime) -> tuple[list[str], str | None]:
+        """Recognition candidates are the owner's enabled languages; a call fixed to one language hints that locale."""
+        registry = load_registry()
+        locales: list[str] = []
+        for code in rt.cfg.enabled_languages:
+            pack = registry.pack(code)
+            if pack is not None and pack.spec.stt_locale not in locales:
+                locales.append(pack.spec.stt_locale)
+        forced = registry.pack(rt.cfg.language_mode) if rt.cfg.language_mode != "auto" else None
+        return locales or ["en-IN"], (forced.spec.stt_locale if forced is not None else None)
+
+    async def _close_pipeline(self, rt: CallRuntime) -> None:
+        pipeline, rt.pipeline = rt.pipeline, None
+        if pipeline is not None:
+            with contextlib.suppress(Exception):
+                await pipeline.aclose()
+
+    def caller_speech_started(self, call_id: str) -> None:
+        """The recogniser's VAD heard the caller: the silence timer must not talk over them."""
+        rt = self._runtimes.get(call_id)
+        if rt is None:
+            return
+        rt.last_activity = self.clock.monotonic()
+        if rt.silence_task is not None and not rt.silence_task.done():
+            rt.silence_task.cancel()
+
+    def caller_speech_ended(self, call_id: str, produced_turn: bool) -> None:
+        """Speech ended without a usable transcript (noise, an empty result): go back to waiting for the caller."""
+        rt = self._runtimes.get(call_id)
+        if rt is not None and not produced_turn and rt.playback_id is None:
+            self._arm_silence(rt)
 
     async def caller_dtmf(self, call_id: str, digit: str) -> None:
         return None  # DTMF is received but never interpreted: no menu, and never a place to collect credentials
