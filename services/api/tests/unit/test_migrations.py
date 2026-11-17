@@ -67,3 +67,15 @@ async def test_migrations_apply_match_the_models_and_downgrade_cleanly(tmp_path)
 
         await run_migrations(url)  # and upgrades again after a downgrade
         await _reset(url)
+
+
+@pytest.mark.asyncio
+async def test_migrations_run_without_the_source_tree_alembic_ini(tmp_path, monkeypatch):
+    """A wheel install bundles the migrations but not alembic.ini; migrating must not depend on it."""
+    from sparta.db import session
+
+    monkeypatch.setattr(session, "ALEMBIC_INI", tmp_path / "missing" / "alembic.ini")
+    assert (session.MIGRATIONS_DIR / "env.py").is_file() and (session.MIGRATIONS_DIR / "versions").is_dir()
+    url = f"sqlite+aiosqlite:///{(tmp_path / 'no-ini.db').as_posix()}"
+    await run_migrations(url)
+    assert await _diff(url) == []

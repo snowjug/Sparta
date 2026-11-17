@@ -131,8 +131,9 @@ class LanguageDetector:
         ranked = sorted(scores.items(), key=lambda kv: kv[1], reverse=True)
         top_lang, top = ranked[0]
         if top_lang == "en-IN":
-            # Code-switched speech with an Indic frame ("nanu Sahyadri Bank customer care inda maatadthidini") is
-            # answered in the Indic language even when English nouns outnumber the Indic words.
+            # Code-switched speech with an Indic frame ("nanu Sahyadri Bank customer care inda maatadtidini") is
+            # answered in the Indic language even when English nouns outnumber the Indic words. The frame is found by
+            # the lexicon's suffixes, so a romanisation it does not list ("maatadthidini") stays English.
             indic_lang, indic = max(
                 (("hi-IN", scores.get("hi-IN", 0.0)), ("kn-IN", scores.get("kn-IN", 0.0))), key=lambda kv: kv[1]
             )

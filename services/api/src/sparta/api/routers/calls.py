@@ -251,7 +251,10 @@ async def export_call(call_id: CallId, owner: Owner, c: Ctr) -> JSONResponse:
 
 @router.delete("/{call_id}/content", status_code=204)
 async def delete_content(call_id: CallId, owner: Owner, c: Ctr) -> Response:
-    """Remove transcript, translations and claims; the risk level, category and summary stay."""
+    """Remove the transcript, translations, live events, summary, risk explanation, claims and any feedback notes.
+
+    The call record stays (time, duration, status, final risk level and category, blocked/trusted flags).
+    """
     await c.calls.delete_content(owner, call_id)
     return Response(status_code=204)
 

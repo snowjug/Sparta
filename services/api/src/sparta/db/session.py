@@ -16,8 +16,10 @@ from sparta.db.models import Base
 if TYPE_CHECKING:
     from sparta.db.repository import Repository
 
-MIGRATIONS_DIR = Path(__file__).resolve().parents[3] / "migrations"
-ALEMBIC_INI = MIGRATIONS_DIR.parent / "alembic.ini"
+_PACKAGE_MIGRATIONS = Path(__file__).resolve().parents[1] / "_migrations"  # wheel installs (hatch force-include)
+_SOURCE_MIGRATIONS = Path(__file__).resolve().parents[3] / "migrations"  # source checkout and editable installs
+MIGRATIONS_DIR = _PACKAGE_MIGRATIONS if _PACKAGE_MIGRATIONS.is_dir() else _SOURCE_MIGRATIONS
+ALEMBIC_INI = MIGRATIONS_DIR.parent / "alembic.ini"  # present in a source checkout only; logging setup is optional
 
 
 def is_sqlite(url: str) -> bool:
@@ -91,7 +93,7 @@ class Database:
 def _alembic_config(url: str) -> Any:
     from alembic.config import Config
 
-    cfg = Config(str(ALEMBIC_INI))
+    cfg = Config(str(ALEMBIC_INI)) if ALEMBIC_INI.is_file() else Config()
     cfg.set_main_option("script_location", str(MIGRATIONS_DIR))
     cfg.set_main_option("sqlalchemy.url", url.replace("%", "%%"))
     return cfg

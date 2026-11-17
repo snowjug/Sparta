@@ -101,7 +101,6 @@ class Settings(BaseSettings):
     acs_resource_id: str | None = Field(
         default=None, description="ACS resource id; the expected audience of Call Automation callback JWTs"
     )
-    acs_event_grid_secret: SecretStr | None = None
     entra_tenant_id: str | None = Field(default=None, description="Tenant that issues Event Grid delivery tokens")
     event_grid_audience: str | None = Field(default=None, description="Audience of Event Grid secure-webhook tokens")
     provider_timeout_s: float = 6.0

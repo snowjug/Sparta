@@ -56,6 +56,10 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["src/sparta"]
 
+# A wheel-only install (the Docker image) must be able to run `python -m sparta migrate`.
+[tool.hatch.build.targets.wheel.force-include]
+"migrations" = "sparta/_migrations"
+
 [tool.hatch.build.targets.sdist]
 include = ["src/sparta", "migrations", "alembic.ini", "README.md"]
 

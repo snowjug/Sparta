@@ -5961,7 +5961,7 @@
     },
     "/api/v1/calls/{call_id}/content": {
       "delete": {
-        "description": "Remove transcript, translations and claims; the risk level, category and summary stay.",
+        "description": "Remove the transcript, translations, live events, summary, risk explanation, claims and any feedback notes.\n\nThe call record stays (time, duration, status, final risk level and category, blocked/trusted flags).",
         "operationId": "calls_delete_content",
         "parameters": [
           {
