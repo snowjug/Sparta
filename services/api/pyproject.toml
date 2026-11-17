@@ -118,6 +118,10 @@ disallow_untyped_decorators = false
 module = ["azure.*", "alembic.*", "fakeredis.*"]
 ignore_missing_imports = true
 
+[tool.bandit]
+# `assert` is used for type narrowing only; ruff's S101 policy (production code avoids it by review) is the same.
+skips = ["B101"]
+
 [tool.coverage.run]
 source = ["src/sparta"]
 branch = true

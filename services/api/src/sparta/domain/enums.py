@@ -70,7 +70,7 @@ class SignalCode(StrEnum):
 
     # Protected-information requests
     OTP_REQUEST = "OTP_REQUEST"
-    PASSWORD_REQUEST = "PASSWORD_REQUEST"  # noqa: S105 (a signal identifier, not a credential)
+    PASSWORD_REQUEST = "PASSWORD_REQUEST"  # signal id, not a credential  # noqa: S105  # nosec B105
     PIN_REQUEST = "PIN_REQUEST"
     CVV_REQUEST = "CVV_REQUEST"
     CARD_OR_ACCOUNT_CREDENTIAL_REQUEST = "CARD_OR_ACCOUNT_CREDENTIAL_REQUEST"

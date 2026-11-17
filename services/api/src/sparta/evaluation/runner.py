@@ -97,7 +97,7 @@ class ScenarioResult:
 
 
 def _call_id(scenario_id: str) -> str:
-    return "call_" + hashlib.sha1(scenario_id.encode()).hexdigest()[:10]  # noqa: S324 (an identifier, not security)
+    return "call_" + hashlib.sha1(scenario_id.encode(), usedforsecurity=False).hexdigest()[:10]  # an identifier
 
 
 def run_scenario(engine: ConversationEngine, scenario: Scenario, *, noise: NoiseModel | None = None) -> ScenarioResult:

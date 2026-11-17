@@ -137,6 +137,17 @@ def test_ssml_escapes_markup_and_clamps_rate():
     assert '<voice name="en-IN-NeerjaNeural">' in ssml and 'xml:lang="en-IN"' in ssml
 
 
+def test_ssml_attribute_values_cannot_break_out_of_their_quotes():
+    from xml.etree import ElementTree
+
+    locale, voice_name, style = 'en-IN"><evil/>', 'v"><evil/>', "s'\"><evil/>"
+    root = ElementTree.fromstring(build_ssml("hello", locale, voice_name, style=style))
+    assert all("evil" not in element.tag for element in root.iter())
+    assert root.attrib["{http://www.w3.org/XML/1998/namespace}lang"] == locale
+    voice = root.find("{http://www.w3.org/2001/10/synthesis}voice")
+    assert voice is not None and voice.attrib["name"] == voice_name
+
+
 def test_duration_estimate_is_bounded_and_scales_with_rate():
     assert estimate_duration_ms("hi", "en-IN") == 600
     assert estimate_duration_ms("x" * 10000, "kn-IN") == 20000

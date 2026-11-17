@@ -17,7 +17,7 @@ class NoiseModel:
     def apply(self, text: str, scenario_id: str, turn_index: int) -> str:
         if self.level <= 0:
             return text
-        rng = random.Random(f"{self.seed}:{scenario_id}:{turn_index}")  # noqa: S311 (reproducible noise, not security)
+        rng = random.Random(f"{self.seed}:{scenario_id}:{turn_index}")  # reproducible noise  # noqa: S311  # nosec B311
         out: list[str] = []
         for token in text.split():
             roll = rng.random()
