@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Categories -->
+    <string name="category_unknown">Unclassified</string>
+    <string name="category_silent">Silent caller</string>
+    <string name="category_possible_financial_impersonation">Possible bank or financial impersonation</string>
+    <string name="category_possible_government_impersonation">Possible government impersonation</string>
+    <string name="category_possible_courier_impersonation">Possible courier impersonation</string>
+    <string name="category_possible_tech_support_scam">Possible tech-support scam</string>
+    <string name="category_possible_prize_scam">Possible prize scam</string>
+    <string name="category_possible_employer_impersonation">Possible employer impersonation</string>
+    <string name="category_prompt_injection_attempt">Attempt to manipulate the assistant</string>
+    <string name="category_telemarketing">Telemarketing</string>
+    <string name="category_harassment">Harassment</string>
+    <string name="category_legitimate_delivery">Delivery</string>
+    <string name="category_legitimate_appointment">Appointment</string>
+    <string name="category_legitimate_recruiter">Recruiter</string>
+    <string name="category_legitimate_support_callback">Support callback</string>
+    <string name="category_legitimate_personal">Personal</string>
+    <string name="category_legitimate_urgent">Urgent</string>
+
+    <!-- Call state -->
+    <string name="state_initializing">Connecting</string>
+    <string name="state_disclosure">Introducing itself as an AI assistant</string>
+    <string name="state_identify_caller">Asking who is calling</string>
+    <string name="state_identify_purpose">Asking why they are calling</string>
+    <string name="state_clarify">Asking a clarifying question</string>
+    <string name="state_assessing">Assessing the call</string>
+    <string name="state_safe_continue">Continuing safely</string>
+    <string name="state_escalate">Waiting for you</string>
+    <string name="state_refuse_sensitive_request">Refusing a sensitive request</string>
+    <string name="state_end_spam">Ending a spam call</string>
+    <string name="state_end_silence">Ending after silence</string>
+    <string name="state_owner_takeover">You took over</string>
+    <string name="state_completed">Completed</string>
+    <string name="state_failed">Failed</string>
+    <string name="state_unknown">Unknown state</string>
+
+    <!-- Status -->
+    <string name="call_status_active">In progress</string>
+    <string name="call_status_ended">Ended</string>
+    <string name="call_status_failed">Failed</string>
+    <string name="call_status_unknown">Unknown</string>
+
+    <!-- Recommended actions -->
+    <string name="advice_continue_screening">Keep screening</string>
+    <string name="advice_ask_clarifying_question">Ask a clarifying question</string>
+    <string name="advice_escalate_to_owner">Needs your decision</string>
+    <string name="advice_refuse_and_end">Refuse and end the call</string>
+    <string name="advice_end_spam">End as spam</string>
+    <string name="advice_block_recommended">Blocking is recommended</string>
+    <string name="advice_report_recommended">Reporting is recommended</string>
+    <string name="advice_human_review">Worth a human review</string>
+    <string name="advice_unknown">No advice</string>
+
+    <!-- Owner actions -->
+    <string name="owner_action_takeover">Took over</string>
+    <string name="owner_action_continue">Let Sparta continue</string>
+    <string name="owner_action_end">Ended the call</string>
+    <string name="owner_action_block">Blocked the caller</string>
+    <string name="owner_action_trust">Trusted the caller</string>
+    <string name="owner_action_unblock">Unblocked the caller</string>
+    <string name="owner_action_untrust">Removed trust</string>
+    <string name="owner_action_unknown">Owner action</string>
+
+    <!-- Feedback -->
+    <string name="feedback_correct_classification">Correct classification</string>
+    <string name="feedback_was_spam">This was spam</string>
+    <string name="feedback_was_legitimate">This was legitimate</string>
+    <string name="feedback_wrong_language">Wrong language</string>
+    <string name="feedback_poor_transcription">Poor transcription</string>
+    <string name="feedback_wrong_summary">Wrong summary</string>
+    <string name="feedback_trust_caller">Trust caller</string>
+    <string name="feedback_block_caller">Block caller</string>
+
+    <!-- Time -->
+    <string name="time_just_now">Just now</string>
+    <string name="time_minutes_ago">%1$d min ago</string>
+    <string name="time_hours_ago">%1$d h ago</string>
+    <string name="time_days_ago">%1$d d ago</string>
+</resources>

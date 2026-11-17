@@ -1,0 +1,9 @@
+{
+  "fingerprint_salt": "c3BhcnRhLXRlc3QtZmluZ2VycHJpbnQtc2FsdC0wMDAx",
+  "unknown_caller_behavior": "silence",
+  "trusted_contact_behavior": "screen_anyway",
+  "strictness": "strict",
+  "forwarding_number": "+918012345678",
+  "provider": "simulator",
+  "live_calls_supported": false
+}

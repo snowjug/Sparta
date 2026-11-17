@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="badge_simulated">Simulated</string>
+    <string name="badge_needs_you">Needs you</string>
+    <string name="badge_blocked">Blocked</string>
+    <string name="badge_trusted">Trusted</string>
+    <string name="caller_private">Private number</string>
+    <string name="call_row_description">Call from %1$s. %2$s. %3$s. %4$s.</string>
+    <string name="event_row_description">Call from %1$s. %2$s: %3$s. %4$s. Decided on this phone.</string>
+
+    <string name="severity_info">Info</string>
+    <string name="severity_low">Low</string>
+    <string name="severity_medium">Medium</string>
+    <string name="severity_high">High</string>
+    <string name="severity_critical">Critical</string>
+    <string name="severity_unknown">Unrated</string>
+    <string name="signal_reassuring">Reassuring sign</string>
+    <string name="signal_warning">Warning sign</string>
+    <string name="signal_excerpt">Heard: \u201c%1$s\u201d</string>
+    <string name="risk_meter_description">%1$s. Risk score %2$d%%, confidence %3$d%%.</string>
+
+    <string name="speaker_caller">Caller</string>
+    <string name="speaker_assistant">Sparta, AI assistant</string>
+    <string name="speaker_owner">You</string>
+    <string name="speaker_system">System</string>
+    <string name="speaker_unknown">Unknown speaker</string>
+    <string name="turn_interrupted">interrupted</string>
+    <string name="transcript_translation">Translation: %1$s</string>
+</resources>

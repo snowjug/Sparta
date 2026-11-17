@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!--
+      Permissions Sparta asks for, and why. Nothing else is requested by the app: no microphone, phone state, call log,
+      answer calls, call phone, storage, location or foreground-service permission. Details: docs/ANDROID_SETUP.md.
+    -->
+
+    <!-- Talk to the owner's own Sparta backend (REST and WebSocket). Granted at install time; no other network use. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!--
+      Android 13+ runtime permission. Used to tell the owner that a call needs a decision or was silenced or blocked.
+      Requested only after the in-app explanation, from a button the owner presses; refusing it never breaks screening.
+    -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!--
+      Optional runtime permission, OFF by default. Used only to ask "is this number in my contacts?" so that saved contacts
+      can ring through. Names and numbers are not read back, copied or uploaded. Requested only when the owner switches on
+      "Treat saved contacts as known callers", with the explanation shown above the switch.
+    -->
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
+
+    <!--
+      The next three are normal permissions (no prompt) that WorkManager needs for the battery-friendly background sync
+      and upload jobs. They are declared here so the reason is written down next to them.
+      ACCESS_NETWORK_STATE: lets the "only on a network" constraint be checked.
+    -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- WAKE_LOCK: WorkManager keeps the CPU awake for the few seconds a sync or upload runs. -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- RECEIVE_BOOT_COMPLETED: WorkManager re-registers the periodic sync after a reboot. -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
+    <!-- Sparta never runs foreground work, so WorkManager's foreground-service permission is removed from the merge. -->
+    <uses-permission
+        android:name="android.permission.FOREGROUND_SERVICE"
+        tools:node="remove" />
+
+    <!-- Tablets and Wi-Fi-only devices can still install the app (they just cannot be call-screening apps). -->
+    <uses-feature
+        android:name="android.hardware.telephony"
+        android:required="false" />
+
+    <application
+        android:name=".SpartaApp"
+        android:allowBackup="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:enableOnBackInvokedCallback="true"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:networkSecurityConfig="@xml/network_security_config"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.Sparta"
+        tools:targetApi="36">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!-- Notification taps: sparta://call/{id} and sparta://event/{id}. Not BROWSABLE: web pages cannot open them. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="sparta" />
+                <data android:host="call" />
+                <data android:host="event" />
+            </intent-filter>
+        </activity>
+
+        <!--
+          Native call screening (Android 10+ via ROLE_CALL_SCREENING, which the owner grants in a system dialog).
+          It can only allow, silence or reject a call: it cannot answer it, speak, or access call audio.
+          BIND_SCREENING_SERVICE restricts binding to the system, so exported="true" is required and safe.
+        -->
+        <service
+            android:name=".screening.SpartaCallScreeningService"
+            android:exported="true"
+            android:permission="android.permission.BIND_SCREENING_SERVICE">
+            <intent-filter>
+                <action android:name="android.telecom.CallScreeningService" />
+            </intent-filter>
+        </service>
+
+        <!-- WorkManager is initialised by SpartaApp (Configuration.Provider) so Hilt can build the workers. -->
+        <provider
+            android:name="androidx.startup.InitializationProvider"
+            android:authorities="${applicationId}.androidx-startup"
+            android:exported="false"
+            tools:node="merge">
+            <meta-data
+                android:name="androidx.work.WorkManagerInitializer"
+                android:value="androidx.startup"
+                tools:node="remove" />
+        </provider>
+
+        <!-- Foreground work is never used (see the permissions above), so WorkManager's foreground service is removed. -->
+        <service
+            android:name="androidx.work.impl.foreground.SystemForegroundService"
+            tools:node="remove" />
+
+    </application>
+</manifest>

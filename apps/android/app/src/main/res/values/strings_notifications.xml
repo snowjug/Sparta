@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Notification channels and notifications -->
+    <string name="channel_escalations_name">Calls that need you</string>
+    <string name="channel_escalations_desc">Urgent alerts when Sparta needs your decision on a call.</string>
+    <string name="channel_screening_name">Screening decisions</string>
+    <string name="channel_screening_desc">Quiet updates about calls Sparta silenced or blocked on this phone.</string>
+    <string name="notif_escalation_title">Sparta needs you on a call</string>
+    <string name="notif_escalation_text_purpose">%1$s: %2$s</string>
+    <string name="notif_escalation_text_plain">A call from %1$s needs your decision.</string>
+    <string name="notif_highrisk_title">Sparta flagged a high-risk call</string>
+    <string name="notif_screening_silenced_title">Silenced a call from %1$s</string>
+    <string name="notif_screening_rejected_title">Blocked a call from %1$s</string>
+    <string name="notif_screening_note">Sparta did not answer this call. It only changed how your phone handled it.</string>
+</resources>

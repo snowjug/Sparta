@@ -1,0 +1,102 @@
+{
+  "id": "call_01HZX",
+  "provider": "simulator",
+  "mode": "conversational",
+  "simulated": true,
+  "status": "active",
+  "state": "ESCALATE",
+  "started_at": "2026-11-17T10:00:00.123456Z",
+  "ended_at": null,
+  "duration_ms": null,
+  "caller_display": "+91 98•••• ••21",
+  "caller_claim": {"name": "Ravi", "organization": "Swift Courier", "role": null},
+  "purpose": "Parcel delivery coordination",
+  "category": "legitimate_delivery",
+  "risk_level": "low",
+  "risk_score": 0.12,
+  "confidence": 0.81,
+  "languages": ["en-IN", "hi-IN"],
+  "language_profile": "hinglish",
+  "summary_text": null,
+  "action_taken": null,
+  "owner_attention_required": true,
+  "blocked": false,
+  "trusted": false,
+  "has_content": true,
+  "language_mode": "auto",
+  "turns": [
+    {
+      "id": "turn_1", "call_id": "call_01HZX", "seq": 1, "speaker": "assistant",
+      "text": "Hello, I am an AI assistant answering for the owner. Who is calling?",
+      "transliteration": null, "translation": null, "language": "en-IN", "language_confidence": 0.99,
+      "language_profile": "english", "segments": [], "is_final": true, "confidence": null, "source": "assistant",
+      "interrupted": false, "spoken_fraction": null, "state_after": "DISCLOSURE",
+      "created_at": "2026-11-17T10:00:01Z", "latency": null,
+      "speech": {"text": "Hello, I am an AI assistant answering for the owner. Who is calling?", "locale": "en-IN",
+                 "voice_id": "en-IN-NeerjaNeural", "rate": 1.0, "style": null, "ssml": null,
+                 "transliteration": null, "est_duration_ms": 3200}
+    },
+    {
+      "id": "turn_2", "call_id": "call_01HZX", "seq": 2, "speaker": "caller",
+      "text": "Haan, main Swift Courier se bol raha hoon, parcel ke liye address confirm karna hai",
+      "transliteration": null, "translation": "Yes, I am calling from Swift Courier, I need to confirm the address for a parcel",
+      "language": "hi-IN", "language_confidence": 0.74, "language_profile": "hinglish",
+      "segments": [
+        {"language": "hi-IN", "script": "Latn", "romanized": true, "start": 0, "end": 4, "confidence": 0.8, "variant": "hinglish"},
+        {"language": "en-IN", "script": "Latn", "romanized": false, "start": 31, "end": 38, "confidence": 0.9, "variant": null}
+      ],
+      "is_final": true, "confidence": 0.88, "source": "provider_stt", "interrupted": false, "spoken_fraction": null,
+      "state_after": "IDENTIFY_PURPOSE", "created_at": "2026-11-17T10:00:09.5Z",
+      "latency": {"audio_input_ms": 20.0, "vad_ms": 5.0, "stt_ms": 310.5, "language_detect_ms": 4.0, "policy_ms": 2.0,
+                  "model_ms": 120.0, "tts_first_audio_ms": 180.0, "playback_start_ms": 12.0, "interruption_ms": null,
+                  "total_ms": 653.5, "simulated_stages": ["stt_ms"]},
+      "speech": null,
+      "future_field_added_by_newer_backend": {"ignored": true}
+    }
+  ],
+  "risk": {
+    "call_id": "call_01HZX", "detected_languages": ["en-IN", "hi-IN"], "language_profile": "hinglish",
+    "caller_claim": {"name": "Ravi", "organization": "Swift Courier", "role": null},
+    "purpose": "Parcel delivery coordination", "category": "legitimate_delivery", "risk_level": "low",
+    "risk_score": 0.12, "confidence": 0.81,
+    "signals": [
+      {"code": "LEGIT_DELIVERY_COORDINATION", "kind": "legitimate", "severity": "info", "weight": 0.4,
+       "evidence_turn_ids": ["turn_2"], "evidence_excerpt": "parcel ke liye address confirm", "description": "Delivery coordination language"},
+      {"code": "ADDRESS_OR_LOCATION_REQUEST", "kind": "risk", "severity": "medium", "weight": 0.3,
+       "evidence_turn_ids": ["turn_2"], "evidence_excerpt": null, "description": "Asks to confirm an address"},
+      {"code": "SOME_NEW_SIGNAL_CODE", "kind": "mystery_kind", "severity": "ultra", "weight": 0.1,
+       "evidence_turn_ids": [], "evidence_excerpt": null, "description": "A signal this app has never seen"}
+    ],
+    "recommended_action": "escalate_to_owner", "additional_actions": ["human_review"],
+    "requires_owner_attention": true, "reasons": ["Courier-style call with a plausible purpose"],
+    "policy_version": "default-v1", "assessed_at": "2026-11-17T10:00:10+00:00", "turn_count": 2
+  },
+  "escalations": [
+    {"id": "esc_1", "call_id": "call_01HZX", "reason": "Legitimate delivery call needs the owner", "status": "requested",
+     "created_at": "2026-11-17T10:00:10Z", "resolved_at": null, "important_lines": ["Parcel ke liye address confirm karna hai"]}
+  ],
+  "owner_actions": [
+    {"id": "act_1", "call_id": "call_01HZX", "action": "teleport", "created_at": "2026-11-17T10:00:20Z", "simulated": true, "result": "ok", "detail": null}
+  ],
+  "summary": null,
+  "feedback": [
+    {"id": "fb_1", "call_id": "call_01HZX", "kind": "correct_classification", "note": null, "created_at": "2026-11-17T10:05:00Z"}
+  ],
+  "timeline": [
+    {"at": "2026-11-17T10:00:00Z", "kind": "state", "label": "Call connected", "detail": null},
+    {"at": "2026-11-17T10:00:10Z", "kind": "escalation", "label": "Escalated to owner", "detail": "Delivery call"}
+  ],
+  "provider_events": [
+    {"id": "pe_1", "provider": "simulator", "event_type": "call.created", "external_id": null, "received_at": "2026-11-17T10:00:00Z", "detail": null}
+  ],
+  "versions": {"app_version": "0.1.0", "policy_version": "default-v1", "language_pack_version": "2026.11", "telephony_provider": "simulator",
+               "stt_provider": "simulator", "tts_provider": "simulator", "llm_provider": "rules", "llm_model": null},
+  "trace_id": "trace-abc123",
+  "metrics": {"turns": 2.0, "p50_total_ms": 653.5},
+  "capabilities": {
+    "can_take_over": true, "can_continue": true, "can_end": true, "can_block": true,
+    "takeover_note": "Simulated takeover: no phone call is transferred.",
+    "simulated": true, "two_way_audio": false,
+    "audio_note": "The simulator has no real audio path."
+  }
+}

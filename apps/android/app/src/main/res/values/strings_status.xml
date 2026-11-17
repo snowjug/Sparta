@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="nav_status">Status</string>
+    <string name="nav_calls">Calls</string>
+    <string name="nav_studio">Studio</string>
+    <string name="nav_privacy">Privacy</string>
+    <string name="nav_diagnostics">Diagnostics</string>
+
+    <string name="status_title">Protection</string>
+    <string name="status_subtitle">What Sparta is doing on this phone right now.</string>
+
+    <string name="status_role_granted_title">Screening is on</string>
+    <string name="status_role_granted_body">Sparta screens incoming calls on this phone. It can silence the ringer or reject a call, and it tells you what it did.</string>
+    <string name="status_role_not_granted_title">Screening is off</string>
+    <string name="status_role_not_granted_body">Sparta is not your call-screening app yet, so it is not screening any call. Choose it in the system dialog to turn screening on.</string>
+    <string name="status_role_declined_body">You declined the system request. You can try again, or choose Sparta under Settings, Apps, Default apps (the exact wording differs between phone makers).</string>
+    <string name="status_role_unsupported_title">This phone cannot use call screening</string>
+    <string name="status_role_unsupported_body">Call screening for apps needs Android 10 or newer (this phone runs Android %1$s, API %2$d). Sparta will not screen calls here. Nothing is broken: the platform simply does not allow it.</string>
+    <string name="status_role_unavailable_title">Call screening is not available</string>
+    <string name="status_role_unavailable_body">This phone\'s software does not offer the call-screening role, so Sparta cannot screen calls. Some phone makers remove it.</string>
+    <string name="status_enable_screening">Turn on call screening</string>
+    <string name="status_try_again_role">Try again</string>
+    <string name="status_open_default_apps">Open default app settings</string>
+
+    <string name="status_backend_title">Backend</string>
+    <string name="status_backend_not_configured">No backend configured. Screening still works on this phone using local settings, but block lists, history and call analysis need a Sparta backend.</string>
+    <string name="status_backend_reachable">Connected (%1$s)</string>
+    <string name="status_backend_checking">Checking connection</string>
+    <string name="status_backend_unreachable">Not reachable: %1$s</string>
+    <string name="status_backend_unreachable_cached">Not reachable: %1$s. Showing the last known status.</string>
+    <string name="status_provider_row">Telephony provider</string>
+    <string name="status_provider_simulated">%1$s (simulated)</string>
+    <string name="status_provider_real">%1$s</string>
+    <string name="status_provider_note">The backend says: %1$s</string>
+    <string name="status_live_calls_yes">The backend reports it can take forwarded calls and talk to the caller.</string>
+    <string name="status_live_calls_no">The backend reports no live telephony. There is no AI conversation on real phone calls with this backend.</string>
+    <string name="status_refresh">Refresh status</string>
+    <string name="status_refreshing">Refreshing</string>
+
+    <string name="status_forwarding_title">Call forwarding</string>
+    <string name="status_forwarding_unknown">Android does not let apps check call forwarding, so Sparta cannot tell whether it is on.</string>
+    <string name="status_forwarding_confirmed">You said forwarding is set up (not verified by the app).</string>
+    <string name="status_forwarding_not_available">The backend has no forwarding number. Live AI audio on real calls is not available with this backend.</string>
+    <string name="status_forwarding_available">Forwarding number from your backend: %1$s</string>
+    <string name="status_forwarding_open_helper">Set up forwarding</string>
+
+    <string name="status_last_decision_title">Last screening decision</string>
+    <string name="status_last_decision_none">No calls screened yet.</string>
+    <string name="status_last_decision_row">%1$s: %2$s</string>
+    <string name="status_last_decision_latency">Decided in %1$d ms</string>
+    <string name="status_attention_title">Calls that need you</string>
+    <plurals name="status_attention_count">
+        <item quantity="one">%1$d call is waiting for your decision</item>
+        <item quantity="other">%1$d calls are waiting for your decision</item>
+    </plurals>
+    <string name="status_attention_open">Review calls</string>
+    <plurals name="status_pending_uploads">
+        <item quantity="one">%1$d screening event is waiting to sync</item>
+        <item quantity="other">%1$d screening events are waiting to sync</item>
+    </plurals>
+
+    <string name="status_policy_title">How unknown callers are handled</string>
+    <string name="status_policy_screen">Unknown callers: the ringer is silenced and you are notified</string>
+    <string name="status_policy_silence">Unknown callers: the ringer is silenced</string>
+    <string name="status_policy_allow">Unknown callers: allowed to ring</string>
+
+    <string name="status_limits_title">What Sparta can and cannot do on this phone</string>
+    <string name="status_can_title">It can</string>
+    <string name="status_can_1">Silence the ringer or reject a call from an unknown or blocked number.</string>
+    <string name="status_can_2">Show you who called (the number is masked) and what Sparta decided.</string>
+    <string name="status_can_3">Keep block and trust lists on this phone, working without a connection.</string>
+    <string name="status_cannot_title">It cannot</string>
+    <string name="status_cannot_1">Answer a phone call on this phone, or speak to the caller. Android does not allow apps to do this.</string>
+    <string name="status_cannot_2">Hear or record call audio. Sparta never records calls.</string>
+    <string name="status_cannot_3">Run an AI conversation on a normal call. That only happens when the call is forwarded to your Sparta telephony number, which is a backend capability.</string>
+
+    <string name="status_notifications_off_title">Notifications are off</string>
+    <string name="status_notifications_off_body">Without notifications Sparta cannot tell you when a call needs you or when it silences a caller.</string>
+    <string name="status_notifications_allow">Allow notifications</string>
+    <string name="status_notifications_settings">Open notification settings</string>
+</resources>

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Native screening: decisions and reasons -->
+    <string name="action_allow">Allowed</string>
+    <string name="action_silence">Silenced</string>
+    <string name="action_reject">Rejected</string>
+
+    <string name="reason_blocked_number">On your block list</string>
+    <string name="reason_trusted_number">Trusted number</string>
+    <string name="reason_saved_contact">Saved contact</string>
+    <string name="reason_known_screened_anyway">Known number, screened anyway</string>
+    <string name="reason_verification_failed_rejected">Caller ID failed verification</string>
+    <string name="reason_verification_failed_silenced">Caller ID failed verification</string>
+    <string name="reason_unknown_allowed">Unknown caller, allowed</string>
+    <string name="reason_unknown_silenced">Unknown caller, silenced</string>
+    <string name="reason_unknown_screened">Unknown caller, screened</string>
+    <string name="reason_hidden_number_screened">Hidden number, screened</string>
+    <string name="reason_silence_unsupported">Silencing unavailable</string>
+    <string name="reason_deadline_exceeded">Allowed: decision took too long</string>
+    <string name="reason_internal_error">Allowed: Sparta hit an error</string>
+    <string name="reason_outgoing_call">Outgoing call</string>
+    <string name="reason_unrecognised">Other reason</string>
+
+    <string name="reason_blocked_number_explain">This number is on your block list, so the call was rejected.</string>
+    <string name="reason_trusted_number_explain">This number is on your trusted list, so the call was allowed.</string>
+    <string name="reason_saved_contact_explain">The number is in your contacts and you chose to treat contacts as known, so the call was allowed.</string>
+    <string name="reason_known_screened_anyway_explain">You chose to screen even known numbers, so the ringer was silenced.</string>
+    <string name="reason_verification_failed_rejected_explain">The network could not verify this caller ID (it may be spoofed). Your strict setting rejected the call.</string>
+    <string name="reason_verification_failed_silenced_explain">The network could not verify this caller ID (it may be spoofed), so the ringer was silenced.</string>
+    <string name="reason_unknown_allowed_explain">The number is not known and you chose to let unknown callers ring.</string>
+    <string name="reason_unknown_silenced_explain">The number is not known, so the ringer was silenced.</string>
+    <string name="reason_unknown_screened_explain">The number is not known, so the ringer was silenced and you were notified. Sparta does not answer calls on this phone.</string>
+    <string name="reason_hidden_number_screened_explain">The number was hidden or unusable, and your strict setting silenced the ringer.</string>
+    <string name="reason_silence_unsupported_explain">This Android version cannot silence calls, so the call was allowed.</string>
+    <string name="reason_deadline_exceeded_explain">Sparta could not decide within its time budget, so it allowed the call. That is the safe default.</string>
+    <string name="reason_internal_error_explain">Something failed while deciding, so the call was allowed. That is the safe default.</string>
+    <string name="reason_outgoing_call_explain">Outgoing calls are never screened or recorded.</string>
+    <string name="reason_unrecognised_explain">This decision was made by another version of Sparta.</string>
+</resources>

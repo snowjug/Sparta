@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config xmlns:tools="http://schemas.android.com/tools">
+    <!--
+      DEBUG BUILDS ONLY. Android cannot express "LAN only" in this file, so cleartext is enabled here and
+      BackendUrlPolicy (unit-tested) restricts http:// backends to localhost, 10.0.2.2 and private LAN addresses.
+      The release build uses src/main/res/xml/network_security_config.xml, which forbids cleartext.
+    -->
+    <base-config cleartextTrafficPermitted="true" tools:ignore="InsecureBaseConfiguration">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

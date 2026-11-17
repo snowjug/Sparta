@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="diag_title">Diagnostics</string>
+    <string name="diag_subtitle">What Sparta can see about itself on this phone. Nothing here contains phone numbers or call content.</string>
+
+    <string name="diag_phone_title">This phone</string>
+    <string name="diag_app">Sparta version</string>
+    <string name="diag_build">Build</string>
+    <string name="diag_build_debug">Debug</string>
+    <string name="diag_build_release">Release</string>
+    <string name="diag_android">Android</string>
+    <string name="diag_device">Device</string>
+    <string name="diag_patch">Security patch</string>
+    <string name="diag_network_debug">Debug build: http is allowed, but only for localhost, the emulator host and private network addresses.</string>
+    <string name="diag_network_release">Release build: only HTTPS connections are allowed.</string>
+
+    <string name="diag_screening_title">Screening</string>
+    <string name="diag_role">Call-screening role</string>
+    <string name="diag_decisions_total">Decisions recorded</string>
+    <string name="diag_allowed">Allowed</string>
+    <string name="diag_silenced">Silenced</string>
+    <string name="diag_rejected">Rejected</string>
+    <string name="diag_latency_avg">Average decision time</string>
+    <string name="diag_latency_p95">95th percentile</string>
+    <string name="diag_latency_max">Slowest</string>
+    <string name="diag_deadline_misses">Deadline misses (shown / ever)</string>
+    <string name="diag_deadline_note">A miss means Sparta did not decide within its own time budget and allowed the call. Android\'s limit is about five seconds.</string>
+    <string name="diag_recent_title">Latest decisions</string>
+
+    <string name="diag_permissions_title">Permissions</string>
+    <string name="diag_contacts_option">Contacts as known callers</string>
+    <string name="perm_state_not_asked">Not asked yet</string>
+    <string name="perm_state_granted">Allowed</string>
+    <string name="perm_state_denied">Refused (Sparta may ask again)</string>
+    <string name="perm_state_blocked">Refused (change it in Android settings)</string>
+    <string name="perm_state_not_required">Not needed on this Android version</string>
+
+    <string name="diag_backend_title">Backend</string>
+    <string name="diag_backend_no_status">No status has been fetched yet.</string>
+    <string name="diag_telephony_kind">Telephony</string>
+    <string name="diag_live_calls">Live calls supported</string>
+    <string name="diag_backend_version">Backend version</string>
+    <string name="diag_auth_mode">Sign-in mode</string>
+    <string name="diag_status_age">Status fetched</string>
+    <string name="diag_test_connection">Test the connection</string>
+    <string name="diag_connection_ok">Reachable in %1$d ms. Backend version %2$s.</string>
+
+    <string name="diag_sync_title">Sync</string>
+    <string name="diag_last_sync">Last sync</string>
+    <string name="diag_never">Never</string>
+    <string name="diag_last_sync_error">Last sync problem</string>
+    <string name="diag_pending_uploads">Events waiting to upload</string>
+    <string name="diag_sync_now">Run a sync now</string>
+    <string name="diag_sync_skipped">Nothing to sync: no backend is configured.</string>
+    <string name="diag_sync_error">The sync hit a problem: %1$s</string>
+    <string name="diag_sync_ok">Sync finished. Uploads re-queued: %1$d. Notifications posted: %2$d.</string>
+
+    <string name="diag_report_title">Diagnostic report</string>
+    <string name="diag_report_body">Share this when you ask for help. It contains no phone numbers, no call content and no backend address.</string>
+    <string name="diag_share">Share the report</string>
+    <string name="diag_share_subject">Sparta diagnostic report</string>
+    <string name="diag_share_chooser">Share the diagnostic report</string>
+</resources>

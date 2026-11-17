@@ -1,0 +1,22 @@
+{
+  "items": [
+    {
+      "id": "call_2", "provider": "android_screening", "mode": "screening_only", "simulated": false, "status": "ended",
+      "state": "COMPLETED", "started_at": "2026-11-17T09:00:00Z", "ended_at": "2026-11-17T09:00:00Z", "duration_ms": 0,
+      "caller_display": "+91 98•••• ••21", "caller_claim": {"name": null, "organization": null, "role": null},
+      "purpose": null, "category": "unknown", "risk_level": "unknown", "risk_score": 0.0, "confidence": 0.0,
+      "languages": [], "language_profile": null, "summary_text": null, "action_taken": "silence",
+      "owner_attention_required": false, "blocked": false, "trusted": false, "has_content": false
+    },
+    {
+      "id": "call_1", "provider": "simulator", "mode": "conversational", "simulated": true, "status": "ended",
+      "state": "END_SPAM", "started_at": "2026-11-16T18:30:00Z", "ended_at": "2026-11-16T18:31:10Z", "duration_ms": 70000,
+      "caller_display": "+91 70•••• ••09", "caller_claim": {"name": null, "organization": "Fake Bank", "role": null},
+      "purpose": "Asked for an OTP", "category": "possible_financial_impersonation", "risk_level": "high",
+      "risk_score": 0.96, "confidence": 0.9, "languages": ["en-IN", "kn-IN"], "language_profile": "kanglish",
+      "summary_text": "Caller claimed to be from a bank and asked for an OTP; Sparta refused and ended the call.",
+      "action_taken": "ended_spam", "owner_attention_required": false, "blocked": true, "trusted": false, "has_content": true
+    }
+  ],
+  "next_cursor": "cursor-2"
+}

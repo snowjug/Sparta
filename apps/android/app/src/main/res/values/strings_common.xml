@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="common_retry">Try again</string>
+    <string name="common_dismiss">Dismiss</string>
+    <string name="common_cancel">Cancel</string>
+    <string name="common_back">Back</string>
+    <string name="common_save">Save</string>
+    <string name="common_remove">Remove</string>
+    <string name="common_delete">Delete</string>
+    <string name="common_yes">Yes</string>
+    <string name="common_no">No</string>
+    <string name="common_on">On</string>
+    <string name="common_off">Off</string>
+    <string name="common_loading">Loading</string>
+    <string name="common_unknown">Unknown</string>
+    <string name="common_none">None</string>
+    <string name="common_not_available">Not available</string>
+    <string name="common_trace_id">Trace ID: %1$s</string>
+    <string name="common_open_settings">Open settings</string>
+    <string name="common_logo_description">Sparta shield logo</string>
+    <string name="common_simulated">Simulated</string>
+    <string name="common_not_simulated">Real telephony</string>
+    <string name="common_dev_identity_title">Development identity</string>
+    <string name="common_dev_identity_body">This backend is running with a development identity and no sign-in. Do not use it for real calls.</string>
+    <string name="common_dev_identity_short">Development identity: this backend has no sign-in. Not for real calls.</string>
+    <string name="common_saved_on_phone">Saved on this phone. The backend could not be updated yet (%1$s).</string>
+
+    <string name="risk_low">Low risk</string>
+    <string name="risk_medium">Medium risk</string>
+    <string name="risk_high">High risk</string>
+    <string name="risk_unknown">Not enough evidence yet</string>
+    <string name="confidence_value">Confidence %1$d%%</string>
+    <string name="score_value">Score %1$d%%</string>
+
+    <string name="provider_simulator">Simulator</string>
+    <string name="provider_azure">Azure Communication Services</string>
+    <string name="provider_android_screening">On-device screening</string>
+    <string name="provider_other">Other provider</string>
+    <string name="provider_unknown">Unknown provider</string>
+
+    <string name="api_error_offline">The backend could not be reached.</string>
+</resources>
