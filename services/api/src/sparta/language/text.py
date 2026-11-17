@@ -53,6 +53,30 @@ def normalize(text: str, lowercase: bool = True) -> str:
     return _MULTISPACE.sub(" ", text).strip()
 
 
+_CLAUSE_PUNCT = re.compile(r"[,;!?।॥]+")
+
+
+def clause_breaks(text: str, norm: str, lowercase: bool = True) -> list[int] | None:
+    """Offsets in ``norm`` (= ``normalize(text, lowercase)``) that were clause punctuation in ``text``.
+
+    ``normalize`` turns commas, semicolons, question/exclamation marks and the danda into plain spaces, which is what
+    most patterns want. Denial detection needs the clause boundaries back ("don't tell anyone, your PIN is needed"
+    must not read as one denial), so they are recovered by normalizing the clauses separately. Returns ``None`` when the
+    pieces do not recompose to ``norm`` (unusual Unicode), in which case callers must not rely on boundaries.
+    """
+    clauses = _CLAUSE_PUNCT.split(unicodedata.normalize("NFKD", text))  # NFKD: full-width "，" is a comma too
+    pieces = [p for p in (normalize(c, lowercase) for c in clauses) if p]
+    if " ".join(pieces) != norm:
+        return None
+    breaks: list[int] = []
+    position = 0
+    for piece in pieces[:-1]:
+        position += len(piece)
+        breaks.append(position)  # the single space that joins this clause to the next
+        position += 1
+    return breaks
+
+
 def canon_latin(token: str) -> str:
     """Collapse common romanization variants: kyaa→kya, beeku→beku, hoon→hun, aapka→apka."""
     token = token.lower()

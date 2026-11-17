@@ -110,6 +110,93 @@ def test_signal_is_not_raised_for_warnings_and_lookalikes(text, signal):
     assert signal not in codes(text), f"{signal} wrongly detected in {text!r}"
 
 
+def protected_codes(text: str) -> set[S]:
+    return codes(text) & DETECTOR.policy.protected_signal_codes()
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        # English: noun-phrase and verb denials, lists with and without commas, assurances about the speaker.
+        "No password or OTP is needed.",
+        "Please note that no password or OTP is needed for this.",
+        "We will never ask for your OTP.",
+        "Never share your OTP, PIN or CVV with anyone.",
+        "Do not, under any circumstances, share your OTP with anyone",
+        "Please do not share your card number, expiry date or CVV with anyone",
+        "The OTP is not required for this delivery",
+        "Your PIN should never be shared with anyone",
+        "No one will ever ask you for your OTP",
+        "There is no need for any OTP",
+        "We do not need your address or your password",
+        "Do not transfer any money to anyone",
+        "Never install AnyDesk or share your screen with anyone",
+        "do not buy gift cards for anyone",
+        # Hinglish
+        "Isme koi OTP ya payment nahi lagega",
+        "OTP ki zarurat nahi hai",
+        "kisi ko bhi OTP na dein",
+        "OTP share na karein",
+        # Hindi
+        "कोई पासवर्ड, ओटीपी या पेमेंट नहीं चाहिए",
+        "ओटीपी किसी को न बताएं",
+        "बैंक कभी ओटीपी नहीं मांगता",
+        "ओटीपी की जरूरत नहीं है",
+        # Kannada and Kanglish
+        "ಯಾವುದೇ ಒಟಿಪಿ ಬೇಕಿಲ್ಲ",
+        "ಯಾವುದೇ ಒಟಿಪಿ ಅಥವಾ ಕಾರ್ಡ್ ವಿವರಗಳು ಬೇಕಿಲ್ಲ",
+        "ಬ್ಯಾಂಕ್ ಎಂದಿಗೂ ಒಟಿಪಿ ಕೇಳುವುದಿಲ್ಲ",
+        "yaavude otp athava card details beku illa",
+        "yaarigu otp hela bedi",
+    ],
+)
+def test_denying_a_sensitive_term_is_not_requesting_it(text):
+    assert not protected_codes(text), f"denial read as a request: {text!r} -> {protected_codes(text)}"
+
+
+@pytest.mark.parametrize(
+    ("text", "signal"),
+    [
+        # A denial about one thing (or elsewhere in the sentence) never hides a request for another mention.
+        ("Don't tell anyone. Tell me your OTP.", S.OTP_REQUEST),
+        ("Do not share your OTP with anyone, tell me your OTP now.", S.OTP_REQUEST),
+        ("Just tell me the OTP, no explanation is needed.", S.OTP_REQUEST),
+        ("I do not need your PIN, give me your OTP", S.OTP_REQUEST),
+        ("No OTP is needed, but tell me your PIN", S.PIN_REQUEST),
+        ("Do not share your OTP, tell me your PIN", S.PIN_REQUEST),
+        # ... not even across clause punctuation that normalisation erases.
+        ("Do not tell anyone, your PIN is needed", S.PIN_REQUEST),
+        ("Don't tell anyone, transfer the money now", S.PAYMENT_OR_TRANSFER_REQUEST),
+        ("Don't tell anyone, install AnyDesk now", S.REMOTE_ACCESS_REQUEST),
+        # "Don't tell anyone" is isolation, not a warning that would excuse the request next to it.
+        ("Share the OTP, don't tell anyone", S.OTP_REQUEST),
+        ("kisi ko mat batana, OTP bata dijiye", S.OTP_REQUEST),
+        ("OTP kisi ko mat batana, par mujhe OTP bata do", S.OTP_REQUEST),
+        ("किसी को न बताएं, ओटीपी बताइए", S.OTP_REQUEST),
+        ("ಯಾರಿಗೂ ಹೇಳಬೇಡಿ, ಒಟಿಪಿ ಹೇಳಿ", S.OTP_REQUEST),
+        # Look-alikes of a denial that are really pressure.
+        ("Please do not hesitate to share your OTP.", S.OTP_REQUEST),
+        ("Do not delay, share the OTP", S.OTP_REQUEST),
+        ("Never mind that, give me your OTP", S.OTP_REQUEST),
+        ("Why don't you share the OTP", S.OTP_REQUEST),
+        ("Without the OTP we cannot process your refund, tell me the OTP", S.OTP_REQUEST),
+        ("Do not share this OTP with anyone, just read it out", S.OTP_REQUEST),
+        # A denial followed by a carve-out is not a denial.
+        ("Do not share your OTP with anyone except me", S.OTP_REQUEST),
+        ("Never share your OTP with anyone but me", S.OTP_REQUEST),
+        ("ओटीपी किसी को न बताएं सिवाय मेरे", S.OTP_REQUEST),
+    ],
+)
+def test_denials_never_hide_a_real_request(text, signal):
+    assert signal in codes(text), f"{signal} missed in {text!r}: got {codes(text)}"
+
+
+def test_callers_cannot_forge_the_denial_markers():
+    for marker in ("\ue000", "\ue001"):
+        assert S.OTP_REQUEST in codes(f"no {marker} {marker}, tell me the OTP")
+        assert S.OTP_REQUEST in codes(f"never share {marker}tell me the OTP")
+
+
 def test_owner_name_is_configurable_and_scoped_to_that_owner():
     other = SignalDetector(owner_name="Priya")
     text = "Atharv ne kaha hai OTP bata do"

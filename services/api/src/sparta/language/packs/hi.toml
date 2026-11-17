@@ -123,6 +123,8 @@ card_credential = [
   '\bexpiry\s*(?:date|tareekh|tarikh)\b',
   '\b(?:account|khata|khaata)\s*(?:number|no|details?|detail|ki\s*jankari|ka\s*number|ki\s*detail)\b',
   '\bbank\s*(?:ki\s*)?(?:details?|detail|jankari)\b',
+  '(?:बैंक|अकाउंट|खाते|एटीएम|कार्ड)\s*(?:की|के|का)?\s*डिटेल्स?',
+  '\b(?:bank|account|atm|card)\s*(?:ki|ke|ka)?\s*details?\b',
 ]
 auth_code = [
   'रिकवरी\s*(?:कोड|की)',
@@ -288,6 +290,16 @@ urgency = [
   '\b(?:turant|fauran|foran|jaldi\s*se\s*jaldi|aakhri\s*(?:mauka|chetavani)|antim\s*(?:mauka|chetavani|notice)|aaj\s*hi|der\s*mat)\b',
   '\babhi\s*(?:ke\s*abhi|turant)\b',
   '\b\d+\s*(?:ghante|ghanta|ghantey|minute|minat|mins?)\s*(?:ke\s*)?(?:andar|bhitar|mein|me|tak)\b',
+  'जल्दी\s*(?:से\s*)?(?:कीजिए|करिए|करें|करो|बताइए|बताओ|बता\s*दीजिए|भेजिए|भेजो)',
+  'अभी\s*(?:बताइए|बताओ|कीजिए|करें|करो|भेजिए|बता\s*दीजिए)',
+  '(?:वरना|नहीं\s*तो)',
+  'आज\s*रात\s*(?:तक)?',
+  'समय\s*(?:बहुत\s*)?कम',
+  '\bjaldi\s*(?:se\s*)?(?:kijiye|kijiyega|kariye|karein|karo|bataiye|batao|bata|bhejiye|bhejo|batao)\b',
+  '\babhi\s*(?:bataiye|batao|bata|kijiye|kariye|karo|karein|bhejiye|bhejo)\b',
+  '\b(?:warna|varna|nahi\s*to|nahin\s*to)\b',
+  '\baaj\s*raat\s*(?:tak)?\b',
+  '\b(?:time|samay|waqt|vaqt)\s*(?:bahut\s*)?kam\b',
 ]
 isolation = [
   '(?:इस|यह|ये)\s*(?:कॉल|बात|मामले|केस|फोन)\s*(?:के\s*बारे\s*में)?\s*(?:किसी|कीसी)\s*को',
@@ -324,6 +336,9 @@ link_callback = [
   '\b(?:is|iss)\s*number\s*(?:par|pe)\s*(?:call|message|whatsapp|sampark)\b',
   '\bwhatsapp\s*(?:par|pe|kar|karein|kijiye)\b',
   '\bwapas\s*call\s*kar\w*\b',
+  'कॉल\s*बैक\s*(?:करें|कीजिए|करिए)',
+  '\bcall\s*back\s*(?:kijiye|kijiyega|kariye|karein|karo)\b',
+  '\b(?:us|is|iss|uss)\s*(?:number\s*)?(?:par|pe)\s*(?:abhi\s*|turant\s*|jaldi\s*)?(?:call|phone|whatsapp|message)\b',
 ]
 bank_org = [
   'बैंक',
@@ -417,6 +432,9 @@ owner_authorization = [
   '\b{OWNER}\s*(?:ji|sir|saab|sahab)?\s*ne\s*(?:kaha|bola|bataya|permission|ijazat|ijaazat|anumati|manzoori|di|diya)\b',
   '\b(?:unhone|unhoney)\s*(?:kaha|bola|permission|ijazat|ijaazat|anumati)\b',
   '\b(?:malik|boss|sir|saab|sahab)\s*ki\s*(?:permission|ijazat|ijaazat|anumati|manzoori)\b',
+  'उन्होंने\s*(?:मुझे\s*)?(?:कहा|बोला|परमिशन|इजाजत|अनुमति)',
+  'परमिशन\s*(?:दे\s*)?दी',
+  '\b(?:permission|ijazat|ijaazat|anumati)\s*(?:de\s*)?(?:di|diya|dee)\b',
 ]
 abuse = [
   'बेवकूफ',
@@ -603,6 +621,13 @@ emergency = [
   '\bdil\s*ka\s*daura\b',
   '\bbharti\s*(?:karaya|hain|hai|hue|hui)\b',
   '\b(?:turant|jaldi)\s*(?:aaiye|aao|pahunchiye|pahuchiye)\b',
+  'एम्बुलेंस|एंबुलेंस',
+  'होश\s*में\s*नहीं',
+  'गिर\s*(?:गई|गए|गया|पड़ी|पड़े|पड़ा)',
+  '\bambulance\b',
+  '\bhosh\s*(?:me|mein)\s*(?:nahi|nahin)\b',
+  '\bgir\s*(?:gayi|gayee|gaye|gaya|padi|pade|pada)\b',
+  '\bunconscious\b',
 ]
 known_callback = [
   'आपने\s*(?:कॉल|फोन)\s*किया\s*था',
@@ -687,6 +712,8 @@ pay_demand = [
 ]
 claim = [
   'से\s*(?:बोल|बात|कॉल|फोन|फ़ोन)\s*(?:कर\s*)?(?:रहा|रही|रहे)\s*(?:हूँ|हूं|हैं|हू)',
+  'से\s*(?:\S+\s+){1,3}?(?:बोल|बात)\s*(?:कर\s*)?(?:रहा|रही|रहे)\s*(?:हूँ|हूं|हैं|हू)',
+  'मैं\s*(?:\S+\s+){0,4}?(?:ऑफिसर|ऑफ़िसर|मैनेजर|इंस्पेक्टर|एजेंट|एग्जीक्यूटिव|अधिकारी|प्रतिनिधि)',
   '(?:की|के)\s*(?:तरफ़?|ओर)\s*से',
   '(?:से|का|की)\s*(?:मैनेजर|ऑफिसर|अधिकारी|एजेंट|प्रतिनिधि|एग्जीक्यूटिव|कर्मचारी|इंस्पेक्टर)\s*(?:बोल|हूँ|हूं|बात)',
   'मैं\s*.{1,40}?\s*(?:से|का|की)\s*(?:बोल|बात)',
@@ -710,20 +737,39 @@ received_probe = [
   'प्राप्त',
 ]
 warning = [
-  'किसी\s*(?:को\s*)?(?:भी\s*)?(?:ना|न|नहीं|मत)\s*(?:बताएं|बताएँ|बताना|बताइए|बताइये|बताओ|दें|दीजिए|देना|शेयर)',
-  '(?:शेयर|साझा)\s*(?:न|ना|नहीं|मत)\s*(?:करें|कीजिए|करना|करिए|करो)',
   'कभी\s*(?:भी\s*)?(?:नहीं|ना|न)\s*(?:मांगता|मांगते|माँगता|माँगते|पूछता|पूछते|मांगेगा)',
   'बैंक\s*(?:कभी\s*)?(?:भी\s*)?(?:नहीं|ना)\s*(?:मांगता|पूछता)',
   'सावधान',
   'धोखाधड़ी\s*(?:से\s*)?(?:बचें|अलर्ट)',
   'सतर्क\s*रहें',
-  '\bkisi\s*(?:ko\s*)?(?:bhi\s*)?(?:na|nahi|nahin|mat)\s*(?:batayen|bataye|batana|bataiye|batao|den|dijiye|dena|share)\b',
-  '\bshare\s*(?:na|nahi|nahin|mat)\s*(?:karein|kijiye|karna|kariye|karo)\b',
   '\bkabhi\s*(?:bhi\s*)?(?:nahi|nahin|na)\s*(?:mangta|mangte|mangega|poochta|puchta|puchte|poochte)\b',
   '\bbank\s*(?:kabhi\s*)?(?:bhi\s*)?(?:nahi|nahin|na)\s*(?:mangta|poochta|puchta)\b',
   '\b(?:savdhan|saavdhan)\b',
   '\bsatark\s*rahe\w*\b',
   '\bdhokhadhadi\b',
+]
+# Denial phrases over {TERM}/{LIST}; see the English pack. Hindi (Devanagari) first, then Hinglish.
+negation = [
+  '(?:कोई|किसी|कोई\s*भी|किसी\s*भी)\s*{LIST}\s*(?:की\s*|का\s*|के\s*)?(?:(?:जरूरत|जरुरत|आवश्यकता)\s*)?(?:बिल्कुल\s*)?(?:नहीं|नही|ना|न)\b',
+  '{LIST}\s*(?:की\s*|का\s*|के\s*)?(?:जरूरत|जरुरत|आवश्यकता)\s*(?:बिल्कुल\s*)?(?:नहीं|नही|ना|न)\b',
+  '{LIST}\s*(?:(?:कभी|कभी\s*भी)\s*)?(?:बिल्कुल\s*)?(?:नहीं|नही|ना)\s*(?:चाहिए|चाहिये|चाहिएं|लगेगा|लगेगी|लगता|लगती|मांगते|मांगता|माँगते|माँगता|मांगेंगे|मांगेगा|पूछते|पूछता|पूछेंगे|मांगा\s*जाएगा|माँगा\s*जाएगा|पूछा\s*जाएगा|लिया\s*जाएगा)',
+  '(?:किसी\s*(?:को\s*|से\s*)?(?:भी\s*)?)?{LIST}\s*(?:को\s*)?(?:किसी\s*(?:को\s*|से\s*)?(?:भी\s*)?)?(?:मत|ना|न|नहीं)\s*(?:दें|दीजिए|दीजिये|देना|दो|बताएं|बताएँ|बताइए|बताइये|बताना|बताओ|भेजें|भेजना|भेजिए|कहें|कहना)',
+  '(?:किसी\s*(?:को\s*|से\s*)?(?:भी\s*)?)?{LIST}\s*(?:को\s*)?(?:किसी\s*(?:को\s*|से\s*)?(?:भी\s*)?)?(?:शेयर|साझा)\s*(?:मत|ना|न|नहीं)\s*(?:करें|कीजिए|करिए|करना|करो)',
+  '(?:कभी|कभी\s*भी)\s*{LIST}\s*(?:नहीं|ना)\s*(?:मांगता|मांगते|माँगता|माँगते|पूछता|पूछते|मांगेगा|मांगेंगे|चाहता|चाहते)',
+  '\b(?:koi|koi\s+bhi|kisi|kisi\s+bhi)\s+{LIST}\s+(?:ki\s+|ka\s+|ke\s+)?(?:(?:zarurat|jarurat|zaroorat|jaroorat|avashyakta)\s+)?(?:bilkul\s+)?(?:nahi|nahin|nhi|nai|na)\b',
+  '{LIST}\s+(?:ki\s+|ka\s+|ke\s+)?(?:zarurat|jarurat|zaroorat|jaroorat)\s+(?:bilkul\s+)?(?:nahi|nahin|nhi|na)\b',
+  '{LIST}\s+(?:(?:kabhi|kbhi)\s+(?:bhi\s+)?)?(?:bilkul\s+)?(?:nahi|nahin|nhi|na)\s+(?:chahiye|chahie|chahiyen|chahta|chahte|lagega|lagegi|lagta|lagti|mangta|mangte|maangta|maangte|mangega|mangenge|maanga\s+jayega|manga\s+jayega|poochta|poochte|puchta|puchte|poocha\s+jayega|puchha\s+jayega|liya\s+jayega)\b',
+  '(?:\bkisi\s+(?:ko\s+|se\s+)?(?:bhi\s+)?)?{LIST}\s+(?:ko\s+)?(?:kisi\s+(?:ko\s+|se\s+)?(?:bhi\s+)?)?(?:mat|na|nahi|nahin)\s+(?:de|den|dena|dijiye|dijiyega|dein|do|bataye|bataiye|batayein|batana|batao|bata|bhejna|bhejiye|bheje|bhejen|kahna|kahiye)\b',
+  '{LIST}\s+(?:ko\s+)?(?:kisi\s+(?:ko\s+|se\s+)?(?:bhi\s+)?)?(?:share|saajha|sajha)\s+(?:mat|na|nahi|nahin)\s+(?:kare|karein|karna|kariye|kijiye|karo)\b',
+  '\b(?:kabhi|kbhi)\s+(?:bhi\s+)?{LIST}\s+(?:nahi|nahin|nhi|na)\s+(?:mang|maang|puch|pooch|chah|bol|bhej)\w*',
+  '{LIST}\s+(?:share|dene|batane|bhejne|batana|dena|bhejna|sajha|saajha)\s+(?:karne\s+)?(?:ki|ka|ke)\s+(?:zarurat|jarurat)\s+(?:nahi|nahin|nhi)\b',
+]
+negation_exception = [
+  '(?:\s|{BREAK})*(?:किसी\s*(?:को\s*|से\s*)?(?:भी\s*)?(?:\s|{BREAK})*)?(?:(?:मेरे|हमारे)\s*(?:अलावा|सिवाय|सिवा)|(?:सिवाय|सिवा|अलावा)\s*(?:मेरे|हमारे|एजेंट|अधिकारी)|(?:केवल|सिर्फ|सिर्फ़|बस)\s*(?:मुझे|मुझसे|हमें|हमसे|मेरे\s*साथ|एजेंट|अधिकारी))',
+  '(?:\s|{BREAK})*(?:kisi\s+(?:ko\s+|se\s+)?(?:bhi\s+)?(?:\s|{BREAK})*)?(?:(?:mere|hamare)\s+(?:alawa|alava|siwa|siva|sivay|siwaay)|(?:sivay|siwaay|siwa|siva|alawa|alava)\s+(?:mere|hamare|agent|officer)|(?:sirf|keval|bas|sirph)\s+(?:mujhe|mujhse|hume|humse|mere\s+saath|agent|officer))\b',
+]
+list_joiner = [
+  'या', 'और', 'तथा', 'एवं', 'व', 'ya', 'aur', 'tatha', 'ya\s+phir', 'ya\s+fir', 'ya\s+to',
 ]
 no_money_assurance = [
   'कभी\s*(?:भी\s*)?(?:पैसे|फीस|शुल्क|भुगतान)\s*(?:नहीं|ना)\s*(?:मांगते|मांगता|माँगते|माँगता|लेते|लेता)',

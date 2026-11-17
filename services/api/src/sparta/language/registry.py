@@ -60,6 +60,15 @@ class PackError(ValueError):
 
 
 OWNER_PLACEHOLDER = "{OWNER}"
+# Denial cues are matched on a copy of the text where every sensitive-term occurrence is replaced by one private-use
+# character (MASK_CHAR) and every clause boundary (comma, question mark, ...) by another (CLAUSE_CHAR), so a denial
+# cannot reach across clauses. `{TERM}` stands for one mention, `{LIST}` for "term, term or term" and `{BREAK}` for a
+# clause boundary.
+TERM_PLACEHOLDER = "{TERM}"
+LIST_PLACEHOLDER = "{LIST}"
+BREAK_PLACEHOLDER = "{BREAK}"
+MASK_CHAR = "\ue000"
+CLAUSE_CHAR = "\ue001"
 _DUMMY_OWNER = "(?:owner)"
 
 
@@ -99,7 +108,12 @@ def _load_pack(raw: dict[str, Any], source: str) -> LanguagePack:
     for name, fragments in {**pack.terms, **pack.cues}.items():
         for fragment in fragments:
             try:
-                compile_pattern(fragment.replace(OWNER_PLACEHOLDER, _DUMMY_OWNER))
+                compile_pattern(
+                    fragment.replace(OWNER_PLACEHOLDER, _DUMMY_OWNER)
+                    .replace(TERM_PLACEHOLDER, MASK_CHAR)
+                    .replace(LIST_PLACEHOLDER, MASK_CHAR)
+                    .replace(BREAK_PLACEHOLDER, CLAUSE_CHAR)
+                )
             except Exception as exc:
                 raise PackError(f"{source}: bad pattern in '{name}': {fragment!r}: {exc}") from exc
     return pack

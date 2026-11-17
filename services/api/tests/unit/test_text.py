@@ -2,7 +2,15 @@ import asyncio
 
 import pytest
 
-from sparta.language.text import canon_latin, compile_pattern, mask_digits, normalize, tokenize, trim_excerpt
+from sparta.language.text import (
+    canon_latin,
+    clause_breaks,
+    compile_pattern,
+    mask_digits,
+    normalize,
+    tokenize,
+    trim_excerpt,
+)
 
 
 def test_normalize_converts_indic_digits_and_strips_zero_width():
@@ -50,6 +58,36 @@ def test_tokenize_keeps_indic_combining_marks_and_apostrophes():
 )
 def test_compile_pattern_has_indic_aware_word_boundaries(pattern, text, expected):
     assert bool(compile_pattern(pattern).search(text)) is expected
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Do not tell anyone, your PIN is needed",
+        "Never share your OTP, PIN or CVV",
+        "no password, no OTP!",
+        "क्या आप ठीक हैं? ओटीपी बताइए, जल्दी",
+        "ನಿಮ್ಮ ಒಟಿಪಿ ಹೇಳಿ, ಯಾರಿಗೂ ಹೇಳಬೇಡಿ;",
+        "  ,, leading and trailing ,,  ",
+        "wait... what?! really…",
+        "do not share，your PIN is needed！",
+        "no punctuation at all",
+        "",
+    ],
+)
+def test_clause_breaks_point_at_the_spaces_that_replaced_clause_punctuation(text):
+    norm = normalize(text, lowercase=False)
+    breaks = clause_breaks(text, norm, lowercase=False)
+    assert breaks is not None
+    assert all(norm[i] == " " for i in breaks)
+    assert len(breaks) == len(set(breaks))
+
+
+def test_clause_breaks_separate_exactly_the_clauses():
+    text = "Do not tell anyone, your PIN is needed"
+    norm = normalize(text, lowercase=False)
+    (position,) = clause_breaks(text, norm, lowercase=False) or []
+    assert (norm[:position], norm[position + 1 :]) == ("Do not tell anyone", "your PIN is needed")
 
 
 def test_mask_digits_hides_codes_in_excerpts():

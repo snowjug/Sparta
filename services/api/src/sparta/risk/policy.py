@@ -34,6 +34,15 @@ class RuleDef(BaseModel):
     unless: list[str] = Field(default_factory=list)
     unless_before: int = Field(default=30, ge=0)
     unless_after: int = Field(default=40, ge=0)
+    negated_by: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Cue vocabularies of denial phrases that mention the sensitive term itself ('no OTP is needed', 'never "
+            "share your PIN'). A match of the rule's term (the `any` match, or the first `near` group) that sits inside "
+            "such a phrase is ignored; other mentions still count. Unlike `unless`, a denial elsewhere in the "
+            "sentence cannot suppress it ('just tell me the OTP, no explanation is needed' still fires)."
+        ),
+    )
     severity: SignalSeverity | None = None
     weight: float | None = Field(default=None, ge=0.0, le=1.0)
 
@@ -42,6 +51,16 @@ class RuleDef(BaseModel):
         if not self.any and len(self.near) < 2:
             raise ValueError(f"rule for {self.signal} needs 'any' or at least two 'near' groups")
         return self
+
+
+class NegationConfig(BaseModel):
+    """Which term vocabularies can appear inside a denial phrase (`{TERM}`/`{LIST}` in the language packs)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    terms: list[str] = Field(default_factory=list)
+    joiner: str = "list_joiner"
+    exception: str = "negation_exception"
 
 
 class Thresholds(BaseModel):
@@ -94,6 +113,7 @@ class SafetyPolicy(BaseModel):
     thresholds: Thresholds
     strictness: dict[ScreeningStrictness, StrictnessProfile]
     limits: Limits = Field(default_factory=Limits)
+    negation: NegationConfig = Field(default_factory=NegationConfig)
     protected_information: list[ProtectedInfo]
     signals: dict[SignalCode, SignalDef]
     rules: list[RuleDef]
@@ -110,8 +130,17 @@ class SafetyPolicy(BaseModel):
         known = set(registry.terms) | set(registry.cues)
         missing: list[str] = []
         for rule in self.rules:
-            names = [*rule.any, *rule.unless, *(n for group in rule.near for n in group)]
+            names = [*rule.any, *rule.unless, *rule.negated_by, *(n for group in rule.near for n in group)]
             missing.extend(f"{rule.signal}: {n}" for n in names if n not in known)
+        missing.extend(f"negation.terms: {n}" for n in self.negation.terms if n not in registry.terms)
+        if any(rule.negated_by for rule in self.rules):
+            if not self.negation.terms:
+                missing.append("negation.terms: rules use 'negated_by' but no negation terms are declared")
+            missing.extend(
+                f"negation.{field}: {name}"
+                for field, name in (("joiner", self.negation.joiner), ("exception", self.negation.exception))
+                if name not in registry.cues
+            )
         if rule_codes := {r.signal for r in self.rules} - set(self.signals):
             missing.append(f"rules reference undefined signals: {sorted(rule_codes)}")
         if missing:

@@ -150,6 +150,8 @@ remote_tool = [
   '\bultra\s?viewer\b',
   '\brust\s?desk\b',
   '\bammyy\b',
+  '\b(?:team|tim|teem)\s?(?:viewer|viver|vyuar|viewar|vyooar)\b',
+  '\b(?:quick|kwik|quik|qwik)\s?(?:support|saport|sapport|suport)\b',
   '\bremote\s+(?:access|control|desktop|support|assistance|session)\b',
   '\b(?:control|access)\s+(?:your|the)\s+(?:phone|mobile|computer|laptop|device|pc)\b',
   '\b\w+\.apk\b',
@@ -227,6 +229,8 @@ urgency = [
   '\bbefore\s+(?:midnight|end\s+of\s+(?:the\s+)?day|it\s+is\s+too\s+late)\b',
   '\bno\s+time\s+to\s+(?:waste|lose)\b',
   '\bdo\s+not\s+delay\b',
+  '\b(?:hurry|without\s+delay|time\s+is\s+(?:running\s+out|short)|running\s+out\s+of\s+time)\b',
+  '\b(?:or\s+else|otherwise|if\s+not)\b[^.]{0,50}\b(?:block\w*|clos\w*|froz\w*|freez\w*|cut|suspend\w*|disconnect\w*|arrest\w*|penalt\w*|fine[ds]?|legal|terminat\w*|cancel\w*|deactivat\w*)\b',
 ]
 isolation = [
   '\b(?:do\s*not|don\x27?t|never|must\s*not)\s+(?:tell|inform|speak\s+to|talk\s+to|discuss\s+(?:this\s+)?with)\s+(?:anyone|anybody|any\s+one|your\s+family|your\s+(?:wife|husband|parents|friends|bank))\b',
@@ -290,6 +294,7 @@ govt_org = [
   '\bnarcotics\s*(?:bureau|department|control)\b',
   '\bmunicipal\w*\b',
   '\bpassport\s+office\b',
+  '\b(?:telecom(?:munications?)?\s+)?regulatory\s+authority\b',
 ]
 police_org = [
   '\bpolice\b',
@@ -443,7 +448,7 @@ family_friend = [
   '\bit\x27?s\s+me\b',
   '\bthis\s+is\s+(?:\w+\s+){0,2}(?:your|his|her)\s+(?:brother|sister|mother|mom|mum|father|dad|friend|cousin|uncle|aunt|aunty|son|daughter|wife|husband|colleague|classmate|neighbou?r|roommate|relative|nephew|niece)\b',
   '\b(?:friend|colleague|classmate|cousin|brother|sister|relative|neighbou?r|roommate)\s+of\s+(?:yours|his|hers|{OWNER}|the\s+owner)\b',
-  '\bi\s*(?:am|\x27m)\s+(?:a\s+|his\s+|her\s+|your\s+)?(?:friend|colleague|classmate|cousin|relative|neighbou?r)\b',
+  '\bi\s*(?:am|\x27m)\s+(?:a\s+|his\s+|her\s+|your\s+)?(?:\w+\s+)?(?:friend|colleague|classmate|cousin|relative|neighbou?r)\b',
   '\b{OWNER}\x27?s\s+(?:friend|colleague|classmate|cousin|brother|sister|mother|father|relative|neighbou?r)\b',
   '\bcall\s+(?:me|him|her)\s+back\b',
   '\btell\s+(?:him|her|sir|madam|{OWNER})\s+(?:i|that\s+i)\s+called\b',
@@ -463,6 +468,7 @@ emergency = [
   '\bhospitali[sz]ed\b',
   '\badmitted\b',
   '\bneeds?\s+(?:immediate|urgent)\s+(?:attention|help|surgery|treatment)\b',
+  '\b(?:labou?r\s+pain|in\s+labou?r|delivery\s+pain|gave\s+birth|fell\s+down|has\s+fallen|not\s+responding|ambulance)\b',
 ]
 known_callback = [
   '\breturning\s+your\s+(?:call|missed\s+call)\b',
@@ -477,6 +483,7 @@ known_callback = [
 # Strong request verbs: an OTP/PIN/password term anywhere nearby makes this a request for it.
 request = [
   '\b(?:tell|give|share|send|read|provide|confirm|verify|enter|say|spell|dictate|mention|disclose|submit|whatsapp|furnish|supply|punch)\b',
+  '\b(?:sharing|giving|telling|sending|reading|providing|entering|confirming|verifying|saying|mentioning|disclosing|submitting|dictating|spelling|furnishing)\b',
   '\b(?:state|forward|type|key|fill|text)\s+(?:in\s+|out\s+)?(?:me\s+|us\s+|it\s+|the\s+|your\s+|that\s+|this\s+)',
 ]
 # Weak cues ("please", "what is", "need"): only count when right next to the sensitive term.
@@ -516,17 +523,29 @@ received_probe = [
   '\b(?:received|got|get|getting|come|came|arrived|sent|delivered)\b',
 ]
 warning = [
-  '\b(?:never|not|don\x27?t|do\s+not|should\s+not|shouldn\x27?t|must\s+not|mustn\x27?t|won\x27?t|will\s+not|cannot|can\x27?t)\s+(?:ever\s+)?(?:share|give|tell|disclose|reveal|provide|send|ask|call|request|divulge|read)\b',
   '\bnever\s+(?:ask|asks|asked|call|calls|request|requests)\b',
   '\b(?:we|bank|banks|company|our\s+staff)\s+(?:will\s+)?never\b',
   '\bbeware\b',
   '\bfraud\s+alert\b',
   '\bscam\s+alert\b',
-  '\bkeep\s+(?:it|this|your\s+\w+)\s+(?:safe|secret|private)\b',
-  '\bdo\s+not\s+disclose\b',
-  '\bwithout\s+(?:asking|sharing)\b',
-  '\bno\s+one\s+(?:should|will|can)\b',
-  '\bnever\s+share\b',
+]
+# Denial phrases over {TERM}/{LIST} (any sensitive term / a list of them): a term inside one is not a request for it.
+# Deliberately NOT denials: "do not hesitate to share your OTP", "do not share this OTP" (a specific code that was just
+# sent), "without your OTP we cannot ..." - and generic "don't tell anyone" never suppresses a request for a term.
+negation = [
+  '\b(?:no|nor|neither|zero)\s+(?:(?:any|an?|the|such|more|further|other|additional|your|my|our)\s+)*{LIST}',
+  '\bno\s+(?:need|requirement|necessity)\s+(?:for|of)\s+(?:(?:any|an?|the|your|my|our)\s+)*{LIST}',
+  '\b(?:never|not|(?:do|does|did|should|must|need|may|might|would|could|is|are|was|were)(?:\s+not|\s*n\x27?t)|(?:can|will|shall)\s+not|can\x27?t|cannot|won\x27?t|shan\x27?t)(?:\s|{BREAK})+(?:(?:ever|really|please|kindly|at\s+all|at\s+any\s+time|in\s+any\s+case|under\s+any\s+circumstances?)(?:\s|{BREAK})+)*(?:(?:(?:ask|request|need|want|demand|collect|submit|forward|confirm|mention|type|transfer|deposit|install|download|click|open|enter|send)(?:s|ed|ing)?|(?:requir|shar|provid|disclos|divulg|purchas|us)(?:e|es|ed|ing)|giv(?:e|es|en|ing)|gave|tak(?:e|es|en|ing)|took|tell(?:s|ing)?|told|read(?:s|ing)?|say(?:s|ing)?|said|pay(?:s|ing)?|paid|buy(?:s|ing)?|bought|reveal(?:s|ed|ing)?|verif(?:y|ies|ied|ying)|sent)\s+)?(?:(?:you|me|us|anyone|anybody|someone|any|an?|the|your|my|our|his|her|their|for|of|with|to|from|out|in|about|on)\s+){0,4}{LIST}',
+  '\b(?:no\s*one|nobody)\s+(?:(?:will|would|should|can|could|shall|must)\s+)?(?:ever\s+)?(?:asks?|requests?|needs?|wants?|requires?|demands?)\s+(?:(?:you|me|us|for|of|any|an?|the|your|my|our|his|her|their|to|from|about)\s+){0,4}{LIST}',
+  '{LIST}\s+(?:(?:is|are|was|were|will|would|should|must|can|could|shall|may|might|does|do)\s+)?(?:never|not|(?:is|are|was|were|should|must|can|could|would|will|does|do)n\x27?t|won\x27?t|cannot)\s+(?:(?:be|being|get|gets)\s+)?(?:needed|required|necessary|asked|requested|involved|charged|collected|shared|given|told|disclosed|revealed|provided|sent|taken|demanded|used|installed|downloaded)\b',
+]
+# "...except me": a denial followed by a carve-out is the opposite of a denial.
+negation_exception = [
+  '(?:\s|{BREAK})*(?:(?:with|to|from)\s+(?:anyone|anybody|any\s*one|anyone\s+else|others?|a\s*soul|third\s+parties)(?:\s|{BREAK})*)?(?:except|excepting|other\s+than|apart\s+from|aside\s+from|besides|excluding|but|only|just)\s+(?:(?:for|to|with|from)\s+)?(?:me|us|myself|our|my|the\s+(?:agent|officer|executive|manager|official|team|representative)|our\s+\w+)\b',
+]
+list_joiner = [
+  'or', 'and', 'nor', 'and/or', 'as\s+well\s+as', 'along\s+with', 'plus',
+  'any', 'an?', 'the', 'your', 'my', 'our', 'his', 'her', 'their',
 ]
 no_money_assurance = [
   '\bnever\s+(?:ask|asks|asked|charge|charges|request|requests|take|takes|collect|collects)\s+(?:you\s+)?(?:for\s+)?(?:any\s+)?(?:money|fees?|payment|charges?|deposit)\b',

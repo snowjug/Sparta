@@ -137,11 +137,14 @@ address_location = [
 ]
 owner_availability = [
   'ಮನೆಯಲ್ಲಿ\s*(?:ಇದ್ದಾರೆ|ಇದ್ದಾರಾ|ಇದ್ದಾರೇನು|ಇದೀರಾ|ಇದ್ದೀರಾ|ಯಾರಾದರೂ|ಇದ್ದಾರಲ್ವಾ)',
-  'ಒಬ್ಬರೇ\s*(?:ಇದ್ದೀರಾ|ಇದ್ದಾರಾ)',
+  'ಮನೆಯಲ್ಲಿ\s*(?:ದ್ದಾರೆ|ದ್ದಾರಾ|ದ್ದೀರಾ|ದ್ದೀರ|ದ್ದಾರೇನು|ದೀರಾ)',
+  'ಮನೆಯಲ್ಲಿ\s*(?:ಇನ್ನು\s*)?ಯಾರಾದ್ರೂ',
+  'ಒಬ್ಬರೇ\s*(?:ಇದ್ದೀರಾ|ಇದ್ದಾರಾ|ದ್ದೀರಾ|ದ್ದಾರಾ)',
   'ಆಫೀಸ್\s*(?:ನಲ್ಲಿ|ಲ್ಲಿ)\s*(?:ಇದ್ದಾರೆ|ಇದ್ದಾರಾ|ಇದ್ದೀರಾ)',
   'ಯಾವಾಗ\s*(?:ಬರುತ್ತಾರೆ|ಬರ್ತಾರೆ|ಸಿಗುತ್ತಾರೆ|ಸಿಗ್ತಾರೆ|ವಾಪಸ್)',
   'ಊರಲ್ಲಿ\s*(?:ಇದ್ದಾರಾ|ಇದ್ದಾರೆ)',
   '\bmaneyalli\s*(?:iddara|iddaare|iddira|iddeera|yaaradaru|yarigaadru|iddare)\b',
+  '\bmaneyalli\s*(?:ddara|ddaare|ddira|ddeera|ddare|yaaradru)\b',
   '\bmane\s*alli\s*(?:iddara|iddaare|iddira|iddeera|yaaradaru|iddare)\b',
   '\bobbare\s*(?:iddira|iddeera|iddara|iddiri|iddeeri)\b',
   '\boffice\s*alli\s*(?:iddara|iddaare|iddare)\b',
@@ -251,6 +254,16 @@ urgency = [
   '\b(?:takshana|takshan|eegale|eegane|konege|indhe)\b',
   '\bkoneya\s*(?:avakasha|echcharike|notice)\b',
   '\b\d+\s*(?:gante|ganteya|nimisha)\w*\s*(?:olage|olagade)\b',
+  'ಬೇಗ\s*(?:ಹೇಳಿ|ಮಾಡಿ|ಕೊಡಿ|ಕಳಿಸಿ|ಕಳುಹಿಸಿ)',
+  '(?:ಇಲ್ಲದಿದ್ದರೆ|ಇಲ್ಲಾಂದ್ರೆ|ಇಲ್ಲಂದ್ರೆ|ಇಲ್ಲದಿದ್ರೆ)',
+  'ಇವತ್ತೇ',
+  'ಇಂದು\s*ರಾತ್ರಿ',
+  'ತಡ\s*ಮಾಡ\w*',
+  '\bbega\s*(?:heli|helri|maadi|madi|kodi|kalisi)\b',
+  '\b(?:illandre|illaandre|illa\s*andre|illadiddare|illadidre)\b',
+  '\bivatte\b',
+  '\bindu\s*raatri\b',
+  '\btada\s*maad\w*\b',
 ]
 isolation = [
   'ಈ\s*(?:ಕರೆ|ವಿಷಯ|ಕೇಸ್)\s*(?:ಬಗ್ಗೆ)?\s*ಯಾರಿಗೂ',
@@ -283,12 +296,11 @@ link_callback = [
   '\bvaapas\s*call\s*maadi\b',
 ]
 bank_org = [
-  'ಬ್ಯಾಂಕ್',
+  'ಬ್ಯಾಂಕ\w*',
   'ಎಸ್ಬಿಐ',
   'ಎಚ್ಡಿಎಫ್ಸಿ',
   'ಐಸಿಐಸಿಐ',
   'ಆರ್ಬಿಐ',
-  'ಕೆನರಾ\s*ಬ್ಯಾಂಕ್',
   '\bbyank\b',
 ]
 govt_org = [
@@ -303,10 +315,10 @@ govt_org = [
   '\b(?:sarkara|sarkaari)\b',
 ]
 police_org = [
-  'ಪೊಲೀಸ್',
-  'ಇನ್ಸ್\u200c?ಪೆಕ್ಟರ್',
+  'ಪೊಲೀಸ\w*',
+  'ಇನ್ಸ್\u200c?ಪೆಕ್ಟರ\w*',
   'ಠಾಣೆ',
-  'ಕ್ರೈಂ\s*ಬ್ರಾಂಚ್',
+  'ಕ್ರೈಂ\s*ಬ್ರಾಂಚ\w*',
   'ಸಿಐಡಿ',
   '\bthane\b',
 ]
@@ -480,7 +492,7 @@ family_friend = [
   'ಅಕ್ಕ',
   'ವಾಪಸ್\s*ಕರೆ\s*ಮಾಡಲು\s*ಹೇಳಿ',
   '\bnaanu\s*(?:nimma|avara)\s*(?:snehita|geleya|gelati|anna|tamma|akka|tangi|chikkappa|maava|sambandhi|colleague|friend|classmate)\b',
-  '\b(?:nimma|avara)\s*(?:snehita|geleya|anna|tamma|akka|tangi|sambandhi|colleague|friend)\b',
+  '\b(?:nimma|avara|avana|avala)\s+(?:\w+\s+)?(?:snehita|geleya|anna|tamma|akka|tangi|sambandhi|colleague|friend|classmate|neighbou?r)\b',
   '\b(?:appa|amma|anna|akka|tamma|tangi)\b',
   '\bcall\s*back\s*maadi\b',
 ]
@@ -528,6 +540,12 @@ emergency = [
   '\baaspatrege\s*dakhal\w*\b',
   '\bdakhalagiddare\b|\bdakhalaagiddaare\b|\badmit\s*aagiddare\b|\badmit\s*aagiddaare\b|\badmit\s*aagidhe\b',
   '\b(?:takshana|bega)\s*(?:banni|baa|barabeku|talupi)\b',
+  'ಹೆರಿಗೆ',
+  'ಆಂಬ್ಯುಲೆನ್ಸ್',
+  '\blabou?r\s*pain\b',
+  '\bherige\b',
+  '\bambulance\b',
+  '\bunconscious\b',
 ]
 known_callback = [
   'ನೀವು\s*(?:ಕರೆ|ಕಾಲ್)\s*ಮಾಡಿದ್ರಿ',
@@ -608,9 +626,15 @@ pay_demand = [
   '\bpayment\s*maadi\b',
   '\bpay\s*maadi\b',
   '\b(?:kalisbeku|kattbeku|kattabeku|maadbeku|madbeku|kodbeku)\b',
+  'ಹಾಕ\w*',
+  '\bhaak\w*\b',
 ]
 claim = [
   '(?:ಇಂದ|ಯಿಂದ|ನಿಂದ)\s*(?:ಮಾತನಾಡ್ತಿದ್ದೀನಿ|ಮಾತನಾಡುತ್ತಿದ್ದೇನೆ|ಮಾತಾಡ್ತಿದ್ದೀನಿ|ಕರೆ\s*ಮಾಡ್ತಿದ್ದೀನಿ|ಕರೆ\s*ಮಾಡುತ್ತಿದ್ದೇನೆ|ಕಾಲ್\s*ಮಾಡ್ತಿದ್ದೀನಿ|ಮಾತನಾಡ್ತಾ\s*ಇದ್ದೀನಿ)',
+  '(?:ಇಂದ|ಯಿಂದ|ನಿಂದ)\s*(?:\S+\s+){0,2}?(?:ಮಾತ|ಕರೆ|ಕಾಲ್)\w*',
+  'ನಾನು\s*(?:\S+\s+){0,3}?(?:ಮ್ಯಾನೇಜರ|ಆಫೀಸರ|ಅಧಿಕಾರಿ|ಏಜೆಂಟ|ಎಕ್ಸಿಕ್ಯೂಟಿವ್|ಇನ್ಸ್\u200c?ಪೆಕ್ಟರ)\w*',
+  '\b(?:inda|yinda|ninda)\s*(?:\w+\s+){0,2}?maa?th?\w*',
+  '\bna+nu\s+(?:\w+\s+){0,3}(?:manager|officer|executive|representative|agent|inspector)\b',
   'ನಾನು\s*.{1,40}?\s*(?:ಇಂದ|ಯಿಂದ)',
   '(?:ಇಂದ|ಯಿಂದ|ನ|ಅ)\s*(?:ಮ್ಯಾನೇಜರ್|ಆಫೀಸರ್|ಅಧಿಕಾರಿ|ಏಜೆಂಟ್|ಪ್ರತಿನಿಧಿ|ಎಕ್ಸಿಕ್ಯೂಟಿವ್|ಇನ್ಸ್\u200c?ಪೆಕ್ಟರ್)',
   '\b(?:inda|yinda|ninda)\s*(?:maatadtidini|maatanaadtidini|maataadtidini|maatadtiddini|mathadtidini|call\s*madtidini|call\s*maaduttiddene|maaduttiddene|baruttiddene|maatadtaa\s*idini|maatadtaidini|call\s*maadtaidini)\b',
@@ -627,20 +651,34 @@ received_probe = [
   'ಕಳುಹಿಸಲಾಗಿದೆ',
 ]
 warning = [
-  'ಯಾರಿಗೂ\s*(?:ಹೇಳ|ಹಂಚಿಕೊಳ್ಳ|ಶೇರ್|ಕೊಡ|ನೀಡ)\w*\s*ಬೇಡ\w*',
-  'ಯಾರೊಂದಿಗೂ\s*(?:ಹಂಚಿಕೊಳ್ಳ|ಹೇಳ|ಶೇರ್)\w*\s*ಬೇಡ\w*',
-  '(?:ಶೇರ್|ಹಂಚಿಕೊಳ್ಳ|ಹೇಳ|ಕೊಡ|ನೀಡ)\w*\s*ಬೇಡಿ',
-  '(?:ಎಂದಿಗೂ|ಯಾವತ್ತೂ|ಯಾವಾಗಲೂ)\s*(?:ಕೇಳುವುದಿಲ್ಲ|ಕೇಳೋದಿಲ್ಲ|ಕೇಳಲ್ಲ|ಕೇಳುವುದಿಲ್ಲ)',
+  '(?:ಎಂದಿಗೂ|ಯಾವತ್ತೂ|ಯಾವಾಗಲೂ)\s*(?:ಕೇಳುವುದಿಲ್ಲ|ಕೇಳೋದಿಲ್ಲ|ಕೇಳಲ್ಲ)',
   'ಬ್ಯಾಂಕ್\s*(?:ಎಂದಿಗೂ|ಯಾವತ್ತೂ)?\s*(?:ಕೇಳುವುದಿಲ್ಲ|ಕೇಳೋದಿಲ್ಲ|ಕೇಳಲ್ಲ)',
   'ಎಚ್ಚರಿಕೆ',
   'ಜಾಗರೂಕ\w*',
-  '\byaarigu\s*(?:hela|share|kodu|needa|hanchikol)\w*\s*bed\w*\b',
-  '\byaarondigu\s*(?:hanchikol|hela|share)\w*\s*bed\w*\b',
-  '\b(?:share|hela|kodu|hanchikol)\w*\s*bedi\b',
   '\b(?:endigu|yavattu|yaavattu|yavaglu|yaavaglu)\s*(?:keluvudilla|kelodilla|kelalla|keludilla|keluvudu\s*illa)\b',
   '\bbank\s*(?:endigu|yavattu)?\s*(?:keluvudilla|kelodilla|kelalla)\b',
   '\bechcharike\b|\becharike\b',
   '\bjaagaruk\w*\b|\bjagaruk\w*\b',
+]
+# Denial phrases over {TERM}/{LIST}; see the English pack. Kannada script first, then Kanglish.
+negation = [
+  'ಯಾವುದೇ\s*{LIST}\s*(?:ಅನ್ನು\s*)?(?:ಬೇಕಿಲ್ಲ|ಬೇಕಾಗಿಲ್ಲ|ಬೇಡ|ಅಗತ್ಯವಿಲ್ಲ|ಅಗತ್ಯವಿರುವುದಿಲ್ಲ|ಬೇಕಾಗುವುದಿಲ್ಲ|ಇಲ್ಲ|ಕೇಳುವುದಿಲ್ಲ|ಕೇಳೋದಿಲ್ಲ|ಕೇಳಲ್ಲ|ಇರುವುದಿಲ್ಲ)',
+  '{LIST}\s*(?:ಅನ್ನು\s*)?(?:ಬೇಕಿಲ್ಲ|ಬೇಕಾಗಿಲ್ಲ|ಬೇಡ|ಅಗತ್ಯವಿಲ್ಲ|ಅಗತ್ಯವಿರುವುದಿಲ್ಲ|ಬೇಕಾಗುವುದಿಲ್ಲ|ಕೇಳುವುದಿಲ್ಲ|ಕೇಳೋದಿಲ್ಲ|ಕೇಳಲ್ಲ)',
+  '(?:ಯಾರಿಗೂ|ಯಾರೊಂದಿಗೂ|ಬೇರೆಯವರಿಗೆ)\s*{LIST}\s*(?:ಅನ್ನು\s*)?(?:ಹೇಳ|ಹಂಚಿಕೊಳ್ಳ|ಶೇರ್\s*ಮಾಡ|ಶೇರ್|ಕೊಡ|ನೀಡ|ಕಳುಹಿಸ|ಕಳಿಸ)\w*\s*ಬೇಡ\w*',
+  '{LIST}\s*(?:ಅನ್ನು\s*)?(?:(?:ಯಾರಿಗೂ|ಯಾರೊಂದಿಗೂ|ಬೇರೆಯವರಿಗೆ)\s*)?(?:ಹೇಳ|ಹಂಚಿಕೊಳ್ಳ|ಶೇರ್\s*ಮಾಡ|ಶೇರ್|ಕೊಡ|ನೀಡ|ಕಳುಹಿಸ|ಕಳಿಸ)\w*\s*ಬೇಡ\w*',
+  '(?:ಎಂದಿಗೂ|ಯಾವತ್ತೂ|ಯಾವಾಗಲೂ)\s*{LIST}\s*(?:ಅನ್ನು\s*)?(?:ಕೇಳುವುದಿಲ್ಲ|ಕೇಳೋದಿಲ್ಲ|ಕೇಳಲ್ಲ|ಕೇಳುವುದೇ\s*ಇಲ್ಲ)',
+  '{LIST}\s*(?:ಅನ್ನು\s*)?(?:ಎಂದಿಗೂ|ಯಾವತ್ತೂ|ಯಾವಾಗಲೂ)\s*(?:ಕೇಳುವುದಿಲ್ಲ|ಕೇಳೋದಿಲ್ಲ|ಕೇಳಲ್ಲ)',
+  '\b(?:yaavude|yavude|yaavudhe|yavudhe|yaavdu|yavdu)\s+{LIST}\s+(?:annu\s+)?(?:beku\s*illa|bekilla|bekagilla|beda|bedi|agatya\s*illa|agatyavilla|agathya\s*illa|illa|keluvudilla|kelodilla|kelalla)\b',
+  '{LIST}\s+(?:annu\s+)?(?:beku\s*illa|bekilla|bekagilla|beda|agatya\s*illa|agatyavilla|agathya\s*illa|keluvudilla|kelodilla|kelalla|keludilla)\b',
+  '(?:\b(?:yaarigu|yaarigoo|yaarondigu|yarigu)\s+)?{LIST}\s+(?:annu\s+)?(?:(?:yaarigu|yaarigoo|yaarondigu|yarigu)\s+)?(?:hela|heli|hanchikol|share\s*maad|share|kodu|needa|kalisu)\w*\s*bed\w*',
+  '(?:\b(?:endigu|yavattu|yaavattu|yavaglu|yaavaglu)\s+)?{LIST}\s+(?:annu\s+)?(?:(?:endigu|yavattu|yaavattu|yavaglu|yaavaglu)\s+)?(?:keluvudilla|kelodilla|kelalla|keludilla)\b',
+]
+negation_exception = [
+  '(?:\s|{BREAK})*(?:ಯಾರಿಗೂ(?:\s|{BREAK})*)?(?:ನನ್ನನ್ನು\s*ಹೊರತುಪಡಿಸಿ|ನನ್ನ\s*ಹೊರತು|ನನಗೆ\s*ಮಾತ್ರ|ನನ್ನೊಂದಿಗೆ\s*ಮಾತ್ರ|ಏಜೆಂಟ್\s*ಗೆ\s*ಮಾತ್ರ)',
+  '(?:\s|{BREAK})*(?:yaarigu(?:\s|{BREAK})+)?(?:nannannu\s+horatupadisi|nanna\s+horatu|nanage\s+matra|nannondige\s+matra|agent\s*ge\s+matra)\b',
+]
+list_joiner = [
+  'ಅಥವಾ', 'ಮತ್ತು', 'ಹಾಗೂ', 'ಅಥವ', 'ಇಲ್ಲವೇ', 'athava', 'athavaa', 'mattu', 'haagu', 'hagu', 'illave',
 ]
 no_money_assurance = [
   '(?:ಎಂದಿಗೂ|ಯಾವತ್ತೂ)\s*(?:ಹಣ|ದುಡ್ಡು|ಶುಲ್ಕ|ಫೀಸ್)\s*(?:ಕೇಳುವುದಿಲ್ಲ|ಕೇಳೋದಿಲ್ಲ|ಕೇಳಲ್ಲ|ತೆಗೆದುಕೊಳ್ಳುವುದಿಲ್ಲ)',
@@ -681,6 +719,8 @@ buy_send = [
   '\bhela?\w*\b',
   '\bkod\w*\b',
   '\bodi\b',
+  'ಹಾಕ\w*',
+  '\bhaak\w*\b',
 ]
 family_member = [
   'ಅಮ್ಮ',

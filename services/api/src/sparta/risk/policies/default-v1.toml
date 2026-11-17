@@ -5,9 +5,13 @@
 #   any  = ["term", ...]               any match of any listed term/cue fires the rule
 #   near = [["a","b"], ["c"]]          every group must match within `window` characters of each other
 #   unless = ["cue"]                   suppress the hit when a warning/assurance cue sits just before/after it
+#   negated_by = ["negation"]          ignore a mention of the rule's term (the `any` match or the first `near` group)
+#                                      that sits inside a denial phrase ("no OTP is needed", "never share your PIN");
+#                                      other mentions in the same sentence still count. Preferred over `unless` for
+#                                      anything a caller could abuse ("don't tell anyone, tell me the OTP")
 
 [policy]
-version = "2026.11.1"
+version = "2026.11.2"
 name = "sparta-default"
 description = "Deterministic multilingual (en/hi/kn, Hinglish, Kanglish) call-screening policy."
 
@@ -32,6 +36,17 @@ medium = 0.30
 max_clarify_attempts = 2
 max_probe_deflections = 1
 excerpt_radius = 40
+
+# Term vocabularies that can be the subject of a denial. The language packs' `negation` cues are written over them
+# ({TERM}/{LIST}), `joiner` supplies "or"/"and"/"," between listed terms, and `exception` voids a denial that is
+# immediately followed by a carve-out ("never share your OTP with anyone except me").
+[negation]
+terms = [
+  "otp", "pin", "cvv", "password", "card_credential", "auth_code", "id_document", "address_location",
+  "payment_term", "giftcard_crypto", "remote_tool", "screen_share",
+]
+joiner = "list_joiner"
+exception = "negation_exception"
 
 # Signals that never allow the assistant to comply, whatever the model or the caller says.
 [[protected_information]]
@@ -286,96 +301,96 @@ category = "legitimate_support_callback"
 signal = "OTP_REQUEST"
 near = [["otp"], ["request"]]
 window = 80
-unless = ["warning"]
+negated_by = ["negation"]
 [[rules]]
 signal = "OTP_REQUEST"
 near = [["otp"], ["received_probe"]]
 window = 60
-unless = ["warning"]
+negated_by = ["negation"]
 [[rules]]
 signal = "PASSWORD_REQUEST"
 near = [["password"], ["request"]]
 window = 80
-unless = ["warning"]
+negated_by = ["negation"]
 [[rules]]
 signal = "PIN_REQUEST"
 near = [["pin"], ["request"]]
 window = 80
-unless = ["warning"]
+negated_by = ["negation"]
 [[rules]]
 signal = "CVV_REQUEST"
 near = [["cvv"], ["request"]]
 window = 80
-unless = ["warning"]
+negated_by = ["negation"]
 [[rules]]
 signal = "CARD_OR_ACCOUNT_CREDENTIAL_REQUEST"
 near = [["card_credential"], ["request"]]
 window = 80
-unless = ["warning"]
+negated_by = ["negation"]
 [[rules]]
 signal = "AUTH_OR_RECOVERY_CODE_REQUEST"
 near = [["auth_code"], ["request"]]
 window = 80
-unless = ["warning"]
+negated_by = ["negation"]
 [[rules]]
 signal = "IDENTITY_DOCUMENT_REQUEST"
 near = [["id_document"], ["request"]]
 window = 80
-unless = ["warning"]
+negated_by = ["negation"]
 [[rules]]
 signal = "ADDRESS_OR_LOCATION_REQUEST"
 near = [["address_location"], ["request"]]
 window = 80
-unless = ["warning"]
+negated_by = ["negation"]
 
 # Weak cues ("please", "what is", "need") only count when immediately next to the sensitive term.
 [[rules]]
 signal = "OTP_REQUEST"
 near = [["otp"], ["request_weak"]]
 window = 30
-unless = ["warning"]
+negated_by = ["negation"]
 [[rules]]
 signal = "PASSWORD_REQUEST"
 near = [["password"], ["request_weak"]]
 window = 30
-unless = ["warning"]
+negated_by = ["negation"]
 [[rules]]
 signal = "PIN_REQUEST"
 near = [["pin"], ["request_weak"]]
 window = 30
-unless = ["warning"]
+negated_by = ["negation"]
 [[rules]]
 signal = "CVV_REQUEST"
 near = [["cvv"], ["request_weak"]]
 window = 30
-unless = ["warning"]
+negated_by = ["negation"]
 [[rules]]
 signal = "CARD_OR_ACCOUNT_CREDENTIAL_REQUEST"
 near = [["card_credential"], ["request_weak"]]
 window = 30
-unless = ["warning"]
+negated_by = ["negation"]
 [[rules]]
 signal = "AUTH_OR_RECOVERY_CODE_REQUEST"
 near = [["auth_code"], ["request_weak"]]
 window = 30
-unless = ["warning"]
+negated_by = ["negation"]
 [[rules]]
 signal = "IDENTITY_DOCUMENT_REQUEST"
 near = [["id_document"], ["request_weak"]]
 window = 30
-unless = ["warning"]
+negated_by = ["negation"]
 [[rules]]
 signal = "ADDRESS_OR_LOCATION_REQUEST"
 near = [["address_location"], ["request_weak"]]
 window = 30
-unless = ["warning"]
+negated_by = ["negation"]
 [[rules]]
 signal = "OWNER_AVAILABILITY_PROBE"
 any = ["owner_availability"]
 [[rules]]
 signal = "REMOTE_ACCESS_REQUEST"
 any = ["remote_tool"]
-unless = ["warning"]
+negated_by = ["negation"]
 [[rules]]
 signal = "REMOTE_ACCESS_REQUEST"
 near = [["install_app"], ["bank_org", "govt_org", "police_org", "kyc", "account_threat", "legal_threat", "urgency"]]
@@ -385,17 +400,18 @@ weight = 0.7
 [[rules]]
 signal = "SCREEN_SHARING_REQUEST"
 any = ["screen_share"]
-unless = ["warning"]
+negated_by = ["negation"]
 [[rules]]
 signal = "PAYMENT_OR_TRANSFER_REQUEST"
 near = [["payment_term"], ["pay_demand"]]
 window = 70
-unless = ["warning", "no_money_assurance"]
+unless = ["no_money_assurance"]
+negated_by = ["negation"]
 [[rules]]
 signal = "GIFT_CARD_OR_CRYPTO_REQUEST"
 near = [["giftcard_crypto"], ["buy_send", "pay_demand"]]
 window = 80
-unless = ["warning"]
+negated_by = ["negation"]
 [[rules]]
 signal = "MALICIOUS_LINK_OR_CALLBACK"
 any = ["link_callback"]

@@ -286,7 +286,8 @@ class ConversationEngine:
     # ================================================================== lifecycle
     def start(self, cfg: EngineConfig) -> EngineResult:
         ctx = ConversationContext(language=self._initial_language(cfg), language_mode=cfg.language_mode)
-        ctx.detected_languages = [ctx.language]
+        # `detected_languages` lists what the CALLER spoke. The assistant's opening language is not a detection.
+        ctx.detected_languages = []
         result = EngineResult(ctx=ctx, final_state=ctx.state)
         t0 = time.perf_counter()
         self._move(ctx, CallState.DISCLOSURE, result.state_path)
@@ -320,6 +321,31 @@ class ConversationEngine:
     @staticmethod
     def accepts_caller_input(ctx: ConversationContext) -> bool:
         return ctx.ended_reason is None and (is_active(ctx.state) or ctx.state is CallState.OWNER_TAKEOVER)
+
+    def detect_signals(
+        self,
+        cfg: EngineConfig,
+        text: str,
+        turn_id: str,
+        *,
+        previous_text: str | None = None,
+        previous_turn_id: str | None = None,
+        known: frozenset[SignalCode] = frozenset(),
+    ) -> list[RiskSignal]:
+        """Deterministic signals of one caller utterance, including phrases split across the previous utterance.
+
+        Pure: nothing about a call changes. The evaluation harness also uses it to measure what the rules recognise in
+        turns the assistant never heard because it had already hung up.
+        """
+        detector = self._signals_for(cfg.owner_name)
+        new = detector.detect(text, turn_id)
+        if previous_text:
+            seen = known | {s.code for s in new}
+            for s in detector.detect(f"{sanitize_text(previous_text)}. {text}", turn_id):
+                if s.code not in seen:
+                    s.evidence_turn_ids = [i for i in (previous_turn_id, turn_id) if i]
+                    new.append(s)
+        return new
 
     # ================================================================== caller turn
     def on_caller_turn(self, ctx_in: ConversationContext, cfg: EngineConfig, inp: CallerInput) -> EngineResult:
@@ -366,14 +392,14 @@ class ConversationEngine:
 
         # 2. deterministic signals + claims + risk -------------------------------------------------------------
         t = time.perf_counter()
-        detector = self._signals_for(cfg.owner_name)
-        new = detector.detect(text, turn_id)
-        if inp.previous_text:
-            known = {s.code for s in ctx.signals} | {s.code for s in new}
-            for s in detector.detect(f"{sanitize_text(inp.previous_text)}. {text}", turn_id):
-                if s.code not in known:
-                    s.evidence_turn_ids = [i for i in (inp.previous_turn_id, turn_id) if i]
-                    new.append(s)
+        new = self.detect_signals(
+            cfg,
+            text,
+            turn_id,
+            previous_text=inp.previous_text,
+            previous_turn_id=inp.previous_turn_id,
+            known=frozenset(s.code for s in ctx.signals),
+        )
         have = {s.code for s in new} | {s.code for s in ctx.signals}
         for code in inp.model_signal_codes:
             if code in MODEL_ALLOWED_SIGNALS and code not in have:
@@ -412,6 +438,7 @@ class ConversationEngine:
                 strictness=cfg.strictness,
             ),
             ctx.signals,
+            now=self.clock.now(),
         )
         result.timings_ms["policy_ms"] = _ms(t)
 
@@ -679,6 +706,7 @@ class ConversationEngine:
                 silent=closing and not meaningful,
             ),
             ctx.signals,
+            now=self.clock.now(),
         )
         ctx.risk = risk
         key = "close_silence" if closing else "reprompt_silence"
