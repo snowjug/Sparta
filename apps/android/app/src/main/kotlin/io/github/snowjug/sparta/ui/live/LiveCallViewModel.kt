@@ -8,6 +8,8 @@ import io.github.snowjug.sparta.core.live.LiveCallState
 import io.github.snowjug.sparta.data.remote.ApiError
 import io.github.snowjug.sparta.data.remote.ApiResult
 import io.github.snowjug.sparta.data.remote.dto.CallDetailDto
+import io.github.snowjug.sparta.data.remote.dto.CallListItemDto
+import io.github.snowjug.sparta.data.remote.dto.CallState
 import io.github.snowjug.sparta.data.remote.dto.CallStatus
 import io.github.snowjug.sparta.data.remote.dto.OwnerActionResultDto
 import io.github.snowjug.sparta.data.remote.ws.LiveCloseCodes
@@ -41,9 +43,18 @@ data class LiveCallUiState(
     val busy: ControlId? = null,
     val message: UiMessage? = null,
 ) {
-    /** The newest call document, with "ended" applied as soon as the socket says so (the snapshot's status is not updated by events). */
+    /**
+     * The newest call document. Events never rewrite the socket's snapshot or the REST copy, so what the socket has
+     * established since (the call ended, the owner took over) is applied here; otherwise the controls would keep
+     * offering what is no longer possible.
+     */
     val call: CallDetailDto?
-        get() = (live.call ?: restCall)?.let { if (live.isEnded && it.status == CallStatus.ACTIVE) it.copy(status = CallStatus.ENDED) else it }
+        get() {
+            val doc = live.call ?: restCall ?: return null
+            val state = live.callState.takeIf { it != CallState.UNKNOWN } ?: doc.state
+            val status = if (live.isEnded && doc.status == CallStatus.ACTIVE) CallStatus.ENDED else doc.status
+            return if (state == doc.state && status == doc.status) doc else doc.copy(state = state, status = status)
+        }
 
     /** Only the controls that act on a live call; blocking and trusting live on the detail screen. */
     val liveControls: List<ControlState>
@@ -106,13 +117,24 @@ class LiveCallViewModel @Inject constructor(
         if (local.value.busy != null) return
         local.update { it.copy(busy = control, message = null) }
         viewModelScope.launch {
-            val message = when (val result = run(id)) {
+            val result = run(id)
+            val message = when (result) {
                 is ApiResult.Success -> UiMessage.Text(
                     if (result.value.action.simulated) R.string.detail_msg_simulated_action else R.string.detail_msg_action_done,
                 )
                 is ApiResult.Failure -> UiMessage.Failure(result.error)
             }
-            local.update { it.copy(busy = null, message = message) }
+            local.update { l ->
+                // The action's own result is the newest word on the call: keep the REST copy (the only one without a socket snapshot) in step.
+                val settled = (result as? ApiResult.Success)?.let { l.restCall?.after(it.value.call) } ?: l.restCall
+                l.copy(restCall = settled, busy = null, message = message)
+            }
         }
     }
 }
+
+/** What an owner action's result says about the call's progress; unknown values (a newer backend) change nothing. */
+private fun CallDetailDto.after(settled: CallListItemDto): CallDetailDto = copy(
+    state = settled.state.takeIf { it != CallState.UNKNOWN } ?: state,
+    status = settled.status.takeIf { it != CallStatus.UNKNOWN } ?: status,
+)
