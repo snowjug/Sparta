@@ -173,6 +173,7 @@ class SpeechRecognizer:
         self.started = False
         self.stopped = False
         self._first_audio = threading.Event()
+        self._partials_thread: threading.Thread | None = None
         audio_config.stream.on_write = self._audio_arrived
         audio_config.stream.on_close = self._audio_ended
         SpeechRecognizer.created.append(self)
@@ -189,13 +190,14 @@ class SpeechRecognizer:
         self.stopped = True
         return Done()
 
-    def _run(self, work: Any) -> None:
+    def _run(self, work: Any) -> threading.Thread:
         def target() -> None:
             SpeechRecognizer.scenario.callback_threads.add(threading.get_ident())
             work()
 
         thread = threading.Thread(target=target, daemon=True)
         thread.start()
+        return thread
 
     def _audio_arrived(self, count: int) -> None:
         if count == 1:
@@ -205,12 +207,14 @@ class SpeechRecognizer:
                 for text in partials:
                     self.recognizing.fire(SimpleNamespace(result=make_result(text, ResultReason.RecognizingSpeech)))
 
-            self._run(emit)
+            self._partials_thread = self._run(emit)
 
     def _audio_ended(self) -> None:
         scenario = SpeechRecognizer.scenario
 
         def finish() -> None:
+            if self._partials_thread is not None:
+                self._partials_thread.join(timeout=5)  # the service sends every partial before the final
             if scenario.never_stops:
                 return
             if scenario.error is not None:
