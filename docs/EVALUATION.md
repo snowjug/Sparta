@@ -104,7 +104,11 @@ truncated words).
    repeats a generic organisation word, "a bank (Bank)"), `ac59c3e` (no behaviour change: a hashing flag and comments)
    and `117752e` (security review: bounded input work, deletion of invisible characters and folding of look-alike
    letters in `language/text.py`, `risk/matchers.py` and `orchestrator/engine.py`; see
-   [`SECURITY_REVIEW.md`](SECURITY_REVIEW.md)).
+   [`SECURITY_REVIEW.md`](SECURITY_REVIEW.md)), and `531e665` (the output validator judges a full owner name as a
+   whole, so the AI disclosure is no longer replaced for owners with a two-word name; the evaluation uses the one-word
+   owner "Atharv", for which nothing changes). The later commits `2c63616` (owner-name redaction before model calls,
+   keyed idempotency fingerprint, FastAPI spans off) are not on the path the evaluation takes: it runs the rules engine
+   without a model provider or the HTTP layer.
    The `test` split was **not re-run** after them. Two checks stand in for a re-run, and neither is one: the `dev`
    report regenerated with the final code is identical to the committed one apart from timestamps and timings, and a
    character scan of both splits (counts only, no reading of scenarios) found no compatibility forms, no Cyrillic or
