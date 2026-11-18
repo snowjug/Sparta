@@ -409,6 +409,20 @@ async def test_assistant_profile_preview_runs_the_real_pipeline_without_creating
     assert personal.status_code == 409 and personal.json()["error"]["code"] == "conflict"
 
 
+async def test_an_owner_named_with_digits_or_an_email_still_hears_the_ai_disclosure_on_every_call(env: ApiEnv):
+    """The REST path of the same regression: the preview and the real first turn of a call both disclose the AI."""
+    for name in ("Atharv 2024", "jane.doe@contoso.com", "e2e-k3j91234abz"):
+        profile = {"owner_display_name": name, "response_style": "formal", "speaking_rate": 1.0, "voice_ids": {}}
+        assert (await env.client.put(f"{API}/assistant-profile", json=profile)).status_code == 200
+        preview = (await env.client.post(f"{API}/assistant-profile/preview", json={"language": "auto"})).json()
+        call = await env.new_call(caller_number="+919876543210")
+        first = next(t for t in call["turns"] if t["speaker"] == "assistant")
+        for text in (preview["disclosure"]["text"], first["text"]):
+            assert "AI call assistant" in text and "can't share any personal details" not in text, (name, text)
+        assert ("the owner's AI" in first["text"]) == ("@" in name)  # an e-mail address is not read to a stranger
+        await env.client.post(f"{API}/calls/{call['id']}/end", json={})
+
+
 async def test_voices_and_personal_voice_consent_flow(env: ApiEnv):
     voices = (await env.client.get(f"{API}/voices", params={"locale": "hi-IN"})).json()
     assert voices and all(v["locale"] == "hi-IN" for v in voices)

@@ -14,7 +14,14 @@ KEYS = PLANNER.template_keys()
 NAMED = PlannerConfig(owner_name="Atharv")
 GENERIC = PlannerConfig(owner_name=None)
 # Real owners have full names, initials and non-Latin names; the first-name-only fixture hid a bug here once.
-FULL_NAMES = ["Atharv Shukla", "Atharv K. Shukla", "Meera Krishnamurthy Rao", "अथर्व शुक्ला", "ಅಥರ್ವ ಶುಕ್ಲ"]
+FULL_NAMES = [
+    "Atharv Shukla",
+    "Atharv K. Shukla",
+    "Meera Krishnamurthy Rao",
+    "Doe, Jane",  # the directory form identity providers send
+    "अथर्व शुक्ला",
+    "ಅಥರ್ವ ಶುಕ್ಲ",
+]
 FULL_NAME_CONFIGS = [PlannerConfig(owner_name=name) for name in FULL_NAMES]
 
 
@@ -132,6 +139,56 @@ def test_validator_allows_the_possessive_ai_assistant_form():
     )
 
 
+GENERIC_OPENING = "Hi, I'm the owner's AI call assistant. May I know who's calling and what this is regarding?"
+
+
+@pytest.mark.parametrize(
+    "owner", ["Atharv 2024", "e2e-k3j91234abz", "user 555-123456", "Acme.com Support", "www.shop", "Who? Me?"]
+)
+def test_the_owners_name_is_not_judged_as_something_the_assistant_said(owner):
+    """With a reference (the same line in generic wording) a name cannot trip the number, link, question or AI-marker rules."""
+    spoken = plan(f"Hi, I'm {owner}'s AI call assistant. May I know who's calling and what this is regarding?")
+    validator = OutputValidator()
+    without = validator.validate(spoken, owner_name=owner, require_ai_disclosure=True)
+    with_reference = validator.validate(
+        spoken, owner_name=owner, require_ai_disclosure=True, reference=plan(GENERIC_OPENING)
+    )
+    assert with_reference.ok, with_reference.violations
+    assert not without.ok  # the old behaviour: exactly the failure the reference exists to prevent
+
+
+@pytest.mark.parametrize(
+    "said",
+    [
+        "Hi, I'm the owner's AI call assistant. Call me back on 9876543210.",
+        "Hi, I'm the owner's AI call assistant. Visit www.example.com to continue.",
+        "Hi, I'm the owner's AI call assistant. Who are you? Why are you calling?",
+        "Hello there.",
+    ],
+)
+def test_a_reference_does_not_excuse_what_the_template_itself_says(said):
+    """The reference moves the *name* out of the judgement, never the template's own words."""
+    spoken = plan(said)
+    verdict = OutputValidator().validate(spoken, owner_name="Atharv", require_ai_disclosure=True, reference=spoken)
+    assert not verdict.ok
+
+
+def test_rules_about_the_owner_still_look_at_the_spoken_line_even_with_a_reference():
+    validator = OutputValidator(owner_markers=["Shukla"])
+    spoken = plan("Hi, I'm Atharv Shukla's AI call assistant.")
+    verdict = validator.validate(
+        spoken, owner_name="Atharv Shukla", reference=plan("Hi, I'm the owner's AI assistant.")
+    )
+    assert verdict.violations == ("reveals_owner_private_data",)
+
+
+def test_an_email_address_or_principal_name_is_not_a_name_to_read_aloud():
+    assert clean_owner_name("jane.doe@contoso.com") is None
+    assert clean_owner_name("Jane Doe <jane@contoso.com>") is None
+    assert clean_owner_name("Jane Doe") == "Jane Doe"
+    assert clean_owner_name("jane.doe") == "jane.doe"  # no '@': it may well be the name the owner chose
+
+
 @pytest.mark.parametrize(
     ("owner", "text"),
     [
@@ -139,10 +196,16 @@ def test_validator_allows_the_possessive_ai_assistant_form():
         ("Atharv Shukla", "Good day. I am Atharv Shukla’s AI call assistant."),
         ("Atharv K. Shukla", "This is Atharv K. Shukla's AI call assistant."),
         ("Meera Krishnamurthy Rao", "Hi, I'm Meera Krishnamurthy Rao's AI call assistant."),
+        ("Doe, Jane", "Hi, I'm Doe, Jane's AI call assistant."),
+        ("Who? Me?", "Hi, I'm Who? Me?'s AI call assistant."),
     ],
 )
 def test_validator_allows_the_possessive_ai_form_with_a_full_name(owner, text):
-    verdict = OutputValidator().validate(plan(text), owner_name=owner, require_ai_disclosure=True)
+    # The reference carries the same line in generic wording, as the engine supplies it (a name with a '?' in it would
+    # otherwise count as a second question).
+    verdict = OutputValidator().validate(
+        plan(text), owner_name=owner, require_ai_disclosure=True, reference=plan(text.replace(owner, "the owner"))
+    )
     assert verdict.ok, verdict.violations
 
 
@@ -155,6 +218,8 @@ def test_validator_allows_the_possessive_ai_form_with_a_full_name(owner, text):
         ("Atharv Shukla", "I am Atharv. Who is calling?"),
         ("Atharv Shukla", "This is Shukla here"),
         ("Atharv K. Shukla", "I'm Atharv K. Shukla and I can help."),
+        ("Doe, Jane", "This is Doe speaking"),
+        ("Doe, Jane", "I'm Jane Doe."),
         # The AI form does not excuse a second, real claim in the same sentence.
         ("Atharv Shukla", "I'm Atharv Shukla's AI call assistant, and this is Atharv speaking"),
     ],

@@ -14,7 +14,7 @@ import time
 import unicodedata
 from collections import OrderedDict
 from collections.abc import Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 from sparta.clock import Clock, SystemClock
 from sparta.domain.enums import (
@@ -251,21 +251,35 @@ class ConversationEngine:
         language: str,
         result: EngineResult,
     ) -> tuple[SpeechPlan, list[str]]:
-        """Render template keys, validate, and fall back to a minimal deflection if validation ever fails."""
+        """Render template keys, validate, and fall back to a minimal deflection if validation ever fails.
+
+        The owner's display name is the one free-text part of a template, so the rules about numbers, links and the AI marker
+        are applied to the utterance with the generic owner wording (see ``OutputValidator.validate``). If the rules still
+        object to the line *with* the name, the same template is said without it: a name must never cost the caller the
+        AI disclosure, which the deflection below does not carry."""
         planner_cfg = cfg.planner_config()
         plan = self.planner.render_keys(keys, language, planner_cfg)
-        verdict = self._validator(cfg).validate(
+        named = clean_owner_name(cfg.owner_name) is not None
+        generic = self.planner.render_keys(keys, language, replace(planner_cfg, owner_name=None)) if named else plan
+        validator = self._validator(cfg)
+        detector = self._signals_for(cfg.owner_name)
+        needs_ai = "disclosure" in keys
+        verdict = validator.validate(
             plan,
             owner_name=cfg.owner_name,
-            require_ai_disclosure="disclosure" in keys,
-            detector=self._signals_for(cfg.owner_name),
+            require_ai_disclosure=needs_ai,
+            detector=detector,
+            reference=generic,
         )
-        if not verdict.ok:
-            result.validator_fallback = True
-            result.notes.append("validator_fallback:" + ",".join(verdict.violations))
-            keys = list(FALLBACK_KEYS)
-            plan = self.planner.render_keys(keys, language, planner_cfg)
-        return plan, keys
+        if verdict.ok:
+            return plan, keys
+        if named and validator.validate(generic, require_ai_disclosure=needs_ai, detector=detector).ok:
+            result.notes.append("owner_name_not_spoken:" + ",".join(verdict.violations))
+            return generic, keys
+        result.validator_fallback = True
+        result.notes.append("validator_fallback:" + ",".join(verdict.violations))
+        keys = list(FALLBACK_KEYS)
+        return self.planner.render_keys(keys, language, planner_cfg), keys
 
     def _assistant_turn(
         self, ctx: ConversationContext, cfg: EngineConfig, plan: SpeechPlan, keys: list[str], language: str

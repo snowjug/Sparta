@@ -21,11 +21,16 @@ GENERIC_NAMES = {"", "the owner", "owner", "the user", "user"}
 
 
 def clean_owner_name(name: str | None) -> str | None:
-    """Sanitised display name or ``None`` (→ generic wording). Guards templates against odd characters."""
+    """Sanitised display name or ``None`` (→ generic wording). Guards templates against odd characters.
+
+    An e-mail address or user principal name is an identifier, not a name: identity providers send one as the display name
+    when the account has none, and the assistant would read it out to an unknown caller. It is spoken as "the owner"."""
     if not name:
         return None
     cleaned = _SPACES.sub(" ", _CONTROL.sub("", name)).strip()[:40]
-    return None if cleaned.lower() in GENERIC_NAMES else cleaned
+    if cleaned.lower() in GENERIC_NAMES or "@" in cleaned:
+        return None
+    return cleaned
 
 
 @dataclass(frozen=True)

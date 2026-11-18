@@ -96,6 +96,59 @@ def test_opening_still_discloses_the_ai_when_the_owner_has_a_full_name(engine, o
     assert "can't share" not in text
 
 
+# What identity providers and owners actually send as a display name: a year, an id, a phone-like number, an e-mail address
+# (Entra ID's preferred_username when an account has no name), a domain-like word. None of it was ever said by the assistant.
+AWKWARD_NAMES = [
+    "e2e-k3j91234abz",  # a random id with four digits in a row: this one failed a GitHub Actions run
+    "Atharv 2024",
+    "user 555-123456",
+    "jane.doe@contoso.com",
+    "Acme.com Support",
+    "Doe, Jane (Contoso 2024)",  # a directory display name with a comma, a bracket and a year
+]
+
+
+@pytest.mark.parametrize("owner", AWKWARD_NAMES)
+@pytest.mark.parametrize("style", list(ResponseStyle))
+def test_opening_discloses_the_ai_whatever_the_owner_is_called(engine, owner, style):
+    """Regression: the output validator judged the owner's display name as if the assistant had said it, so a name with
+    four digits, a phone-like number, a link-like word or an e-mail address replaced EVERY opening with 'I can't share any
+    personal details': the call began without saying that it is an AI."""
+    first = engine.start(EngineConfig(call_id="call_name0002", owner_name=owner, response_style=style))
+    text = first.assistant_turn.text
+    assert "AI call assistant" in text and "can't share" not in text, text
+    assert not first.validator_fallback and first.notes == []
+    if "@" in owner:
+        assert owner not in text and "the owner's AI call assistant" in text  # an e-mail address is not read out
+    else:
+        assert owner in text
+
+
+@pytest.mark.parametrize("owner", AWKWARD_NAMES)
+def test_no_reply_of_a_whole_call_falls_back_because_of_the_owners_name(engine, owner):
+    """Every template that carries the name (the opening, escalation, taking a message) must pass for such names."""
+    for caller_lines in (
+        ["Hello, I am calling from State Bank. Please tell me the OTP you just received"],
+        ["Hi, I'm from Amazon delivery with a parcel for you", "The apartment is 402, can someone come down?"],
+    ):
+        c = Call(engine, EngineConfig(call_id="call_name0003", owner_name=owner))
+        for line in caller_lines:
+            c.say(line)
+        assert c.results and all(not r.validator_fallback for r in c.results), (owner, caller_lines)
+        assert all("can't share any personal details" not in text for text in c.spoken), c.spoken
+
+
+def test_a_name_the_rules_object_to_is_left_out_but_the_ai_is_still_disclosed(engine):
+    """If the rules still object to the line with the name (here: the name is one of the owner's private facts), the same
+    template is said without it, and the AI disclosure is kept; the deflection that carries none is the last resort."""
+    cfg = EngineConfig(call_id="call_name0004", owner_name="Atharv Shukla", owner_private_markers=("Shukla",))
+    first = engine.start(cfg)
+    text = first.assistant_turn.text
+    assert text.startswith("Hi, I'm the owner's AI call assistant"), text
+    assert "Shukla" not in text and not first.validator_fallback
+    assert first.notes == ["owner_name_not_spoken:reveals_owner_private_data"]
+
+
 # -------------------------------------------------------------------------- scams: refused and ended
 @pytest.mark.parametrize(
     ("utterance", "reply_locale"),

@@ -17,6 +17,10 @@ MAX_CHARS = 320
 _DIGITS = re.compile(r"\d{4,}|\d{3}[\s-]\d{3,}")
 _URLISH = re.compile(r"(?i)\bhttps?\b|www\.|\.(?:com|in|co|xyz|top|online|site|click|app)\b")
 _AI_MARKER = re.compile(r"(?i)\bAI\b|assistant|असिस्टेंट|ಅಸಿಸ್ಟೆಂಟ್")
+# What may sit between the words of a written name ("Atharv K. Shukla", the directory form "Doe, Jane"), and after the last
+# one ("Who? Me?'s"). Everything but the dot is punctuation that ``normalize`` turns into a space.
+_NAME_GAP = r"[\s.,;!?()|*_=~^…]+"
+_NAME_END = r"[.,;!?()|*_=~^…]*"
 
 
 @dataclass(frozen=True)
@@ -36,8 +40,19 @@ class OutputValidator:
         owner_name: str | None = None,
         require_ai_disclosure: bool = False,
         detector: SignalDetector | None = None,
+        reference: SpeechPlan | None = None,
     ) -> Verdict:
+        """Check what the assistant is about to say.
+
+        ``reference`` is the same utterance rendered with the generic owner wording ("the owner"). The one free-text part of
+        a template is the owner's display name, and "Atharv 2024", "Acme.com Support" or a user principal name is not
+        something the assistant *said*. With a reference, the rules about a number, a link, a question and the AI marker
+        look at the reference, so a name can never make the opening line fail them (and the call begin without saying that
+        it is an AI). What the assistant says *about the owner* (a protected request, the owner's private facts, a claim to
+        be the owner) and the length are still judged on ``plan`` itself.
+        """
         text = plan.text
+        content = reference.text if reference is not None else text
         problems: list[str] = []
         det = detector or SignalDetector(owner_name=owner_name)
 
@@ -46,17 +61,17 @@ class OutputValidator:
         low = text.casefold()
         if any(marker in low for marker in self._markers):
             problems.append("reveals_owner_private_data")
-        if _DIGITS.search(text):
+        if _DIGITS.search(content):
             problems.append("contains_number")
-        if _URLISH.search(text):
+        if _URLISH.search(content):
             problems.append("contains_link")
         if len(text) > MAX_CHARS:
             problems.append("too_long")
-        if text.count("?") + text.count("？") > 1:
+        if content.count("?") + content.count("？") > 1:
             problems.append("multiple_questions")
         if self._claims_to_be_owner(text, owner_name):
             problems.append("claims_to_be_owner")
-        if require_ai_disclosure and not _AI_MARKER.search(text):
+        if require_ai_disclosure and not _AI_MARKER.search(content):
             problems.append("missing_ai_disclosure")
         return Verdict(ok=not problems, violations=tuple(problems))
 
@@ -67,19 +82,21 @@ class OutputValidator:
             return False
         # Tokens never contain the separators below and are unique, so every way to split a run of name words is the
         # same one (a repeated token such as the "a" of "A. A." made "a. a. a." match in exponentially many ways).
+        # ``normalize`` has already turned the punctuation in ``_NAME_GAP`` into spaces, so no token holds any of it.
         parts = sorted({t for t in re.split(r"[\s.]+", normalize(name)) if t}, key=len, reverse=True)
         names = [re.escape(t) for t in parts if len(t) >= 3]
         if not names:
             return False
         who = "(?:" + "|".join(names) + ")"
         any_part = "(?:" + "|".join(re.escape(t) for t in parts) + ")"
-        # A full name is judged as a whole, so "Atharv K. Shukla" is one name and not "Atharv" followed by more words.
-        full_name = rf"{who}(?:[\s.]+{any_part})*"
+        # A full name is judged as a whole, so "Atharv K. Shukla" and the directory form "Doe, Jane" are one name each and
+        # not "Atharv" or "Doe" followed by more words.
+        full_name = rf"{who}(?:{_NAME_GAP}{any_part})*"
         # Anything past this is rejected as too long anyway; the cap keeps the cost of this check bounded.
         text = text[: MAX_CHARS * 2]
         # "I'm Atharv Shukla's AI call assistant" is the *allowed* form: the name is possessive and followed by AI.
         # It is taken out before looking for a claim, so it is never mistaken for "I'm Atharv" (and "Atharv" alone).
-        text = re.sub(rf"(?i)\b{full_name}(?:['’]s|\s+(?:का|ಅವರ))\s+AI\b", " ", text)
+        text = re.sub(rf"(?i)\b{full_name}{_NAME_END}(?:['’]s|\s+(?:का|ಅವರ))\s+AI\b", " ", text)
         pattern = re.compile(
             rf"(?i)\b(?:this\s+is|i\s*am|i['’]m|my\s+name\s+is|speaking|main|mera\s+naam|naanu|nanna\s+hesaru)\s+{who}\b"
             rf"|{who}\s+(?:speaking|here)\b"
