@@ -1,7 +1,7 @@
 # Privacy
 
 What Sparta stores, what is encrypted, how long it is kept, how it is deleted, and which outside services can receive data.
-This document describes the code in `services/api` at commit `0fd2a84`
+This document describes the code in `services/api` at commit `5f980d1`
 ([IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) section 6). It is not legal advice and makes no legal claim:
 privacy, call-recording, interception and data-transfer rules differ by country and by use, and Sparta has not had a
 legal review. See [section 13](#13-legal-review).

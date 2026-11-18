@@ -125,7 +125,7 @@ code. In development Next needs `unsafe-eval` and inline styles for its tooling;
 ## 6. Backend behaviour found while testing (reported to the backend owner)
 
 The end-to-end suite runs against the real API (`python -m sparta serve`, in-memory SQLite, `SPARTA_ENV=test`). Status as of 2026-11-18, checked against the
-backend code of commit `3236870` (the later `0fd2a84` changed infrastructure files only); the 110 of 110 run was made on that code.
+backend code of commit `5f980d1` (the last commit that touches `services/api`) and the web code of `b507647`; the 112 of 112 run was made on that code.
 
 **Fixed in the backend and verified (by the end-to-end suite, 4 parallel workers, no retries, no workaround in the tests, unless a line says otherwise):**
 
@@ -137,8 +137,11 @@ backend code of commit `3236870` (the later `0fd2a84` changed infrastructure fil
 * The AI disclosure for an owner whose display name has several words (`"Atharv S"`, `"Asha Rao"`, `"Atharv Shukla"`, `"Anil K Mehta"`): the output validator now judges a
   full name as a whole, so the preview and the real opening line read "Hi, I'm ...'s AI call assistant ..." again. Verified by backend regression tests across names, styles and
   templates (`services/api/tests/unit/test_planner_validator.py`, `test_engine.py`), not by this suite, which uses one-word owner names.
+* The same disclosure for an owner whose display name has digits, a phone-like number, a link-like word or is an e-mail address. **This suite found it, on GitHub's first run**:
+  every test signs in as a random dev identity whose id becomes the owner's display name, and one had four digits in a row, so the journey test saw "I'm sorry, I can't
+  share any personal details" as the first line of the call. The output validator no longer judges the name as something the assistant said (`5f980d1`; `docs/SAFETY_MODEL.md` section 2).
 * `POST /simulator/replay` no longer answers 500 when replays overlap: the replay driver waits by a 30 s wall-clock deadline instead of counting polls, and a replay that
-  really runs out of time is a 503 `provider_unavailable`. Verified on 2026-11-18 by 110 of 110 end-to-end tests run in one Playwright project, with the replay specs in parallel
+  really runs out of time is a 503 `provider_unavailable`. Verified on 2026-11-18 by 112 of 112 end-to-end tests run in one Playwright project, with the replay specs in parallel
   with the rest.
 
 **Still open:**
@@ -169,8 +172,8 @@ Not a defect, but good to know: an owner may have at most 5 active calls, and an
 * **Performance**: first-load JavaScript is about 165 to 190 kB gzip per route (see `npm run build:report`); the Simulator Lab is a separate lazy chunk. No real-user measurements.
 * **Screenshots** document the layout; they are not pixel-diff baselines (timestamps and generated ids change).
 * **Docker image**: built and run on a developer machine (Docker 29, Linux/musl, through a corporate npm mirror) after the runtime stage dropped `sharp`, the npm CLI and
-  corepack: non-root (uid 100), `npm`/`npx`/`corepack` absent, eight routes answer 200 with the nonce CSP, `healthy`. I did not scan it for vulnerabilities (the infrastructure
-  team does, with Trivy), it is not built in CI and not pushed anywhere.
+  corepack: non-root (uid 100), `npm`/`npx`/`corepack` absent, eight routes answer 200 with the nonce CSP, `healthy`. On GitHub the `container` workflow builds it and
+  scans it with Trivy (HIGH and CRITICAL, fixable findings only): no finding on the last run. It is not pushed anywhere yet (the publish step runs on `main` only).
 * **Hand-written enum layer**: `src/lib/api/enums.ts` mirrors the API's string enums; `src/lib/api/types.ts` has a compile-time drift guard against the generated
   OpenAPI types, so a changed enum fails `npm run typecheck`. Request/response shapes come from `src/lib/api/generated.ts` (`npm run types:api`).
 

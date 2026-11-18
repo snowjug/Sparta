@@ -140,7 +140,7 @@ npm run lint && npm run typecheck && npm run test && npm run build
 
 **Last verified, 2026-11-18** (Windows 11, Node 26.13, npm 12.2, Next 16.4.6, Playwright 1.65 with Chromium 1254, API from the repository's working tree):
 `npm run lint` 0 problems; `npm run typecheck` 0 errors; `npm run test` 22 files and 310 tests passed; `npm run build` OK (first-load JavaScript 167 to 191 kB gzip per
-route, `npm run build:report`); `npm run lock:check` clean; `npm run e2e` **112 passed, 0 failed, 0 flaky** in 6.5 minutes (4 workers, no retries, one project; the two
+route, `npm run build:report`); `npm run lock:check` clean; `npm run e2e` **112 passed, 0 failed, 0 flaky** in 7.7 minutes (4 workers, no retries, one project; the two
 deterministic-replay tests run in parallel with the others); axe-core found 0 serious, 0 moderate and 0 minor violations on onboarding (steps 1, 2, 3, 5, 8 and 9), home, live index, live call,
 call history (also with an expanded row), call detail, Assistant Studio, Safety Center, Simulator Lab (setup and live console) and a modal dialog, in the dark and the
 light theme; 45 screenshots (4.1 MB) were regenerated in `e2e/screenshots/`.
@@ -168,7 +168,8 @@ unused) and the npm CLI and corepack (never needed at run time: `CMD` is `node s
 the image.
 Verified on 2026-11-18 with Docker 29.9 after that change: the image builds (about 308 MB), runs as uid 100 `sparta`, `npm`, `npx` and `corepack` are gone, `/`,
 `/calls`, `/studio`, `/safety`, `/simulator`, `/live`, `/onboarding` and `/auth/callback` answer 200 with the nonce Content-Security-Policy, and the container reports
-`healthy`. Not scanned for vulnerabilities by me (the infrastructure team scans it with Trivy), not built in CI.
+`healthy`. On GitHub the `container` workflow builds it and scans it with Trivy (HIGH and CRITICAL, fixable findings only): no finding on the last run
+([../../docs/DEPLOYMENT.md](../../docs/DEPLOYMENT.md)); the publish step runs on `main` only and has not run.
 
 ## Known limitations
 

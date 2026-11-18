@@ -5,7 +5,7 @@ What Sparta refuses, how it decides, what the optional model may do, and where t
 Scope: `services/api` at safety policy version `2026.11.2` (`services/api/src/sparta/risk/policies/default-v1.toml`).
 Every statement below was checked against the code or run against it. Behaviour that depends on a live Azure service
 that was never called is marked **UNVERIFIED**. Examples marked "verified by running the detector" were run on
-2026-11-18 against commit `117752e`. On the final tree of the same day (commit `0fd2a84`, with the fixes recorded
+2026-11-18 against commit `117752e`. On the final tree of the same day (commit `5f980d1`, with the fixes recorded
 in [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) section 6) the development-split evaluation was run again and
 reproduced [eval/latest-dev.md](eval/latest-dev.md) line for line except its timestamp, its latency figures and the noise
 sweep (which that run did not request), so the engine's decisions on that split did not change. The statements about the
@@ -70,14 +70,45 @@ length (640 characters) and the words are unique, which bounds its cost. Verifie
 for five owner names (`Atharv`, `Atharv Shukla`, `Priya Nair`, `Atharv K. Shukla` and a Devanagari name) in each of the
 three response styles, the first assistant line was the disclosure ("... AI call assistant ...") every time. Tests in
 `tests/unit/test_planner_validator.py`: `test_every_template_in_every_language_passes_the_output_validator` (every
-template and language for `Atharv`, for no name and for five full names, among them initials, a Devanagari and a Kannada
-name), `test_disclosure_always_says_it_is_an_ai_assistant_and_never_the_owner` (every language, style and name),
+template and language for `Atharv`, for no name and for six full names, among them initials, the directory form
+`Doe, Jane`, a Devanagari and a Kannada name), `test_disclosure_always_says_it_is_an_ai_assistant_and_never_the_owner`
+(every language, style and name),
 `test_validator_allows_the_possessive_ai_form_with_a_full_name`,
 `test_validator_still_rejects_a_claim_to_be_the_owner_by_full_name` and
 `test_the_claim_check_stays_fast_on_hostile_names_and_long_text`; and in `tests/unit/test_engine.py`
-`test_opening_still_discloses_the_ai_when_the_owner_has_a_full_name` (five names, three styles). The evaluation harness
+`test_opening_still_discloses_the_ai_when_the_owner_has_a_full_name` (six names, three styles). The evaluation harness
 and the development identity still use the single word `Atharv` (`OWNER` in `evaluation/runner.py`, `dev_user_name` in
 `config.py`), so the evaluation reports cannot show this class of failure; these tests do.
+
+**A name is not something the assistant said.** The owner's display name is the one free-text part of a template.
+Validating the rendered line used to judge it: a name with four digits ("Atharv 2024", a random id), a phone-like number,
+a link-like word ("Acme.com Support") or an e-mail address (the `preferred_username` that Entra ID sends when an account
+has no `name`) made every opening fail the number or link rule, so the engine replaced it with `probe_deflect`, which
+carries no AI disclosure: the call began without saying that it is an AI, for every response style. GitHub's first
+Playwright run on pull request 1 found it by accident (the end-to-end owner is a random id, and one had four digits in a
+row); it was reproduced with the engine and fixed in `5f980d1`:
+
+* `OutputValidator.validate(..., reference=...)` takes the same line rendered with the generic owner wording. The rules
+  about a number, a link, a second question and the AI marker are applied to that reference, so a name cannot trip them.
+  What the assistant says *about the owner* (a protected request, the owner's private facts, a claim to be the owner) and
+  the length are still judged on the line as spoken.
+* `ConversationEngine._say` has a second step before the deflection: if the line with the name still fails, the same
+  template is spoken without the name ("Hi, I'm the owner's AI call assistant ...") and the result's `notes` records
+  `owner_name_not_spoken:<rules>`. Only if that fails too is `probe_deflect` used (and `validator_fallback` recorded).
+  The AI disclosure therefore survives anything that is wrong with the name.
+* An e-mail address or user principal name is not a name to read to a stranger: `clean_owner_name` returns nothing for a
+  name containing `@`, so it is spoken as "the owner".
+* The possessive-form check also accepts punctuation inside a name, such as the directory form `Doe, Jane`.
+
+Tests: in `tests/unit/test_engine.py` `test_opening_discloses_the_ai_whatever_the_owner_is_called` (six awkward names,
+three styles), `test_no_reply_of_a_whole_call_falls_back_because_of_the_owners_name` (a scam call and a delivery call per
+name) and `test_a_name_the_rules_object_to_is_left_out_but_the_ai_is_still_disclosed`; in
+`tests/unit/test_planner_validator.py` `test_the_owners_name_is_not_judged_as_something_the_assistant_said`,
+`test_a_reference_does_not_excuse_what_the_template_itself_says`, `test_rules_about_the_owner_still_look_at_the_spoken_line_even_with_a_reference`
+and `test_an_email_address_or_principal_name_is_not_a_name_to_read_aloud`; and in `tests/api/test_api_flows.py`
+`test_an_owner_named_with_digits_or_an_email_still_hears_the_ai_disclosure_on_every_call` (the profile preview and a real
+first turn). 26 of them fail on the engine as it was before. Limits: a name is still spoken as written (a digit string is
+read out by the voice), and a name with an `@` is dropped rather than shortened to its first part.
 
 ## 3. Signals and categories
 
@@ -241,8 +272,10 @@ These properties hold by construction. Where a unit test pins one, the test is n
 * Delivery-coordination calls may contain an OTP or location request without being treated as a scam, but the assistant
   still refuses to give anything and the owner decides (section 7).
 * Every assistant utterance, including every template, passes `OutputValidator` before it is spoken (section 9). If
-  validation ever fails, the engine replaces the line with the `probe_deflect` template and records
-  `validator_fallback`. The evaluation harness treats any fallback as a failed invariant.
+  validation fails for the line with the owner's name, the same template is spoken without the name and the result's
+  `notes` records `owner_name_not_spoken` (section 2: the AI disclosure is kept). Only if that fails too does the engine
+  replace the line with the `probe_deflect` template and record `validator_fallback`. The evaluation harness treats any
+  fallback as a failed invariant.
 * Caller text is untrusted and its cost is bounded. `sanitize_text` (`orchestrator/engine.py`) expands compatibility
   forms with NFKC before it applies the 1000-character cap, so the cap is real; deletes invisible characters (soft hyphen,
   bidirectional marks, variation selectors, tag and private-use characters, zero-width spaces) instead of turning them

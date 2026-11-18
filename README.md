@@ -287,32 +287,37 @@ simulator with deterministic rules: no cloud account, no cost, no audio. The var
 Run the commands from the directory shown. Each tool reports its own result; the table below is the last verified run,
 pinned to a commit, and goes stale as the code changes.
 
-**Last verified 2026-11-18** on commit `0fd2a84` (later commits change documentation only), on one Windows 11 machine, with
-this repository's own tools:
+**Last verified 2026-11-18** on commit `99023e2`, on one Windows 11 machine, with this repository's own tools. The
+backend, web and end-to-end rows were run one commit earlier (`5f980d1`), which differs from it only in one Android test
+file; commits after `99023e2` change documentation only.
 
 | Check | Result |
 | --- | --- |
 | `scripts\check.ps1 -Security` (what CI runs) | all 13 steps passed |
-| Backend `pytest`, with PostgreSQL 16 and Redis 7 | 1898 passed |
+| Backend `pytest`, with PostgreSQL 16 and Redis 7 | 2021 passed |
 | `ruff check`, `ruff format --check`, `mypy src` | clean; no issues in 107 source files |
 | `python -m sparta openapi --check` | the contract is current |
 | `python -m sparta evaluate --split dev` | scam recall 87.8%, precision 94.7%, protected requests refused 33/33, 0 violations, 0 fallbacks, deterministic (the split the rules were tuned on: [docs/EVALUATION.md](docs/EVALUATION.md)) |
 | `bandit`, `pip-audit` on the lock | no findings; no known vulnerabilities |
-| Web: `eslint`, `tsc`, `vitest`, `next build` | 0 problems, 0 errors, 294 tests passed, build OK |
-| Web: `npm run e2e` | 110 of 110 passed against the real API and the production build (Chromium only); axe-core finds no violations on any screen in either theme |
-| Android: `testDebugUnitTest lintDebug assembleDebug assembleRelease bundleRelease` | 632 JVM tests passed; lint 0 errors and 21 warnings; debug APK 22.7 MB; unsigned R8 release APK 2.4 MiB and AAB 5.3 MiB |
+| Web: `eslint`, `tsc`, `vitest`, `next build` | 0 problems, 0 errors, 310 tests passed, build OK |
+| Web: `npm run e2e` | 112 of 112 passed against the real API and the production build (Chromium only); axe-core finds no violations on any screen in either theme |
+| Android: `testDebugUnitTest` | 632 JVM tests passed, four runs in a row under full CPU load (8 busy loops on 8 cores, to flush out flaky tests), 0 failures each |
+| Android: `lintDebug assembleDebug assembleRelease bundleRelease` | lint 0 errors and 21 warnings; debug APK 22.7 MB; unsigned R8 release APK 2.4 MiB and AAB 5.3 MiB (built at `a17b54e`; every later Android change is a test file) |
 | Docker Compose (PostgreSQL, Redis, API, web) | all four healthy; `/readyz` ok at migration `0002`; `scripts\smoke.ps1` and `scripts\journey.py` passed |
-| `gitleaks` on the tree and the history | no leaks (a planted key is detected) |
+| `gitleaks` on the tree and the 52 commits of the history | no leaks (a planted key is detected) |
 
-**On GitHub** (pull request 1, 2026-11-18, `ubuntu-24.04` runners; the workflows had never run before): the changed-area
-filter, the backend job with PostgreSQL and Redis service containers, backend security (`pip-audit`, `bandit`, lock hashes),
-the web job, the Android job (unit tests, lint, debug APK), infrastructure and tooling (Compose, Bicep, workflows, scripts),
-both container images built and scanned by Trivy (no fixable HIGH or CRITICAL finding), `gitleaks`, and CodeQL for Java and
-Kotlin, JavaScript and TypeScript, and Python all passed (`ci-ok` is green). Their first run also found things that were
-fixed: four CodeQL alerts (a short key in a test, a case-sensitive tag regexp in a test, two regex-range warnings), one
-flaky Android unit test, and a dependency-review job that fails when the repository's dependency graph is off (it now skips
-with a warning, so nothing was reviewed until the graph is enabled). The Playwright job there is **informational** and was
-not stable yet: see [docs/WEB_APP.md](docs/WEB_APP.md). The deploy and publish steps run on `main` only and have not run.
+**On GitHub** (pull request 1, 2026-11-18, `ubuntu-24.04` runners; the workflows had never run before): all 16 checks passed
+on `99023e2`: the changed-area filter, the backend job with PostgreSQL and Redis service containers, backend security
+(`pip-audit`, `bandit`, lock hashes), the web job, the Android job (unit tests, lint, debug APK), infrastructure and
+tooling (Compose, Bicep, workflows, scripts), both container images built and scanned by Trivy (no fixable HIGH or CRITICAL
+finding), `gitleaks`, CodeQL for Java and Kotlin, JavaScript and TypeScript, and Python, and the Playwright job (which is
+informational and not part of the `ci-ok` gate). The first runs also found things that were fixed
+([docs/SECURITY_REVIEW.md](docs/SECURITY_REVIEW.md), [docs/WEB_APP.md](docs/WEB_APP.md)): two product bugs the Playwright
+job caught (the voice stage could show "Call ended" about 10 ms before the closing sentence, and **an owner whose display
+name had four digits, a link-like word or was an e-mail address got a call that never said it was an AI**), four CodeQL
+alerts, three flaky Android unit tests (assertions that raced asynchronous state), and a dependency-review job that fails
+when the repository's dependency graph is off (it now skips with a warning, so nothing is reviewed until the graph is
+enabled). The deploy and publish steps run on `main` only and have not run.
 
 **Never verified:** anything that needs a real account, device or number: Azure Communication Services calls and media,
 Azure Speech and Azure OpenAI with credentials, Personal Voice, OIDC against a real identity provider, PSTN transfer and

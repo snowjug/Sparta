@@ -14,7 +14,7 @@ Scope and honesty notes:
   voices in real calls is **UNVERIFIED**; locale and voice support comes from documentation
   ([research/azure-speech-openai-verification.md](research/azure-speech-openai-verification.md)).
 * Examples marked "verified by running" were executed on 2026-11-18 against commit `117752e` (`LanguageDetector.detect`,
-  `SignalDetector.detect` and `ConversationEngine.on_caller_turn`). On the final tree of the same day (commit `0fd2a84`,
+  `SignalDetector.detect` and `ConversationEngine.on_caller_turn`). On the final tree of the same day (commit `5f980d1`,
   with the fixes in [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) section 6) the development-split evaluation was run
   again and reproduced [eval/latest-dev.md](eval/latest-dev.md) except its timestamp, its latency figures and the noise
   sweep, so the detector's behaviour on that split did not change.
@@ -235,7 +235,7 @@ Verified by running the engine: three consecutive Tamil-script turns produced `u
 | Language detection tests | `services/api/tests/unit/test_language.py`, `test_text.py` | Registry contents, pack completeness, detection of each profile, code-switch segmentation, forced language, provider-hint behaviour, determinism |
 | Signal rules per language | `services/api/tests/unit/test_signals.py` | Detection of each signal in English, Hindi, Kannada, Hinglish and Kanglish, plus the denial cases |
 | Claim extraction | `services/api/tests/unit/test_extraction.py` | Name and organisation extraction, including a Kanglish sentence |
-| Reply templates | `services/api/tests/unit/test_planner_validator.py`, `tests/unit/test_engine.py` | Every template in every language passes the output validator for the owner name `Atharv`, for no name and for five full names (initials, a Devanagari and a Kannada name among them; the default style); every disclosure, in every language and style and for those names, says it is an AI assistant; the engine's opening line discloses the AI for each of the five names in each style |
+| Reply templates | `services/api/tests/unit/test_planner_validator.py`, `tests/unit/test_engine.py` | Every template in every language passes the output validator for the owner name `Atharv`, for no name and for six full names (initials, the directory form `Doe, Jane`, a Devanagari and a Kannada name among them; the default style); every disclosure, in every language and style and for those names, says it is an AI assistant; the engine's opening line discloses the AI for each of the six names in each style, and for names with digits, a phone-like number, a link-like word or an e-mail address (`test_opening_discloses_the_ai_whatever_the_owner_is_called`) |
 | Language-following in a call | `services/api/tests/unit/test_engine.py`, `tests/integration/test_call_service.py` | Switching, forced mode, unsupported-language flow |
 
 ## 9. Measured detector results

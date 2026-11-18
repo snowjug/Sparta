@@ -678,18 +678,21 @@ None of these can be created by the repository or its pipelines:
 * The CI workflow: the changed-area filter, the backend job (with PostgreSQL and Redis service containers: lint, types,
   tests, contract, evaluation), backend security (`pip-audit`, `bandit`, lock hashes), the web job, the Android job (unit
   tests, lint, debug APK; it needs a JDK and the Android SDK, so this was its first run anywhere but a developer machine),
-  infrastructure and tooling (Compose, Bicep, workflows, scripts) and the `ci-ok` aggregate passed. One Android unit test
-  was flaky on the first runs and was fixed.
+  infrastructure and tooling (Compose, Bicep, workflows, scripts) and the `ci-ok` aggregate passed; all 16 checks were
+  green on the final code commit. Three Android unit tests were flaky on the first runs (assertions racing asynchronous
+  state) and were fixed; the suite then passed four times in a row on a developer machine under full CPU load.
 * The container workflow: both images were built and scanned by Trivy 0.76.2 (`--severity HIGH,CRITICAL --ignore-unfixed`)
   with no finding; the publish steps did not run (they need `main`).
 * CodeQL (Java and Kotlin, JavaScript and TypeScript, Python) and `gitleaks`: passed after four CodeQL alerts were resolved.
 * Dependency review: **reviewed nothing**. The repository's dependency graph is off (Settings > Advanced Security), the API
   answers 403 and the action reports "not supported on this repository"; the job now skips with a warning instead of
   failing.
-* Playwright (job `web-e2e`, informational and not part of `ci-ok`): three runs gave 109 of 110, 110 of 110 and 109 of 110
-  passed. The two failures were different tests: the API's own rate limiter answered the browser with a 429 during a tour of
-  every screen (the E2E API now runs with higher limits), and the voice-stage assertion that `ended` is shown once, which
-  [WEB_APP.md](WEB_APP.md) describes. It stays informational until it has been stable on GitHub for several runs.
+* Playwright (job `web-e2e`, informational and not part of `ci-ok`): its first runs failed one test each, three times and
+  each time a different one, and each was a real finding. The API's own rate limiter answered the browser with a 429 during
+  a tour of every screen (the E2E API now runs with higher limits); the voice stage could record `ended` twice around the
+  closing sentence ([WEB_APP.md](WEB_APP.md) section 3); and a call whose owner had a display name with four digits did not
+  begin with the AI disclosure ([SAFETY_MODEL.md](SAFETY_MODEL.md) section 2). All three are fixed and the job passed on the
+  last two commits. It stays informational until it has been stable on GitHub for more runs.
 
 **UNVERIFIED (not run, with the reason):**
 

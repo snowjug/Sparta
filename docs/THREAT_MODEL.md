@@ -1,7 +1,7 @@
 # Threat model
 
 Assets, actors, trust boundaries, abuse cases, the mitigations that exist in the code (with file references) and the risks
-that remain. It covers `services/api` and its contract with the web and Android apps at commit `0fd2a84`
+that remain. It covers `services/api` and its contract with the web and Android apps at commit `5f980d1`
 ([IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) section 6).
 
 Read this with [SAFETY_MODEL.md](SAFETY_MODEL.md) (the assistant's decision rules), [PRIVACY.md](PRIVACY.md) (stored data),

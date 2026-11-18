@@ -106,9 +106,12 @@ truncated words).
    letters in `language/text.py`, `risk/matchers.py` and `orchestrator/engine.py`; see
    [`SECURITY_REVIEW.md`](SECURITY_REVIEW.md)), and `531e665` (the output validator judges a full owner name as a
    whole, so the AI disclosure is no longer replaced for owners with a two-word name; the evaluation uses the one-word
-   owner "Atharv", for which nothing changes). The later commits `2c63616` (owner-name redaction before model calls,
-   keyed idempotency fingerprint, FastAPI spans off) are not on the path the evaluation takes: it runs the rules engine
-   without a model provider or the HTTP layer.
+   owner "Atharv", for which nothing changes). `2c63616` (owner-name redaction before model calls, keyed idempotency
+   fingerprint, FastAPI spans off) is not on the path the evaluation takes: it runs the rules engine without a model
+   provider or the HTTP layer. `5f980d1` changed `ConversationEngine._say` and `OutputValidator` again (the owner's
+   display name is no longer judged as something the assistant said, and a line that still fails is spoken without the
+   name before the deflection is used); for the one-word owner of the evaluation nothing changes, and the
+   development-split report regenerated on that code is identical apart from timestamps and timings.
    The `test` split was **not re-run** after them. Two checks stand in for a re-run, and neither is one: the `dev`
    report regenerated with the final code is identical to the committed one apart from timestamps and timings, and a
    character scan of both splits (counts only, no reading of scenarios) found no compatibility forms, no Cyrillic or

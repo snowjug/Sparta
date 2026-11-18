@@ -1,7 +1,7 @@
 # Architecture
 
 How Sparta is put together: components, data flow, the conversation state machine, the provider interfaces, storage,
-sequence diagrams, failure modes and telemetry. Everything here describes `services/api` as of commit `0fd2a84`
+sequence diagrams, failure modes and telemetry. Everything here describes `services/api` as of commit `5f980d1`
 ([IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) section 6); where behaviour was
 never exercised against a live external service it is marked **UNVERIFIED**.
 
@@ -102,7 +102,9 @@ above) matches these rules.
 2. **The assistant opens.** `ConversationEngine.start` moves `INITIALIZING` to `DISCLOSURE` to `IDENTIFY_CALLER` and
    returns the disclosure line ("Hi, I'm Atharv's AI call assistant. May I know who's calling and what this is
    regarding?" in the default style). With a full name such as `Atharv Shukla` the line names the full name: the output
-   validator judges a name as a whole ([SAFETY_MODEL.md](SAFETY_MODEL.md) section 2).
+   validator judges a name as a whole, and never judges the name as something the assistant said, so a name with digits,
+   a link-like word or an e-mail address cannot cost the call its AI disclosure (an e-mail address is spoken as "the
+   owner"; [SAFETY_MODEL.md](SAFETY_MODEL.md) section 2).
 3. **The caller speaks.** The text reaches `CallService._submit_turn` in one of these ways: typed or scripted turns
    from the simulator, a browser speech result (`POST /calls/{id}/turns`), an uploaded clip
    (`POST /calls/{id}/audio`, transcribed in memory), or provider audio. Provider audio (Azure Communication Services
