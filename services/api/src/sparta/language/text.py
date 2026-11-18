@@ -32,7 +32,9 @@ _INVISIBLE = dict.fromkeys(
         *range(0xE0100, 0xE01F0),
     ]
 )
-_PRIVATE_USE = re.compile("[\ue000-\uf8ff\U000f0000-\U000ffffd\U00100000-\U0010fffd]")
+_PRIVATE_USE_CATEGORY = (
+    "Co"  # U+E000-U+F8FF and planes 15 and 16: characters with no assigned meaning, never visible text
+)
 
 # Cyrillic and Greek letters that look like Latin ones ("оtp", "ОТР"). Words made only of Latin letters, digits,
 # punctuation and these look-alikes are folded to Latin for matching; other words (real Russian or Greek) stay as they
@@ -80,7 +82,9 @@ def strip_invisible(text: str, keep_joiners: bool = False) -> str:
     ``keep_joiners`` leaves the zero-width (non-)joiners for ``settle_joiners``.
     """
     text = text.translate(_INVISIBLE_EXCEPT_JOINERS if keep_joiners else _INVISIBLE)
-    return _PRIVATE_USE.sub("", text)
+    if text.isascii():
+        return text  # the common case: nothing outside ASCII can be a private-use character
+    return "".join(ch for ch in text if unicodedata.category(ch) != _PRIVATE_USE_CATEGORY)
 
 
 def settle_joiners(text: str) -> str:

@@ -28,7 +28,7 @@ test.describe("security headers and content policy", () => {
       const nonce = /'nonce-([^']+)'/.exec(csp)?.[1];
       expect(nonce, path).toBeTruthy();
       const html = await response.text();
-      const scripts = [...html.matchAll(/<script\b[^>]*>/g)].map((match) => match[0]);
+      const scripts = [...html.matchAll(/<script\b[^>]*>/gi)].map((match) => match[0]);
       expect(scripts.length, path).toBeGreaterThan(3);
       expect(scripts.every((tag) => tag.includes(`nonce="${nonce}"`)), `${path}: every <script> carries the nonce`).toBe(true);
       expect(html, path).not.toMatch(/\sstyle="/); // no inline style attributes (style-src has no 'unsafe-inline')

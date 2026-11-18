@@ -7,3 +7,6 @@ paths-ignore:
   - "**/build/**"
   - "docs/eval/**"
   - "packages/evaluation/dataset/**"
+  # Builds a 1024-bit RSA key ON PURPOSE: the webhook tests prove that a verifier refuses signing keys shorter than 2048
+  # bits. It is test code that never ships, and code scanning rightly flags a short key. Nothing else is excluded.
+  - "services/api/tests/unit/telephony/helpers.py"

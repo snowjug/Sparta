@@ -58,7 +58,8 @@ FRAME_MS = 20
 FRAMES_PER_CHUNK = 5
 MAX_TEXT_CHARS = 2000
 
-_XML_ILLEGAL = re.compile("[\x00-\x08\x0b\x0c\x0e-\x1f\ufffe\uffff]")
+# XML 1.0 forbids the control characters other than tab, line feed and carriage return, and U+FFFE and U+FFFF.
+_XML_ILLEGAL = dict.fromkeys([*range(0x00, 0x09), 0x0B, 0x0C, *range(0x0E, 0x20), 0xFFFE, 0xFFFF])
 _STYLE = re.compile(r"[a-z][a-z0-9-]{0,31}")
 
 
@@ -225,7 +226,7 @@ class AzureTextToSpeech:
         fmt = OUTPUT_FORMATS.get(request.output_format)
         if fmt is None:
             raise ProviderRejected(PROVIDER, STAGE, "unsupported output format")
-        text = _XML_ILLEGAL.sub("", request.text).strip()
+        text = request.text.translate(_XML_ILLEGAL).strip()
         if not text:
             raise ProviderRejected(PROVIDER, STAGE, "nothing to synthesise")
         if len(text) > MAX_TEXT_CHARS:
