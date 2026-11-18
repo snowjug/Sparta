@@ -7,8 +7,9 @@ anything here with a real call.
 **Honest status.** The container image, Docker Compose stack and the production-mode behaviour of the API were run and
 checked on a developer machine. The Bicep templates **compile and lint** with the Bicep CLI but have **never been deployed**:
 no Azure subscription was used to write them. The GitHub Actions workflows ran on GitHub for the first time on pull request 1
-(2026-11-18, see [What is not verified](#what-is-not-verified)); the deploy and publish steps run on `main` only and have
-not run. Nothing here has
+(2026-11-18, see [What is not verified](#what-is-not-verified)); on `main`, the publish step has since pushed both images to
+GHCR and the deploy workflow has skipped itself (the Azure repository variables are not set), so the deploying job has not
+run. Nothing here has
 carried a real phone call, and no Azure Communication Services (ACS), Speech or Azure OpenAI resource has been exercised.
 Where something is untested it is marked **UNVERIFIED**.
 
@@ -80,8 +81,11 @@ access to the vault as a whole (see [Secrets and rotation](#secrets-and-rotation
   [`docs/WEB_APP.md`](WEB_APP.md)); in `dev` mode the web app sends no token at all, so it cannot authenticate to a
   production API. Plan the first production check around a client that sends bearer tokens, and do not promise web sign-in.
 * Container images in a registry the Container Apps can pull from. `container.yml` publishes
-  `ghcr.io/<owner>/sparta-api` and `sparta-web`. Packages published by a workflow start **private**: either make them public
-  in the package settings or pass `registryServer`, `registryUsername` and a read-only token as `registryPassword`.
+  `ghcr.io/<owner>/sparta-api` and `sparta-web`. The first publish from this public repository (2026-11-18) produced packages
+  that could be pulled without credentials; do not assume that for another repository or organization (a private repository
+  or an organization policy can make a package private): check the visibility in the package settings after the first
+  publish, and if a package is private either make it public or pass `registryServer`, `registryUsername` and a read-only
+  token as `registryPassword`.
 * Read the [legal and approvals checklist](#legal-and-approvals-checklist). Real calls are **not** to be taken before that
   review.
 
@@ -682,7 +686,7 @@ None of these can be created by the repository or its pipelines:
   green on the final code commit. Three Android unit tests were flaky on the first runs (assertions racing asynchronous
   state) and were fixed; the suite then passed four times in a row on a developer machine under full CPU load.
 * The container workflow: both images were built and scanned by Trivy 0.76.2 (`--severity HIGH,CRITICAL --ignore-unfixed`)
-  with no finding; the publish steps did not run (they need `main`).
+  with no finding; on the pull request the publish steps do not run (see the next list for the run on `main`).
 * CodeQL (Java and Kotlin, JavaScript and TypeScript, Python) and `gitleaks`: passed after four CodeQL alerts were resolved.
 * Dependency review: **reviewed nothing**. The repository's dependency graph is off (Settings > Advanced Security), the API
   answers 403 and the action reports "not supported on this repository"; the job now skips with a warning instead of
@@ -694,23 +698,38 @@ None of these can be created by the repository or its pipelines:
   begin with the AI disclosure ([SAFETY_MODEL.md](SAFETY_MODEL.md) section 2). All three are fixed and the job passed on the
   last two commits. It stays informational until it has been stable on GitHub for more runs.
 
+**Verified on GitHub after the merge** (push to `main`, commit `603bc19`, 2026-11-18; the first time the `main`-only parts ran):
+
+* CI, CodeQL (no open code-scanning alert afterwards) and the secret scan passed again.
+* The container workflow published both images to GHCR with provenance and an SBOM: `ghcr.io/snowjug/sparta-api`
+  (digest `sha256:070d1310e5091eb9eb590d5b2d9248a9052b77b571b3778ebd9675ae3a7a274e`) and `ghcr.io/snowjug/sparta-web`
+  (digest `sha256:0c1f528c303f2b7a8cdad573ca56f7ef1d7a85a3d6dc88160d219ac1aeacc3ff`), each tagged `main`, `latest` and
+  `sha-<commit>`. Both packages were readable without credentials (an anonymous request for the manifest of `main` answered
+  200). The API image, pulled by its digest and started with the development identity and the simulator, answered `/healthz`
+  and `/readyz` and passed `scripts\journey.py` (English, Hinglish and Kanglish OTP scams, block, report, export, delete).
+  The web image was published but not run from GHCR.
+* The deploy workflow's `workflow_run` trigger fired for that successful push; its preflight job validated the commit id,
+  found no `AZURE_CLIENT_ID`, `AZURE_TENANT_ID` or `AZURE_SUBSCRIPTION_ID` repository variable, wrote "Deployment skipped (not
+  configured)" and the deploying job was skipped. That is the designed no-op; it shows nothing about the Azure path.
+
 **UNVERIFIED (not run, with the reason):**
 
 * **Any Azure deployment** (`validate`, `what-if`, `create`), Key Vault reference resolution and timing (in particular that
   Container Apps resolves a reference through a role assignment scoped to a single secret), private endpoint and
   DNS behaviour, SKU and region availability, role-assignment propagation, Container Apps probe behaviour, the migration job,
   alert rules, restore and rollback commands. No Azure subscription was used.
-* **GitHub settings and the workflows that only run on `main`** (the deploy job, including its `workflow_run` trigger and
-  the "commit must be in main's history" guard; the GHCR publish step), and the **GitHub settings** the release path relies
-  on (the `production` environment's branch restriction and required reviewers with prevent-self-review, the `v*` tag
-  ruleset, branch protection of `main`, fork-approval settings). The other workflows did run (see above).
+* **The deploying job of the deploy workflow** (the job that signs in to Azure with OIDC, includes the "commit must be in
+  main's history" guard, `what-if`, `create` and the migration job; it was skipped on `main` because the repository
+  variables are not set), and the **GitHub settings** the release path relies on (the `production` environment's branch
+  restriction and required reviewers with prevent-self-review, the `v*` tag ruleset, branch protection of `main` (none is set
+  today), fork-approval settings). The publish step and the `workflow_run` trigger have run (see above).
 * **OIDC federation** to Azure and **Entra sign-in** end to end, including the web app's OIDC mode (unit-tested with a fake
   user manager only) and the API's token validation against a real issuer.
 * **ACS, Event Grid, Teams/Operator Connect or any telephony provider**, and any real call. No account or number exists.
 * **Azure AI Speech and Azure OpenAI** against live services.
 * **Custom domains and managed certificates**, `ssl=verify-full` against Azure's certificate chain, mutual TLS between apps.
 * **Scanning the published image.** Trivy scanned the images the CI builds (see above); the image that is pushed is a second
-  build, so scanning its digest after publishing is not done.
+  build from the same cached layers (published digests above), so scanning those digests after publishing is not done.
 * **Collecting product metrics** in Azure Monitor (see Monitoring).
 
 ## Troubleshooting

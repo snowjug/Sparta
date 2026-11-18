@@ -155,12 +155,13 @@ pins the behaviour.
   ([TELEPHONY.md](TELEPHONY.md) section 3); the owner-private-marker check of `OutputValidator` has nothing to match in
   live calls ([SAFETY_MODEL.md](SAFETY_MODEL.md) section 10).
 * Two deployment hardening items were changed in `0fd2a84` after the second security review and are **UNVERIFIED**, because
-  the deploy workflow has not run on GitHub and nothing has been deployed to Azure: the conditions under which the deploy workflow started by `workflow_run` runs
-  (a successful push to this repository's `main`, and a commit proved to be in main's history before it is checked out;
-  `.github/workflows/deploy.yml`), and the separation of the web tier's Key Vault identity from the API's (per-secret
-  role assignments, none on the vault; [DEPLOYMENT.md](DEPLOYMENT.md)). Settings that only GitHub or Azure can hold
-  (required reviewers and the branch rule on the `production` environment, tag rules, the roles actually granted) cannot
-  be enforced from this repository. See [SECURITY_REVIEW.md](SECURITY_REVIEW.md).
+  nothing has been deployed to Azure. The first is the conditions under which the deploy workflow started by `workflow_run`
+  runs (a successful push to this repository's `main`, and a commit proved to be in main's history before it is checked out;
+  `.github/workflows/deploy.yml`): on `main` the trigger fired and the preflight skipped itself because the Azure repository
+  variables are not set, but the guard in the deploying job has never run. The second is the separation of the web tier's
+  Key Vault identity from the API's (per-secret role assignments, none on the vault; [DEPLOYMENT.md](DEPLOYMENT.md)).
+  Settings that only GitHub or Azure can hold (required reviewers and the branch rule on the `production` environment, tag
+  rules, the roles actually granted) cannot be enforced from this repository. See [SECURITY_REVIEW.md](SECURITY_REVIEW.md).
 * Legal and regulatory exposure (interception, recording, disclosure, data transfer) is not a technical control and is
   not assessed here ([PRIVACY.md](PRIVACY.md) section 13).
 

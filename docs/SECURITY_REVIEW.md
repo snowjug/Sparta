@@ -71,7 +71,8 @@ tickets, token-checked lock release).
 and Azure *setting* (branch protection, environment reviewers, fork-approval rules, the role assignments actually
 granted). The CI workflows ran on GitHub only after this review, on pull request 1; its CodeQL analysis found four further
 alerts in the same code (a short key in a test, a case-sensitive tag regexp in a test, two regex-range warnings), all
-resolved. The deploy workflow and anything on Azure have not run.
+resolved. On `main` the deploy workflow has run once and skipped itself (the Azure repository variables are not set); its
+deploying job and anything on Azure have not run.
 
 ## What is still open
 
