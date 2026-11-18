@@ -29,6 +29,7 @@ import contextlib
 import dataclasses
 import hashlib
 import hmac
+import html
 import itertools
 import json
 import logging
@@ -38,7 +39,6 @@ from collections.abc import AsyncIterable, AsyncIterator, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any, Protocol, runtime_checkable
 from urllib.parse import urlsplit
-from xml.sax.saxutils import quoteattr
 
 import httpx
 from pydantic import SecretStr
@@ -151,22 +151,33 @@ def stream_token(auth_token: str, call_id: str) -> str:
 
 # ------------------------------------------------------------------------------------------------------ TwiML
 _XML = '<?xml version="1.0" encoding="UTF-8"?>'
+_XML_CONTROL = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")  # not allowed in an XML 1.0 document at all
+
+
+def _attr(value: str) -> str:
+    """A double-quoted XML attribute value. Only escaping is needed, so ``html.escape`` is used: importing
+    ``xml.sax.saxutils`` just for ``quoteattr`` would pull in an XML *parser* module that security scanners flag."""
+    return '"' + html.escape(_XML_CONTROL.sub("", value), quote=True) + '"'
+
+
+def _text(value: str) -> str:
+    return html.escape(_XML_CONTROL.sub("", value), quote=False)
 
 
 def stream_twiml(ws_url: str, token: str) -> str:
     return (
-        f"{_XML}<Response><Connect><Stream url={quoteattr(ws_url)}>"
-        f'<Parameter name="token" value={quoteattr(token)}/></Stream></Connect></Response>'
+        f"{_XML}<Response><Connect><Stream url={_attr(ws_url)}>"
+        f'<Parameter name="token" value={_attr(token)}/></Stream></Connect></Response>'
     )
 
 
 def reject_twiml(reason: str = "busy") -> str:
-    return f"{_XML}<Response><Reject reason={quoteattr(reason)}/></Response>"
+    return f"{_XML}<Response><Reject reason={_attr(reason)}/></Response>"
 
 
 def dial_twiml(destination: str, caller_id: str) -> str:
     return (
-        f"{_XML}<Response><Dial callerId={quoteattr(caller_id)}><Number>{destination}</Number></Dial>"
+        f"{_XML}<Response><Dial callerId={_attr(caller_id)}><Number>{_text(destination)}</Number></Dial>"
         "<Say>The person could not be reached. Goodbye.</Say><Hangup/></Response>"
     )
 

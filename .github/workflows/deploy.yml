@@ -17,7 +17,7 @@
 #     repo:<owner>/<repo>:environment:production on the app registration or managed identity (docs/DEPLOYMENT.md).
 #   * Secrets are environment secrets, handed to Bicep through environment variables (readEnvironmentVariable in
 #     main.bicepparam), never written to a file: SPARTA_DATA_KEYS, SPARTA_PEPPER, SPARTA_WEBHOOK_SECRET,
-#     POSTGRES_ADMIN_PASSWORD and, optionally, AZURE_SPEECH_KEY and AZURE_OPENAI_KEY.
+#     POSTGRES_ADMIN_PASSWORD and, optionally, AZURE_SPEECH_KEY, AZURE_OPENAI_KEY and SPARTA_TWILIO_AUTH_TOKEN.
 #   * Database migrations run as the Container Apps job created by the template (production never migrates at startup).
 #
 # This workflow has NOT been run on GitHub or against Azure by its author: see docs/DEPLOYMENT.md, "What is not verified".
@@ -192,6 +192,7 @@ jobs:
           POSTGRES_ADMIN_PASSWORD: ${{ secrets.POSTGRES_ADMIN_PASSWORD }}
           AZURE_SPEECH_KEY: ${{ secrets.AZURE_SPEECH_KEY }}
           AZURE_OPENAI_KEY: ${{ secrets.AZURE_OPENAI_KEY }}
+          SPARTA_TWILIO_AUTH_TOKEN: ${{ secrets.SPARTA_TWILIO_AUTH_TOKEN }}
           SPARTA_OIDC_ISSUER: ${{ vars.SPARTA_OIDC_ISSUER }}
           SPARTA_OIDC_AUDIENCE: ${{ vars.SPARTA_OIDC_AUDIENCE }}
           SPARTA_ENVIRONMENT_NAME: ${{ vars.SPARTA_ENVIRONMENT_NAME }}

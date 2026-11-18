@@ -224,6 +224,9 @@ def test_twiml_values_cannot_break_out_of_their_attribute():
     dial = parse_twiml(dial_twiml(OWNER, CALLED))
     assert dial.find("./Dial").attrib == {"callerId": CALLED}  # type: ignore[union-attr]
     assert dial.findtext("./Dial/Number") == OWNER and dial.find("./Hangup") is not None
+    hostile = parse_twiml(dial_twiml("+1</Number><Hangup/><Number>", 'x"\x00 y'))
+    assert hostile.findtext("./Dial/Number") == "+1</Number><Hangup/><Number>"  # text, not markup
+    assert len(hostile.findall(".//Hangup")) == 1 and hostile.find("./Dial").attrib == {"callerId": 'x" y'}  # type: ignore[union-attr]
 
 
 # ================================================================================================== REST

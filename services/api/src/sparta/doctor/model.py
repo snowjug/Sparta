@@ -22,7 +22,7 @@ from sparta.logging_setup import redact_text
 
 
 class Status(StrEnum):
-    PASS = "PASS"  # noqa: S105 - a status name, not a password
+    PASS = "PASS"  # noqa: S105  # nosec B105 - a status name, not a password
     WARNING = "WARNING"
     BLOCKED = "BLOCKED"
     UNVERIFIED = "UNVERIFIED"

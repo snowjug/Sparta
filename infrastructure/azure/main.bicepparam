@@ -29,6 +29,7 @@ param webhookSecret = readEnvironmentVariable('SPARTA_WEBHOOK_SECRET', '')
 param postgresAdminPassword = readEnvironmentVariable('POSTGRES_ADMIN_PASSWORD', '')
 param speechKey = readEnvironmentVariable('AZURE_SPEECH_KEY', '')
 param azureOpenAiKey = readEnvironmentVariable('AZURE_OPENAI_KEY', '')
+param twilioAuthToken = readEnvironmentVariable('SPARTA_TWILIO_AUTH_TOKEN', '')
 
 // ---- authentication (required: production accepts OIDC bearer tokens only) ----
 param oidcIssuer = readEnvironmentVariable('SPARTA_OIDC_ISSUER', '')
@@ -64,6 +65,21 @@ param llmProvider = 'rules'
 // has been run against a live ACS resource).
 // param deployAcs = true
 // param telephonyProvider = 'azure'
+// param eventGridAllowedAppIds = '<application id of the Microsoft.EventGrid service principal in your tenant>'
+// Telephony through Twilio (the number and the account are yours to create, docs/TELEPHONY.md; a TRIAL account removes
+// <Stream> and <Dial><Number> from TwiML, so the account must be upgraded). SPARTA_TWILIO_AUTH_TOKEN comes from the
+// environment above; point the number's voice webhook (HTTP POST) at https://<apiFqdn>/api/v1/webhooks/twilio/voice.
+// param telephonyProvider = 'twilio'
+// param twilioAccountSid = 'AC...'
+// param twilioCallerId = '+1...'     // optional: the number shown on a takeover call (default: the number that was dialled)
+// param telephonyOwnerUserId = '<the owner id real calls are delivered to>'
+// param forwardingNumber = '+1...'   // the Twilio number callers dial (the doctor checks it on the account)
+
+// ---- cost brakes (real calls only; simulated calls are never counted) ----
+// param dailyCallCap = 200
+// param dailyCallMinutesCap = 240    // minutes of real calls per owner per UTC day, 0 = off
+// param perNumberDailyCallCap = 10   // real calls from one caller number per day, 0 = off
+// param costCenter = '<budget or project code>'
 
 // ---- custom domains: add them here after you create the DNS records and managed certificates ----
 // param extraCorsOrigins = [ 'https://app.example.com' ]

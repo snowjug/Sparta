@@ -43,6 +43,10 @@ param acsConnectionString string = ''
 @secure()
 param registryPassword string = ''
 
+@secure()
+@description('Twilio auth token (SPARTA_TWILIO_AUTH_TOKEN). It signs every Twilio webhook and authenticates the Twilio REST API, so it is the only credential Sparta needs from Twilio. Leave empty unless telephonyProvider is twilio.')
+param twilioAuthToken string = ''
+
 resource vault 'Microsoft.KeyVault/vaults@2024-11-01' = {
   name: vaultName
   location: location
@@ -125,6 +129,15 @@ resource acsConnectionStringSecret 'Microsoft.KeyVault/vaults/secrets@2024-11-01
   properties: {
     value: acsConnectionString
     contentType: 'ACS connection string for SPARTA_ACS_CONNECTION_STRING'
+  }
+}
+
+resource twilioAuthTokenSecret 'Microsoft.KeyVault/vaults/secrets@2024-11-01' = if (!empty(twilioAuthToken)) {
+  parent: vault
+  name: 'sparta-twilio-auth-token'
+  properties: {
+    value: twilioAuthToken
+    contentType: 'Twilio auth token for SPARTA_TWILIO_AUTH_TOKEN'
   }
 }
 

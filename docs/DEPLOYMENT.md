@@ -238,13 +238,16 @@ Invalid Sparta configuration:
 | `oidcIssuer`, `oidcAudience`, `oidcJwksUrl` | `SPARTA_OIDC_ISSUER`, `SPARTA_OIDC_AUDIENCE`, `SPARTA_OIDC_JWKS_URL` | required, required, empty |
 | (web host) + `extraCorsOrigins` | `SPARTA_CORS_ORIGINS` | the web app's `https://` host |
 | (API host) + `extraTrustedHosts` | `SPARTA_TRUSTED_HOSTS` | the API's own host |
-| (API host) | `SPARTA_PUBLIC_BASE_URL`, `SPARTA_ACS_CALLBACK_BASE_URL` | `https://<api host>` |
+| (API host) | `SPARTA_PUBLIC_BASE_URL`, `SPARTA_ACS_CALLBACK_BASE_URL` (with an ACS connection string), `SPARTA_TWILIO_CALLBACK_BASE_URL` (with a Twilio token) | `https://<api host>` |
 | `simulatorEnabled` | `SPARTA_SIMULATOR_ENABLED` | `false` |
-| `telephonyProvider`, `sttProvider`, `ttsProvider`, `llmProvider` | `SPARTA_TELEPHONY_PROVIDER`, `SPARTA_STT_PROVIDER`, `SPARTA_TTS_PROVIDER`, `SPARTA_LLM_PROVIDER` | all `simulator` / `rules` |
+| `telephonyProvider`, `sttProvider`, `ttsProvider`, `llmProvider` | `SPARTA_TELEPHONY_PROVIDER` (`simulator`, `azure`, `twilio`, `other`), `SPARTA_STT_PROVIDER`, `SPARTA_TTS_PROVIDER`, `SPARTA_LLM_PROVIDER` | all `simulator` / `rules` |
 | `azureOpenAiEndpoint`, `azureOpenAiDeployment` (+ key) | `SPARTA_AZURE_OPENAI_*` | empty |
 | `speechRegion` (+ key or `deploySpeech`) | `SPARTA_AZURE_SPEECH_REGION`, `SPARTA_AZURE_SPEECH_KEY` | the deployment region |
-| `acsResourceId`, `entraTenantId`, `eventGridAudience`, `telephonyOwnerUserId`, `forwardingNumber` | `SPARTA_ACS_RESOURCE_ID`, `SPARTA_ENTRA_TENANT_ID`, `SPARTA_EVENT_GRID_AUDIENCE`, `SPARTA_TELEPHONY_OWNER_USER_ID`, `SPARTA_FORWARDING_NUMBER` | empty |
+| `acsResourceId`, `entraTenantId`, `eventGridAudience`, `eventGridAllowedAppIds`, `telephonyOwnerUserId`, `forwardingNumber` | `SPARTA_ACS_RESOURCE_ID`, `SPARTA_ENTRA_TENANT_ID`, `SPARTA_EVENT_GRID_AUDIENCE`, `SPARTA_EVENT_GRID_ALLOWED_APP_IDS`, `SPARTA_TELEPHONY_OWNER_USER_ID`, `SPARTA_FORWARDING_NUMBER` | empty |
+| `twilioAccountSid`, `twilioCallerId` (+ the `SPARTA_TWILIO_AUTH_TOKEN` secret) | `SPARTA_TWILIO_ACCOUNT_SID`, `SPARTA_TWILIO_CALLER_ID`, `SPARTA_TWILIO_AUTH_TOKEN` | empty |
 | `dailyCallCap`, `maxActiveCalls` | `SPARTA_DAILY_CALL_CAP`, `SPARTA_MAX_ACTIVE_CALLS` | 200, 5 |
+| `dailyCallMinutesCap`, `perNumberDailyCallCap`, `providerFailureLimit` | `SPARTA_DAILY_CALL_MINUTES_CAP`, `SPARTA_PER_NUMBER_DAILY_CALL_CAP`, `SPARTA_PROVIDER_FAILURE_LIMIT` | 240, 10, 2 |
+| `costCenter` | the `costCenter` tag on every resource | empty (no tag) |
 | `otlpEndpoint` | `SPARTA_OTLP_ENDPOINT` | empty (no trace export) |
 | `logLevel` | `SPARTA_LOG_LEVEL` | `INFO` |
 
@@ -279,6 +282,7 @@ telephony provider is reported but does not make the API unready).
 | `sparta-speech-key` | `SPARTA_AZURE_SPEECH_KEY` | `speech` or `keyvault` | api, migrate job | optional |
 | `sparta-openai-key` | `SPARTA_AZURE_OPENAI_KEY` | `keyvault` | api, migrate job | optional |
 | `sparta-acs-connection-string` | `SPARTA_ACS_CONNECTION_STRING` | `acs` or `keyvault` | api, migrate job | optional |
+| `sparta-twilio-auth-token` | `SPARTA_TWILIO_AUTH_TOKEN` | `keyvault` | api, migrate job | optional; only with Twilio. Rotating it in the Twilio Console invalidates every Twilio signature until the secret is updated and the revision restarted |
 | `sparta-registry-password` | registry credential | `keyvault` | api, migrate job, **web** (its own identity) | only for a private registry |
 
 **Who may read what.** Read access is granted **per secret** (`modules/secretaccess.bicep`: one `Key Vault Secrets User`
@@ -391,7 +395,36 @@ Read [`docs/TELEPHONY.md`](TELEPHONY.md) and [`docs/research/`](research/). The 
   Entra-secured webhook and the `AzureEventGridSecureWebhookSubscriber` role) and the callback and media endpoints
   (`/api/v1/webhooks/acs/callbacks/{call_id}`, `wss://<api host>/api/v1/media/acs/{call_id}`) are manual and **UNVERIFIED**.
   Set `entraTenantId` and `eventGridAudience` so the API can verify the delivery tokens.
-* **Speech:** `en-IN`, `hi-IN` and `kn-IN` are supported for recognition and synthesis. **Personal Voice** requires Microsoft
+* **Twilio (the Phase 2 provider).** Set `telephonyProvider = 'twilio'`, `twilioAccountSid`, the secret
+  `SPARTA_TWILIO_AUTH_TOKEN` (environment variable, stored in Key Vault as `sparta-twilio-auth-token`, read by the API
+  identity only), `telephonyOwnerUserId`, `forwardingNumber`, `sttProvider = 'azure'`, `ttsProvider = 'azure'` and a Speech
+  key (production refuses real telephony with a simulated recogniser or voice). The Twilio account and number are created
+  by hand and are **not** touched by the template. Then point the number's voice webhook (HTTP POST) at
+  `https://<api host>/api/v1/webhooks/twilio/voice`; no Twilio call-status webhook is needed. A trial account cannot be
+  used. Details and the live-test checklist: [TELEPHONY.md](TELEPHONY.md), section 4.3 and 6.
+* **Preflight.** After a deployment, and before any call, run (from anywhere that can reach the API, with the production
+  settings in the environment):
+
+  ```powershell
+  python -m sparta doctor --provider twilio --online          # or: --provider azure
+  python -m sparta doctor --provider twilio --online --allow-billable   # also a speech round trip and one model turn (cents)
+  ```
+
+  Offline it checks configuration; `--online` adds free read-only requests (health and readiness of the public URL, that an
+  unsigned webhook and an unauthenticated media WebSocket are refused, the Twilio account type and the number's voice
+  URL, the Speech key and voice list, the model deployment, the database and Redis); `--allow-billable` adds a text-to-speech
+  to speech-to-text round trip in all three languages and one model turn. It exits 1 if anything is BLOCKED and always lists
+  what only a real call can prove. It prints no secret and masks the phone number. `--json` gives machine-readable output.
+* **Local API behind a tunnel** (the cheapest way to a first call, no Azure resources): run the API with
+  `SPARTA_PROVIDER_ONLY_HOSTS=<tunnel host>` (and that host in `SPARTA_TRUSTED_HOSTS`); on that host only `/healthz`,
+  `/readyz`, `/api/v1/webhooks/*` and `/api/v1/media/*` exist and everything else is a 404 (a WebSocket closes with 1008),
+  so the tunnel exposes the provider routes and not the owner API. Production still needs OIDC, PostgreSQL and Redis; a
+  development API on a tunnel is for a short, supervised test. Dev tunnels need `--allow-anonymous` for the provider's
+  requests to arrive; the API verifies the provider's signature or token itself. Neither a dev tunnel nor ngrok has been
+  tested with this API.
+* **Speech:** `en-IN`, `hi-IN` and `kn-IN` are supported for recognition and synthesis (use `centralindia`: `southindia`
+  does not offer standalone Speech). The Speech SDK that streams recognition is part of the `azure` extra, imports in the
+  runtime image without extra system packages (checked) and has not recognised a real caller. **Personal Voice** requires Microsoft
   Limited Access approval, explicit consent, supports `en-IN` and `hi-IN` only (Kannada is not listed) and is not offered in
   `centralindia`; Sparta ships its consent flow and a predefined-voice fallback, and the feature stays off.
 * **Azure OpenAI:** create the resource and a deployment yourself and pass its endpoint, deployment name and key. Model
@@ -470,9 +503,18 @@ No prices are quoted here because they change; use the Azure pricing calculator 
   (in private mode) private endpoints and DNS zones. For a test environment set `privateNetworking=false`, keep the smallest
   SKUs, turn off high availability, and delete the resource group when you are done.
 * **Variable cost** is Speech, Azure OpenAI and telephony usage. Guardrails already in the API: `SPARTA_DAILY_CALL_CAP`,
-  `SPARTA_MAX_ACTIVE_CALLS`, `SPARTA_MAX_CALL_DURATION_S`, `SPARTA_ABANDONED_CALL_TIMEOUT_S`, per-owner rate limits, and
-  the `SPARTA_ESTIMATED_*_USD` settings that feed the `sparta_estimated_cost_usd_total` metric. Expensive features (Personal
-  Voice, LLM summaries) are off by default.
+  `SPARTA_DAILY_CALL_MINUTES_CAP` (minutes of real calls per owner per UTC day, default 240; 0 turns it off),
+  `SPARTA_PER_NUMBER_DAILY_CALL_CAP` (real calls from one caller number per day, default 10), `SPARTA_MAX_ACTIVE_CALLS`,
+  `SPARTA_MAX_CALL_DURATION_S`, `SPARTA_ABANDONED_CALL_TIMEOUT_S`, `SPARTA_PROVIDER_FAILURE_LIMIT` (a call that cannot
+  speak or hear is ended after this many failures in a row), per-owner rate limits, and the `SPARTA_ESTIMATED_*_USD`
+  settings that feed the `sparta_estimated_cost_usd_total` metric and the doctor's worst-case daily figure. Calls over a
+  cap are rejected without being answered (Twilio does not bill a rejected call). The caps count real calls only.
+  Expensive features (Personal Voice, LLM summaries) are off by default.
+* **Resources that bill while idle** (stop or delete them when not testing): the API container app at its minimum replica,
+  PostgreSQL Flexible Server, Azure Managed Redis, Log Analytics ingestion, Key Vault operations, and in private mode the
+  private endpoints and DNS zones; ACS (if used) bills phone numbers monthly; a Twilio number bills monthly on the Twilio
+  account. Per-use charges (Speech, OpenAI, telephony minutes) stop when no call is made. Set the `costCenter` parameter to
+  tag every resource for cost reports.
 * **Log Analytics:** `logRetentionDays` and `logDailyQuotaGb` (a cap protects the budget and drops logs once reached).
 * **Replicas:** `apiMinReplicas`/`apiMaxReplicas`. Keep at least one API replica running: a call lives on the replica that
   holds it, and scaling in ends it.
@@ -638,7 +680,8 @@ None of these can be created by the repository or its pipelines:
 | Container registry access (public GHCR package, or a read-only token) | Pulling images |
 | Azure AI Speech resource | Real speech recognition and synthesis |
 | Azure OpenAI resource and a model deployment | LLM replies and summaries (optional; rules work without it) |
-| ACS resource, a PSTN-capable number or SBC, carrier agreements (Teams Phone Extensibility, Operator Connect, or an Indian programmable-voice provider) | Real calls (see the India constraints above) |
+| ACS resource, a PSTN-capable number or SBC, carrier agreements (Teams Phone Extensibility, Operator Connect, or an Indian programmable-voice provider) | Real calls through ACS (see the India constraints above) |
+| A Twilio account **upgraded from trial**, one voice-capable number on it, and the account's SID and auth token | Real calls through Twilio (`telephonyProvider = 'twilio'`) |
 | Microsoft Limited Access approval | Personal Voice |
 | A domain name and DNS control | Custom domains |
 | Firebase/FCM project | OS-level push on Android (the app works without it) |
@@ -725,7 +768,10 @@ None of these can be created by the repository or its pipelines:
   today), fork-approval settings). The publish step and the `workflow_run` trigger have run (see above).
 * **OIDC federation** to Azure and **Entra sign-in** end to end, including the web app's OIDC mode (unit-tested with a fake
   user manager only) and the API's token validation against a real issuer.
-* **ACS, Event Grid, Teams/Operator Connect or any telephony provider**, and any real call. No account or number exists.
+* **ACS, Twilio, Event Grid, Teams/Operator Connect or any telephony provider**, and any real call. No account or number
+  exists. The Phase 2 Bicep changes (Twilio secret, parameters, cost brakes, `costCenter` tag) compile and lint with Bicep
+  0.48.1 and have not been deployed; the API image with the Speech SDK builds, and the SDK imports and builds a streaming
+  recogniser inside it (checked 2026-11-18), but no recognition has run.
 * **Azure AI Speech and Azure OpenAI** against live services.
 * **Custom domains and managed certificates**, `ssl=verify-full` against Azure's certificate chain, mutual TLS between apps.
 * **Scanning the published image.** Trivy scanned the images the CI builds (see above); the image that is pushed is a second

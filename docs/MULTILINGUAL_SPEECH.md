@@ -12,7 +12,10 @@ Scope and honesty notes:
   `packs/kn.toml` says so in a comment above its templates.
 * Azure Speech was never called with real credentials. Everything about recognition quality, language identification and
   voices in real calls is **UNVERIFIED**; locale and voice support comes from documentation
-  ([research/azure-speech-openai-verification.md](research/azure-speech-openai-verification.md)).
+  ([research/azure-speech-openai-verification.md](research/azure-speech-openai-verification.md),
+  [research/phase2-provider-verification.md](research/phase2-provider-verification.md)). Phase 2's Hinglish and Kanglish
+  journeys ([PHASE2_CONTROLLED_RESULTS.md](PHASE2_CONTROLLED_RESULTS.md)) feed *scripted* transcripts to the engine: they
+  show what the engine does with a correct transcript, not that Azure produces one.
 * Examples marked "verified by running" were executed on 2026-11-18 against commit `117752e` (`LanguageDetector.detect`,
   `SignalDetector.detect` and `ConversationEngine.on_caller_turn`). On the final tree of the same day (commit `5f980d1`,
   with the fixes in [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) section 6) the development-split evaluation was run
@@ -145,9 +148,24 @@ three), `auto_detect_language` (default true; when false the primary language is
   locale or the language the previous utterance came back in. The adapter returns the most common locale among the
   returned phrases and the mean phrase confidence. The language is passed to the detector as a hint (no hint confidence is
   set, so the detector assumes 0.7); the mean phrase confidence becomes the turn's `stt_confidence`.
-  `start_stream` is utterance based: audio is buffered until the voice-activity detector ends the utterance, then one
-  `final` transcript is produced. There are no partial results from Azure, so live captions are shown only for the
-  simulator and the browser's own speech recognition.
+  **Streaming (Phase 2).** With the Speech SDK installed (`pip install 'sparta-api[azure]'`, pinned in the locks) and
+  `SPARTA_AZURE_SPEECH_STREAMING=auto` (the default; `on` makes a missing SDK a configuration problem, `off` forces REST),
+  `start_stream` (`providers/stt/azure_sdk.py`) opens one SDK recogniser per utterance on a push stream (8 or 16 kHz
+  PCM16): `recognizing` events become partial transcripts (live captions on a real call), `recognized` events become the
+  final with `NBest[0].Confidence`, the identified language and the service's own latency (`stt_service` metric). With
+  several candidate locales it uses **continuous language identification** (`SpeechServiceConnection_LanguageIdMode =
+  Continuous`, hint first, at most 10 locales) on the documented v2 endpoint
+  `wss://{region}.stt.speech.microsoft.com/speech/universal/v2`; with one locale it recognises that locale directly.
+  A custom-domain endpoint is passed to the SDK unchanged (multi-locale identification there is **UNVERIFIED**).
+  SDK cancellations become static, code-mapped errors (the SDK's text can quote endpoints and request ids and is never
+  forwarded); an utterance that is not recognised is an empty turn, not an error. Without the SDK the REST behaviour
+  above applies: audio is buffered until the voice-activity detector ends the utterance, then one `final` is produced, with
+  no partial results.
+  **Not implemented, documented alternatives:** the GA *multilingual post-stream refinement*
+  (`SpeechServiceResponse_PostProcessingOption = "PostRefinement"`, SDK 1.50 or later, open-range detection; short
+  utterances may not improve) and the `MAI-Transcribe-2` models that document mid-utterance Hinglish code-switching. They
+  are the first things to try if a real test shows Hinglish or Kanglish recognition failing
+  ([research/phase2-provider-verification.md](research/phase2-provider-verification.md), section 3).
 * **Documented support.** `en-IN`, `hi-IN` and `kn-IN` are listed for real-time STT, Fast Transcription and TTS in the
   Microsoft documentation as read on 2026-11-17 (research note above). Continuous language identification is documented
   as not detecting a language change inside one sentence, and the accuracy of intra-sentence Hinglish and Kanglish

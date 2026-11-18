@@ -154,3 +154,25 @@ Checked against the code at `5f980d1` on 2026-11-18 (the last commit that touche
 | No account deletion and no purge of audit events | no code deletes users or `audit_events` | `docs/PRIVACY.md` |
 | A blocked caller on the ACS adapter is not rejected: the call rings out | `telephony/azure_acs.py`; the telephony port has no reject operation | `docs/TELEPHONY.md` |
 | Items the automated security review left open: the engine still runs on the event loop, matchers are still built per owner name, zero-width joiners next to Indic letters remain word breaks, look-alike folding is partial, and there was no human penetration test | `docs/SECURITY_REVIEW.md` ("What is still open") | `docs/SECURITY_REVIEW.md`, `docs/THREAT_MODEL.md` rows 24 and 25 |
+
+## 8. Phase 2: the real-world telephony path
+
+Branch `feat/real-world-telephony`, from `f419af2` (Phase 1, merged). Goal: one real telephone call end to end. Result:
+**completion level A (code-complete)**; no real call was placed. The full account (inspection, blockers, decisions, what
+was verified and how, the smallest ask to reach a real call) is [PHASE2_REAL_WORLD_PLAN.md](PHASE2_REAL_WORLD_PLAN.md); the
+controlled whole-call tests are [PHASE2_CONTROLLED_RESULTS.md](PHASE2_CONTROLLED_RESULTS.md); the provider facts and their
+sources are [research/phase2-provider-verification.md](research/phase2-provider-verification.md).
+
+| # | Milestone | Status | Notes |
+| --- | --- | --- | --- |
+| P2-1 | `sparta doctor` provider preflight; `SPARTA_PROVIDER_ONLY_HOSTS` for tunnels | Committed (`3967114`) | Offline, `--online` (free, read-only) and `--allow-billable` (cents) checks; never prints a secret; always lists what only a real call can prove |
+| P2-2 | Streaming Azure Speech recognition through the Speech SDK | Committed (`2ef9805`) | Partials, confidence, language identification; REST fallback; hash-pinned SDK lock. Never run against Azure |
+| P2-3 | Azure OpenAI request adapts to the model family | Committed (`7219fcf`) | `max_tokens` or `max_completion_tokens`, `temperature`, from structured 400 answers |
+| P2-4 | Twilio Media Streams adapter, doctor support, Event Grid caller pinning | Committed (`305dd40`) | A second provider because ACS cannot supply a number; mu-law codec; signed webhooks and media socket; `<Dial>` takeover; never run against Twilio |
+| P2-5 | Honest takeover capability, cost caps, safe provider-failure closure, controlled matrix | Committed (`53b2406`) | 12 whole-call tests with scripted speech services |
+| P2-6 | Android: stale-state bug fix, physical-device checklist | Committed (`ccec1c8`) | No device or emulator was available: every checklist row says NOT RUN |
+| P2-7 | Infrastructure parameters (Twilio secret, caps, cost tag), documentation, security review | On the branch | The Bicep compiles and lints; not deployed |
+| P2-8 | A real call (Level B) | **Not started: blocked on external resources** | [PHASE2_REAL_WORLD_PLAN.md](PHASE2_REAL_WORLD_PLAN.md), section 6 |
+
+New external dependencies (in addition to section 5): an **upgraded** Twilio account with one voice-capable number (a trial
+account cannot be used); a public HTTPS URL for the API; a second phone to place the test call.
