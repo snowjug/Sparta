@@ -59,7 +59,8 @@ class CallsViewModelTest {
         harness.api.enqueueJson(page)
         val vm = viewModel(harness)
 
-        val state = vm.state.await { it.items.any { item -> item is RecentItem.Backend } }
+        // The items come from the database flow and the loading flag from the refresh: wait for both to settle.
+        val state = vm.state.await { !it.initialLoading && it.items.any { item -> item is RecentItem.Backend } }
 
         assertFalse(state.initialLoading)
         assertNull(state.error)

@@ -116,7 +116,9 @@ class ScreeningEventViewModelTest {
         vm.state.await { it.blockedEntry != null && !it.busy }
 
         vm.trust()
-        val state = vm.state.await { it.trustedEntry != null && !it.busy }
+        // The state combines separate database flows, so a frame with the new trusted entry and the old blocked one is a
+        // valid transient: wait for the settled state, then check the exclusivity.
+        val state = vm.state.await { it.trustedEntry != null && it.blockedEntry == null && !it.busy }
 
         assertNull("blocked and trusted are mutually exclusive on the phone", state.blockedEntry)
         assertTrue(runBlocking { h.db.listEntries().isTrusted(fingerprint) })
