@@ -190,9 +190,26 @@ class Settings(BaseSettings):
     call_create_rate_limit_per_minute: int = 20
     profile_write_rate_limit_per_minute: int = 12  # assistant-profile saves (a new owner name builds matchers)
     daily_call_cap: int = 200
+    daily_call_minutes_cap: float = Field(
+        default=240.0,
+        ge=0,
+        description="Minutes of real (not simulated) calls per owner per UTC day; further calls are rejected. 0 = off",
+    )
+    per_number_daily_call_cap: int = Field(
+        default=10,
+        ge=0,
+        description="Real calls accepted from one caller number per owner per UTC day; further calls are rejected "
+        "without being answered. 0 = off",
+    )
     daily_screening_event_cap: int = 2000  # native Android screening events per owner per UTC day
     max_call_duration_s: int = 600
     abandoned_call_timeout_s: int = 180
+    provider_failure_limit: int = Field(
+        default=2,
+        ge=0,
+        description="Consecutive failures of speaking or listening after which a real call is ended with a summary "
+        "that says Sparta could not screen it. 0 = never end a call for that",
+    )
     reaper_interval_s: float = 15.0
     retention_job_interval_s: float = 3600.0
     escalation_resolver_interval_s: float = 5.0

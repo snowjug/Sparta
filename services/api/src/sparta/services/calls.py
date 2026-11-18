@@ -108,6 +108,9 @@ from sparta.telephony.base import IncomingCall, Playback, TelephonyProvider
 log = logging.getLogger("sparta.calls")
 ASSISTANT_PROFILE_DEFAULT_NAME = "the owner"
 DEFAULT_SOURCE_LABEL = {"simulator": "Simulated caller"}
+FAILURE_STAGES = frozenset(
+    {"play", "tts", "stt", "media"}
+)  # without these a live call can be neither heard nor screened
 
 
 def _utc_midnight(now: datetime) -> datetime:
@@ -229,13 +232,34 @@ class CallService:
             )
         return requested
 
-    async def _enforce_limits(self, repo: Repository, user_id: str, now: datetime) -> None:
+    async def _enforce_limits(self, repo: Repository, user_id: str, now: datetime, *, simulated: bool = True) -> None:
         if await repo.count_active_calls(user_id) >= self.settings.max_active_calls:
             raise Conflict("Too many calls are active at once. End one before starting another.")
+        midnight = _utc_midnight(now) + timedelta(days=1)
+        retry_after_s = max(1, int((midnight - now).total_seconds()))
         if await repo.count_calls_since(user_id, _utc_midnight(now)) >= self.settings.daily_call_cap:
+            raise RateLimited("The daily call limit has been reached.", retry_after_s=retry_after_s)
+        cap_s = self.settings.daily_call_minutes_cap * 60.0
+        if (
+            not simulated
+            and cap_s > 0
+            and await repo.real_call_seconds_since(user_id, _utc_midnight(now), now) >= cap_s
+        ):
+            raise RateLimited("The daily call-minute limit has been reached.", retry_after_s=retry_after_s)
+
+    async def _enforce_number_throttle(
+        self, repo: Repository, user_id: str, fingerprint: str | None, now: datetime
+    ) -> None:
+        """One caller number cannot spend the owner's budget: real calls from it are capped per day."""
+        cap = self.settings.per_number_daily_call_cap
+        if (
+            cap > 0
+            and fingerprint
+            and await repo.count_real_calls_from_since(user_id, fingerprint, _utc_midnight(now)) >= cap
+        ):
             midnight = _utc_midnight(now) + timedelta(days=1)
             raise RateLimited(
-                "The daily call limit has been reached.", retry_after_s=max(1, int((midnight - now).total_seconds()))
+                "This number has called too often today.", retry_after_s=max(1, int((midnight - now).total_seconds()))
             )
 
     @staticmethod
@@ -321,11 +345,13 @@ class CallService:
             await repo.ensure_user(principal.id, principal.display_name or principal.id, now)
             prefs = await repo.get_preferences(principal.id)
             profile = await repo.get_assistant_profile(principal.id) or AssistantProfile()
-            await self._enforce_limits(repo, principal.id, now)
+            await self._enforce_limits(repo, principal.id, now, simulated=simulated)
             language_mode = self.validate_language_mode(req.language_mode, prefs)
             fp = None
             if e164:
                 fp = fingerprint(user_salt(self.pepper, principal.id), e164)
+            if not simulated:
+                await self._enforce_number_throttle(repo, principal.id, fp, now)
             blocked, trusted = await repo.caller_status(principal.id, fp) if fp else (False, False)
             label = (req.caller_label or "").strip() or None
             masked = mask_number(e164) if e164 else None
@@ -617,12 +643,13 @@ class CallService:
         if result.validator_fallback:
             self.metrics.inc(mt.VALIDATOR_FALLBACKS)
         await repo.update_call(row.id, **self._denormalised(ctx, risk or ctx.risk))
-        if latency is not None and latency.total_ms is not None:
-            self.metrics.observe(mt.STAGE_LATENCY_MS, latency.total_ms, stage="turn_total")
-        for stage in ("language_detect_ms", "policy_ms"):
-            value = getattr(latency, stage, None) if latency else None
-            if value is not None:
-                self.metrics.observe(mt.STAGE_LATENCY_MS, value, stage=stage)
+        if latency is not None:
+            if latency.total_ms is not None:
+                self.metrics.observe(mt.STAGE_LATENCY_MS, latency.total_ms, stage="turn_total")
+            for stage in ("stt_ms", "language_detect_ms", "policy_ms", "model_ms"):
+                value = getattr(latency, stage, None)
+                if value is not None and stage not in latency.simulated_stages:  # a profile's figure is no measurement
+                    self.metrics.observe(mt.STAGE_LATENCY_MS, value, stage=stage)
 
     # ===================================================================================== playback
     async def _play(self, rt: CallRuntime, turn: CallTurn) -> None:
@@ -663,6 +690,8 @@ class CallService:
                 return
             if not await self._finish_playback_locked(rt, announce_listening=True):
                 return
+            for stage in ("play", "tts", "media"):
+                self._stage_recovered(rt, stage)  # the caller heard it: speaking works again
             if rt.pending_finalize:
                 await self._finalize_locked(rt)
             else:
@@ -1114,8 +1143,9 @@ class CallService:
             return OwnerActionResult(
                 action=record,
                 call=item,
-                capabilities=self._capabilities_for(
-                    row.provider, ended=item.status != CallStatus.ACTIVE, call_id=call_id
+                capabilities=self._with_takeover_destination(
+                    self._capabilities_for(row.provider, ended=item.status != CallStatus.ACTIVE, call_id=call_id),
+                    prefs.takeover_number,
                 ),
             )
 
@@ -1354,11 +1384,49 @@ class CallService:
             await self._publish(rt.user_id, ev.items)
         except Exception:
             log.exception("could not record provider error")
+        if degraded and not rt.simulated:
+            self._count_stage_failure(rt, exc.stage)
+
+    def _count_stage_failure(self, rt: CallRuntime, stage: str) -> None:
+        """A live call that cannot speak or cannot hear cannot be screened, and the caller may never have heard the AI
+        disclosure: after a few failures in a row the call is ended (with a summary that says so) instead of being left
+        open in silence until a timer runs out."""
+        if stage not in FAILURE_STAGES:
+            return
+        rt.stage_failures[stage] = rt.stage_failures.get(stage, 0) + 1
+        limit = self.settings.provider_failure_limit
+        if limit > 0 and rt.stage_failures[stage] >= limit and not rt.failure_ending:
+            rt.failure_ending = True
+            task = asyncio.create_task(self.end_internal(rt.call_id, "provider_failure"))
+            rt.background.add(task)
+            task.add_done_callback(rt.background.discard)
+
+    @staticmethod
+    def _stage_recovered(rt: CallRuntime, stage: str) -> None:
+        rt.stage_failures.pop(stage, None)
 
     async def provider_error(self, call_id: str | None, stage: str, message: str) -> None:
         rt = self._runtimes.get(call_id) if call_id else None
-        if rt is not None:
-            await self._report_provider_error(rt, ProviderError(rt.provider.name, stage, message), degraded=True)
+        if rt is None:
+            return
+        await self._report_provider_error(rt, ProviderError(rt.provider.name, stage, message), degraded=True)
+        if stage in ("play", "tts") and rt.playback_id is not None and not rt.simulated:
+            # The provider failed to speak and will never report this playback as finished: without this the call
+            # would wait for it forever (no silence timer, never reaped as abandoned).
+            task = asyncio.create_task(self._abandon_playback(rt, rt.playback_id))
+            rt.background.add(task)
+            task.add_done_callback(rt.background.discard)
+
+    async def _abandon_playback(self, rt: CallRuntime, playback_id: str) -> None:
+        async with self._locked(rt):
+            if rt.playback_id != playback_id:
+                return
+            if not await self._finish_playback_locked(rt, announce_listening=True):
+                return
+            if rt.pending_finalize:
+                await self._finalize_locked(rt)
+            else:
+                self._arm_silence(rt)
 
     async def incoming_call(self, call: IncomingCall) -> str:
         """A real provider delivered a call: create it for the configured owner and return its Sparta id."""
@@ -1446,6 +1514,8 @@ class CallService:
         rt = self._runtimes.get(call_id)
         if rt is None:
             return None
+        if text.strip():
+            self._stage_recovered(rt, "stt")  # recognition answered with words: listening works again
         try:
             return await self._submit_turn(rt, text, TurnSource.PROVIDER_STT, language_hint, stt_confidence, stt_ms)
         except (Conflict, InvalidInput):
@@ -1487,14 +1557,27 @@ class CallService:
         caps = per_call(call_id) if (per_call is not None and call_id) else provider.capabilities
         return caps.call_capabilities(ended=ended)
 
+    @staticmethod
+    def _with_takeover_destination(caps: CallCapabilities, takeover_number: str | None) -> CallCapabilities:
+        """A real provider can only hand a call over when the owner has said where to: no destination, no Take over."""
+        if caps.simulated or not caps.can_take_over or takeover_number:
+            return caps
+        return caps.model_copy(
+            update={
+                "can_take_over": False,
+                "takeover_note": "Set the phone number Sparta should bridge you to (Assistant Studio) to enable Take Over.",
+            }
+        )
+
     async def _load_detail(self, repo: Repository, principal: Principal, call_id: str) -> tuple[CallDetail, int]:
         row = await repo.get_call_row(principal.id, call_id)
         detail = await repo.load_detail(principal.id, call_id) if row is not None else None
         if row is None or detail is None:
             raise NotFound("Call not found.")
-        detail.capabilities = self._capabilities_for(
-            detail.provider.value, ended=detail.status != CallStatus.ACTIVE, call_id=call_id
-        )
+        caps = self._capabilities_for(detail.provider.value, ended=detail.status != CallStatus.ACTIVE, call_id=call_id)
+        if not caps.simulated and caps.can_take_over:
+            caps = self._with_takeover_destination(caps, (await repo.get_preferences(principal.id)).takeover_number)
+        detail.capabilities = caps
         rt = self._runtimes.get(call_id)  # the live runtime knows whether speech is still playing right now
         if rt is not None and rt.playback_id and rt.speaking_until > self.clock.monotonic():
             detail.assistant_speaking, detail.speaking_turn_id = True, rt.speaking_turn_id

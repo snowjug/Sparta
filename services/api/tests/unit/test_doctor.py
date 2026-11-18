@@ -223,6 +223,17 @@ async def test_the_cost_estimate_uses_the_owners_own_prices_and_states_its_assum
     )
     detail = by_id(await run_doctor(settings))["limits.cost_estimate"].detail
     assert "1.67 USD per day" in detail and "450 spoken characters" in detail and "not a bill" in detail
+    capped = azure_settings(
+        estimated_telephony_per_minute_usd=0.01,
+        estimated_stt_per_audio_hour_usd=1.0,
+        estimated_tts_per_million_chars_usd=15.0,
+        daily_call_cap=10,
+        max_call_duration_s=300,
+        daily_call_minutes_cap=10,
+    )
+    report = await run_doctor(capped)
+    assert "0.33 USD per day" in by_id(report)["limits.cost_estimate"].detail  # the minute cap binds: 10 min, not 50
+    assert "10 call-minutes" in by_id(report)["limits.call_caps"].detail
     unpriced = by_id(await run_doctor(azure_settings()))["limits.cost_estimate"]
     assert unpriced.status is Status.WARNING
     long_calls = by_id(await run_doctor(azure_settings(max_call_duration_s=7200)))["limits.call_duration"]

@@ -465,13 +465,18 @@ def limit_checks(settings: Settings) -> list[Check]:
             "Keep calls short: a screening call needs a minute or two." if duration_status is Status.WARNING else "",
         )
     )
+    minutes_cap = settings.daily_call_minutes_cap
+    per_number = settings.per_number_daily_call_cap
     out.append(
         _check(
             "limits.call_caps",
             LIMITS,
             "Call volume caps",
             Status.PASS,
-            f"at most {settings.max_active_calls} calls at once and {settings.daily_call_cap} calls per owner per UTC day.",
+            f"at most {settings.max_active_calls} calls at once, {settings.daily_call_cap} calls and "
+            + (f"{minutes_cap:g} call-minutes" if minutes_cap > 0 else "no minute limit")
+            + " per owner per UTC day"
+            + (f", and {per_number} real calls per caller number per day." if per_number > 0 else "."),
         )
     )
     per_minute = _per_minute_cost(settings)
@@ -488,15 +493,18 @@ def limit_checks(settings: Settings) -> list[Check]:
             )
         )
     else:
-        worst = per_minute * minutes * settings.daily_call_cap
+        by_calls = minutes * settings.daily_call_cap
+        worst_minutes = min(by_calls, minutes_cap) if minutes_cap > 0 else by_calls
+        worst = per_minute * worst_minutes
         out.append(
             _check(
                 "limits.cost_estimate",
                 LIMITS,
                 "Worst-case daily cost estimate",
                 Status.PASS,
-                f"about {per_minute:.4f} USD per call-minute x {minutes:.1f} min x {settings.daily_call_cap} calls = "
-                f"{worst:.2f} USD per day if every cap were reached. Assumes {ASSUMED_ASSISTANT_CHARS_PER_MINUTE} "
+                f"about {per_minute:.4f} USD per call-minute x {worst_minutes:.1f} min (the lower of "
+                f"{minutes:.1f} min x {settings.daily_call_cap} calls and the daily minute cap) = {worst:.2f} USD per "
+                f"day if every cap were reached. Assumes {ASSUMED_ASSISTANT_CHARS_PER_MINUTE} "
                 f"spoken characters and {ASSUMED_LLM_TURNS_PER_MINUTE} model turns per minute (a diagnostic estimate "
                 "from your own unit prices, not a bill).",
             )

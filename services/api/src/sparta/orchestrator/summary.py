@@ -190,6 +190,20 @@ def build_summary(
 ) -> CallSummary:
     """One-sentence factual summary. ``now`` is the injected clock's time (deterministic replays)."""
     created = now or utcnow()
+    if ctx.ended_reason == "provider_failure":
+        # Sparta could not hear or speak: it must not describe a screening that did not happen, and the owner is told
+        # that the caller may never have heard the AI disclosure.
+        return CallSummary(
+            call_id=call_id,
+            text="Sparta could not hear or speak reliably on this call because a speech service failed, so it ended "
+            "the call without screening it. The caller may not have heard the AI disclosure. Please review this call.",
+            category=risk.category if risk is not None else CallCategory.UNKNOWN,
+            risk_level=risk.risk_level if risk is not None else RiskLevel.UNKNOWN,
+            action_taken=ctx.action_taken,
+            owner_action_required=True,
+            generated_by="rules-v1",
+            created_at=created,
+        )
     if risk is None:
         return CallSummary(
             call_id=call_id,

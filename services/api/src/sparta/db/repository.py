@@ -876,6 +876,40 @@ class Repository:
         )
         return int(await self.s.scalar(stmt) or 0)
 
+    async def real_call_seconds_since(self, user_id: str, since: datetime, now: datetime) -> float:
+        """Seconds of real (not simulated) conversational calls started since ``since``: finished calls by their
+        recorded duration, calls still running by the time elapsed so far. What the daily minute cap counts."""
+        rows = await self.s.execute(
+            select(m.CallSessionRow.status, m.CallSessionRow.duration_ms, m.CallSessionRow.started_at).where(
+                m.CallSessionRow.user_id == user_id,
+                m.CallSessionRow.started_at >= since,
+                m.CallSessionRow.mode == CallMode.CONVERSATIONAL.value,
+                m.CallSessionRow.simulated.is_(False),
+            )
+        )
+        total = 0.0
+        for status, duration_ms, started_at in rows.all():
+            if status == CallStatus.ACTIVE.value:
+                total += max(0.0, (now - started_at).total_seconds())
+            else:
+                total += (duration_ms or 0) / 1000.0
+        return total
+
+    async def count_real_calls_from_since(self, user_id: str, fingerprint: str, since: datetime) -> int:
+        """Real conversational calls from one caller number (by fingerprint) since ``since``."""
+        stmt = (
+            select(func.count())
+            .select_from(m.CallSessionRow)
+            .where(
+                m.CallSessionRow.user_id == user_id,
+                m.CallSessionRow.caller_fingerprint == fingerprint,
+                m.CallSessionRow.started_at >= since,
+                m.CallSessionRow.mode == CallMode.CONVERSATIONAL.value,
+                m.CallSessionRow.simulated.is_(False),
+            )
+        )
+        return int(await self.s.scalar(stmt) or 0)
+
     async def today_stats(self, user_id: str, since: datetime) -> dict[str, float]:
         rows = (
             await self.s.scalars(

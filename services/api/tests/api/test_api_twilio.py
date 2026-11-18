@@ -206,6 +206,24 @@ async def test_calls_over_a_limit_are_rejected_as_busy_without_creating_a_second
         assert len(await phone_calls(env)) == 1
 
 
+async def test_one_number_cannot_spend_the_budget_and_the_daily_minutes_are_capped():
+    async with running_env(**TWILIO, per_number_daily_call_cap=2) as env:
+        kit = Kit(env)
+        for sid in (SID, SID2):
+            assert twiml(await kit.voice(sid)).find("./Connect/Stream") is not None
+        throttled = twiml(await kit.voice("CA" + "5" * 32))
+        assert throttled.find("./Reject") is not None and len(await phone_calls(env)) == 2
+        elsewhere = await kit.voice("CA" + "6" * 32, From="+919800000099")  # another number is unaffected
+        assert twiml(elsewhere).find("./Connect/Stream") is not None
+
+    async with running_env(**TWILIO, daily_call_minutes_cap=0.2) as env:
+        kit = Kit(env)
+        assert twiml(await kit.voice(SID)).find("./Connect/Stream") is not None
+        await env.advance(90)  # the first call has now used well over the 12 seconds that are allowed
+        assert twiml(await kit.voice(SID2)).find("./Reject") is not None
+        assert len(await phone_calls(env)) == 1
+
+
 async def test_a_signed_status_callback_ends_the_call_once_and_others_are_refused():
     async with running_env(**TWILIO) as env:
         kit = Kit(env)
@@ -222,6 +240,37 @@ async def test_a_signed_status_callback_ends_the_call_once_and_others_are_refuse
         assert detail["status"] == "ended" and detail["summary"] is not None
         assert (await kit.status(SID, "completed")).json() == {"status": "duplicate"}
         assert kit.rest.hangups == []  # Twilio already ended it; Sparta does not hang up a call that is over
+
+
+async def test_take_over_is_offered_only_once_the_owner_has_said_where_to_bridge_the_call():
+    async with running_env(**TWILIO) as env:
+        kit = Kit(env)
+        await kit.voice()
+        call_id = (await phone_calls(env))[0]["id"]
+        url = f"{API}/calls/{call_id}"
+        caps = (await env.client.get(url, headers=PHONE_OWNER)).json()["capabilities"]
+        assert caps["can_take_over"] is False and "Assistant Studio" in caps["takeover_note"]
+        refused = await env.client.post(f"{url}/takeover", headers=PHONE_OWNER)
+        assert refused.status_code == 409 and refused.json()["error"]["code"] == "unsupported_by_provider"
+        assert kit.rest.redirects == []
+
+        prefs = (await env.client.get(f"{API}/preferences", headers=PHONE_OWNER)).json()
+        saved = await env.client.put(
+            f"{API}/preferences", json={**prefs, "takeover_number": "+919812345670"}, headers=PHONE_OWNER
+        )
+        assert saved.status_code == 200
+        caps = (await env.client.get(url, headers=PHONE_OWNER)).json()["capabilities"]
+        assert caps["can_take_over"] is True and caps["takeover_note"] is None
+
+        took = await env.client.post(f"{url}/takeover", headers=PHONE_OWNER)
+        assert took.status_code == 200 and took.json()["capabilities"]["simulated"] is False
+        assert [sid for sid, _ in kit.rest.redirects] == [SID]
+        dial = twiml_of(kit.rest.redirects[0][1]).find("./Dial")
+        assert dial is not None and dial.findtext("Number") == "+919812345670" and dial.attrib["callerId"] == CALLED
+
+
+def twiml_of(text: str) -> ET.Element:
+    return ET.fromstring(text.split("?>", maxsplit=1)[-1])
 
 
 # --------------------------------------------------------------------------------------------- media socket
