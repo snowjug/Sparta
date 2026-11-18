@@ -1,6 +1,6 @@
 # Static analysis with CodeQL (Python, JavaScript/TypeScript, Java/Kotlin) on pull requests, pushes to main and weekly.
 # Results appear under Security > Code scanning. Free for public repositories; private repositories need GitHub Code
-# Security. This workflow has NOT been run on GitHub by its author.
+# Security. First run on GitHub: pull request 1, 2026-11-18 (it found four alerts, since resolved).
 name: CodeQL
 
 on:

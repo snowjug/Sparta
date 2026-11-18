@@ -6,7 +6,9 @@ anything here with a real call.
 
 **Honest status.** The container image, Docker Compose stack and the production-mode behaviour of the API were run and
 checked on a developer machine. The Bicep templates **compile and lint** with the Bicep CLI but have **never been deployed**:
-no Azure subscription was used to write them. The GitHub Actions workflows **have not run on GitHub**. Nothing here has
+no Azure subscription was used to write them. The GitHub Actions workflows ran on GitHub for the first time on pull request 1
+(2026-11-18, see [What is not verified](#what-is-not-verified)); the deploy and publish steps run on `main` only and have
+not run. Nothing here has
 carried a real phone call, and no Azure Communication Services (ACS), Speech or Azure OpenAI resource has been exercised.
 Where something is untested it is marked **UNVERIFIED**.
 
@@ -548,7 +550,8 @@ packs, safety policy, scenarios or Alembic scripts are missing from the wheel, o
   Dependabot watches the tag.
 * `SPARTA_EXTRAS` accepts only an empty value or `azure,otlp`, because the locks cover exactly those two sets.
 
-**Publishing** (`.github/workflows/container.yml`, not yet run on GitHub): pull requests build and scan only; pushes to
+**Publishing** (`.github/workflows/container.yml`; the build and the Trivy scan ran on pull request 1, the publish step has
+not run): pull requests build and scan only; pushes to
 `main` and `v*.*.*` tags also publish to GHCR.
 
 * **The published image is a second build, not the exact scanned artifact.** The workflow builds each image once (loaded into
@@ -670,25 +673,41 @@ None of these can be created by the repository or its pipelines:
   planted canary in every location except the few that gitleaks' own built-in defaults ignore (any `node_modules/` folder
   and any `package-lock.json`).
 
+**Verified on GitHub's runners** (pull request 1, 2026-11-18, `ubuntu-24.04`; the first time any workflow ran):
+
+* The CI workflow: the changed-area filter, the backend job (with PostgreSQL and Redis service containers: lint, types,
+  tests, contract, evaluation), backend security (`pip-audit`, `bandit`, lock hashes), the web job, the Android job (unit
+  tests, lint, debug APK; it needs a JDK and the Android SDK, so this was its first run anywhere but a developer machine),
+  infrastructure and tooling (Compose, Bicep, workflows, scripts) and the `ci-ok` aggregate passed. One Android unit test
+  was flaky on the first runs and was fixed.
+* The container workflow: both images were built and scanned by Trivy 0.76.2 (`--severity HIGH,CRITICAL --ignore-unfixed`)
+  with no finding; the publish steps did not run (they need `main`).
+* CodeQL (Java and Kotlin, JavaScript and TypeScript, Python) and `gitleaks`: passed after four CodeQL alerts were resolved.
+* Dependency review: **reviewed nothing**. The repository's dependency graph is off (Settings > Advanced Security), the API
+  answers 403 and the action reports "not supported on this repository"; the job now skips with a warning instead of
+  failing.
+* Playwright (job `web-e2e`, informational and not part of `ci-ok`): three runs gave 109 of 110, 110 of 110 and 109 of 110
+  passed. The two failures were different tests: the API's own rate limiter answered the browser with a 429 during a tour of
+  every screen (the E2E API now runs with higher limits), and the voice-stage assertion that `ended` is shown once, which
+  [WEB_APP.md](WEB_APP.md) describes. It stays informational until it has been stable on GitHub for several runs.
+
 **UNVERIFIED (not run, with the reason):**
 
 * **Any Azure deployment** (`validate`, `what-if`, `create`), Key Vault reference resolution and timing (in particular that
   Container Apps resolves a reference through a role assignment scoped to a single secret), private endpoint and
   DNS behaviour, SKU and region availability, role-assignment propagation, Container Apps probe behaviour, the migration job,
   alert rules, restore and rollback commands. No Azure subscription was used.
-* **The GitHub Actions workflows on GitHub** (including the path filter, caching, service containers, Playwright, the Android
-  build, CodeQL, dependency review, the container build, Trivy, GHCR publishing and the deploy job), and the **GitHub
-  settings** the release path relies on (the `production` environment's branch restriction and required reviewers with
-  prevent-self-review, the `v*` tag ruleset, branch protection of `main`, fork-approval settings). They run on GitHub only.
-  The Android job needs a JDK and the Android SDK that were not available locally.
+* **GitHub settings and the workflows that only run on `main`** (the deploy job, including its `workflow_run` trigger and
+  the "commit must be in main's history" guard; the GHCR publish step), and the **GitHub settings** the release path relies
+  on (the `production` environment's branch restriction and required reviewers with prevent-self-review, the `v*` tag
+  ruleset, branch protection of `main`, fork-approval settings). The other workflows did run (see above).
 * **OIDC federation** to Azure and **Entra sign-in** end to end, including the web app's OIDC mode (unit-tested with a fake
   user manager only) and the API's token validation against a real issuer.
 * **ACS, Event Grid, Teams/Operator Connect or any telephony provider**, and any real call. No account or number exists.
 * **Azure AI Speech and Azure OpenAI** against live services.
 * **Custom domains and managed certificates**, `ssl=verify-full` against Azure's certificate chain, mutual TLS between apps.
-* **Container vulnerability scan results from CI** (the workflow was not run on GitHub). A local run of the same Trivy
-  release (0.76.2, `--severity HIGH,CRITICAL --ignore-unfixed`, vulnerability database fetched 2026-11-17) found the API
-  image clean after the `apt-get upgrade` step.
+* **Scanning the published image.** Trivy scanned the images the CI builds (see above); the image that is pushed is a second
+  build, so scanning its digest after publishing is not done.
 * **Collecting product metrics** in Azure Monitor (see Monitoring).
 
 ## Troubleshooting

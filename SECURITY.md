@@ -85,8 +85,9 @@ The threat model and the controls behind these are in [`docs/THREAT_MODEL.md`](d
   (runtime dependencies only, no test or lint tools), and CI checks that each locked hash is a file digest that pypi.org
   publishes (see "The container images" in [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)).
 
-CI and deployment workflows have **not been run on GitHub yet** and nothing has been deployed to Azure by the authors;
-see "What is not verified" in [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
+The CI workflows ran on GitHub for the first time on pull request 1; the deployment and publish workflows run on `main`
+only and have not run, and nothing has been deployed to Azure by the authors; see "What is not verified" in
+[`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
 
 ## If you committed a secret
 

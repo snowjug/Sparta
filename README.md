@@ -304,11 +304,21 @@ this repository's own tools:
 | Docker Compose (PostgreSQL, Redis, API, web) | all four healthy; `/readyz` ok at migration `0002`; `scripts\smoke.ps1` and `scripts\journey.py` passed |
 | `gitleaks` on the tree and the history | no leaks (a planted key is detected) |
 
+**On GitHub** (pull request 1, 2026-11-18, `ubuntu-24.04` runners; the workflows had never run before): the changed-area
+filter, the backend job with PostgreSQL and Redis service containers, backend security (`pip-audit`, `bandit`, lock hashes),
+the web job, the Android job (unit tests, lint, debug APK), infrastructure and tooling (Compose, Bicep, workflows, scripts),
+both container images built and scanned by Trivy (no fixable HIGH or CRITICAL finding), `gitleaks`, and CodeQL for Java and
+Kotlin, JavaScript and TypeScript, and Python all passed (`ci-ok` is green). Their first run also found things that were
+fixed: four CodeQL alerts (a short key in a test, a case-sensitive tag regexp in a test, two regex-range warnings), one
+flaky Android unit test, and a dependency-review job that fails when the repository's dependency graph is off (it now skips
+with a warning, so nothing was reviewed until the graph is enabled). The Playwright job there is **informational** and was
+not stable yet: see [docs/WEB_APP.md](docs/WEB_APP.md). The deploy and publish steps run on `main` only and have not run.
+
 **Never verified:** anything that needs a real account, device or number: Azure Communication Services calls and media,
 Azure Speech and Azure OpenAI with credentials, Personal Voice, OIDC against a real identity provider, PSTN transfer and
 carrier call forwarding, the Android app on a physical phone (the instrumented tests compile but have never been run),
-any GitHub Actions run, any Azure deployment, and a native-speaker review of the Hindi and Kannada packs and of the
-dataset. See [Limitations](#limitations).
+the deploy and publish workflows, any Azure deployment, and a native-speaker review of the Hindi and Kannada packs and of
+the dataset. See [Limitations](#limitations).
 
 Backend, from `services/api` with the virtual environment active. Windows PowerShell:
 

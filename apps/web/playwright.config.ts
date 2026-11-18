@@ -63,6 +63,12 @@ export default defineConfig({
         SPARTA_LOG_JSON: "false",
         SPARTA_DATABASE_URL: "sqlite+aiosqlite:///:memory:",
         SPARTA_CORS_ORIGINS: WEB_ORIGIN,
+        // The suite drives one seeded owner per worker through every screen, and a fast runner exceeds the default 240 requests a
+        // minute (the browser then logs a 429 and the "unexpected browser errors" check fails). Nothing here tests the real
+        // limiter: the 429 test answers from a mocked route.
+        SPARTA_RATE_LIMIT_PER_MINUTE: "100000",
+        SPARTA_CALL_CREATE_RATE_LIMIT_PER_MINUTE: "1000",
+        SPARTA_PROFILE_WRITE_RATE_LIMIT_PER_MINUTE: "1000",
       },
     },
     {

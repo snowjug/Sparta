@@ -13,7 +13,7 @@
 #   a release (see docs/DEPLOYMENT.md).
 # * The API image installs only from the hash-pinned services/api/requirements*.lock files (--require-hashes).
 #
-# This workflow has NOT been run on GitHub by its author.
+# First run on GitHub: pull request 1, 2026-11-18 (build and scan only; the publish steps have NOT run).
 name: Container images
 
 on:

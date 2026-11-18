@@ -68,7 +68,9 @@ tickets, token-checked lock release).
 
 **Not reviewed by the reviewer:** `apps/web`, `apps/android`, the language packs and evaluation diffs, and every GitHub
 and Azure *setting* (branch protection, environment reviewers, fork-approval rules, the role assignments actually
-granted). Nothing here was run on GitHub or Azure.
+granted). The CI workflows ran on GitHub only after this review, on pull request 1; its CodeQL analysis found four further
+alerts in the same code (a short key in a test, a case-sensitive tag regexp in a test, two regex-range warnings), all
+resolved. The deploy workflow and anything on Azure have not run.
 
 ## What is still open
 

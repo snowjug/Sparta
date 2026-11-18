@@ -7,7 +7,7 @@
 # * "web-e2e" (Playwright) is informational and deliberately NOT part of ci-ok until it has proven stable on GitHub.
 # * Nothing here needs a secret. Third-party actions are pinned by full commit SHA; first-party actions by major tag.
 #
-# This workflow has NOT been run on GitHub by its author (see docs/DEPLOYMENT.md, "What is not verified").
+# First run on GitHub: pull request 1, 2026-11-18 (see docs/DEPLOYMENT.md, "What is not verified").
 name: CI
 
 on:
