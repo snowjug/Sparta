@@ -35,7 +35,7 @@ services:
       start_period: 10s
 
   redis:
-    image: redis:7-alpine
+    image: redis:8-alpine
     restart: unless-stopped
     command: ["redis-server", "--requirepass", "${SPARTA_REDIS_PASSWORD:-sparta-dev-only}"]
     environment:
