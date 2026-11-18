@@ -63,9 +63,9 @@ class MockHttp:
 class SigningKey:
     """A locally generated RSA key pair that can mint tokens and publish itself as a JWK."""
 
-    def __init__(self, kid: str, bits: int = 2048) -> None:
+    def __init__(self, kid: str) -> None:
         self.kid = kid
-        self.private = rsa.generate_private_key(public_exponent=65537, key_size=bits)
+        self.private = rsa.generate_private_key(public_exponent=65537, key_size=2048)
         self.public = self.private.public_key()
 
     def jwk(self, **extra: Any) -> dict[str, Any]:
@@ -83,6 +83,24 @@ class SigningKey:
         else:
             header["kid"] = self.kid
         return jwt.encode(claims, self.private, algorithm="RS256", headers={**header, **(headers or {})})
+
+
+class WeakPublicKey:
+    """The public half of a 1024-bit RSA key, written out directly.
+
+    A verifier must refuse RSA signing keys shorter than 2048 bits, and proving that only takes the *public* JWK in a key
+    set: nothing is generated and nothing is signed with it. The modulus is exactly ``bits`` bits long and odd, which is
+    all that loading the key checks; it is not (and does not need to be) a product of two primes.
+    """
+
+    def __init__(self, kid: str, bits: int = 1024) -> None:
+        self.kid = kid
+        self._bits = bits
+
+    def jwk(self, **extra: Any) -> dict[str, Any]:
+        modulus = ((1 << (self._bits - 1)) | 1).to_bytes(self._bits // 8, "big")
+        n = base64.urlsafe_b64encode(modulus).rstrip(b"=").decode()
+        return {"kty": "RSA", "n": n, "e": "AQAB", "kid": self.kid, "use": "sig", **extra}
 
 
 class StaticJwks:

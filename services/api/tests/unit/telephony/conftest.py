@@ -6,7 +6,7 @@ import pytest
 
 from sparta.config import Settings
 
-from .helpers import SigningKey
+from .helpers import SigningKey, WeakPublicKey
 
 TENANT = "11111111-2222-3333-4444-555555555555"
 ACS_RESOURCE = "acs-resource-id-for-tests"
@@ -29,8 +29,8 @@ def rotated_key() -> SigningKey:
 
 
 @pytest.fixture(scope="session")
-def weak_key() -> SigningKey:
-    return SigningKey("key-weak", bits=1024)
+def weak_key() -> WeakPublicKey:
+    return WeakPublicKey("key-weak")
 
 
 @pytest.fixture

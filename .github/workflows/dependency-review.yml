@@ -1,7 +1,8 @@
 # Dependency review: fails a pull request that introduces a dependency with a known high-severity vulnerability.
 # Needs the dependency graph (Settings > Advanced Security). Where it is not enabled the job passes with a warning and
-# reviews NOTHING: it first asks the endpoint the action itself uses (a 404 is what the action reports as "not supported on
-# this repository"). On 2026-11-18 the first run on GitHub failed for exactly that reason, so this is how it behaves now.
+# reviews NOTHING: it first asks the endpoint the action itself uses (403 or 404 is what the action reports as "not
+# supported on this repository"). On 2026-11-18 the first run on GitHub failed for exactly that reason, so this is how it
+# behaves now.
 # The action is pinned by commit SHA: it publishes no floating v5 tag.
 name: Dependency review
 
@@ -34,7 +35,10 @@ jobs:
         run: |
           set -uo pipefail
           status="$(gh api -i "repos/${GITHUB_REPOSITORY}/dependency-graph/compare/${BASE_SHA}...${HEAD_SHA}" 2>/dev/null | head -n 1 | awk '{print $2}' || true)"
-          if [ "${status:-}" = "404" ]; then
+          echo "The dependency-graph endpoint answered HTTP ${status:-none}."
+          # Where the graph is off this endpoint answers 403 (observed on the first run on GitHub) or 404, and the action then
+          # fails with "not supported on this repository". Any other answer means the action can do its job.
+          if [ "${status:-}" = "403" ] || [ "${status:-}" = "404" ]; then
             echo "available=false" >> "$GITHUB_OUTPUT"
             echo "::warning title=Dependency review skipped::The dependency graph is not enabled for this repository, so nothing was reviewed. Enable it under Settings > Advanced Security (Dependency graph), then re-run this check."
           else
