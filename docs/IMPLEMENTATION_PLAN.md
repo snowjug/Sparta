@@ -154,3 +154,41 @@ Checked against the code at `5f980d1` on 2026-11-18 (the last commit that touche
 | No account deletion and no purge of audit events | no code deletes users or `audit_events` | `docs/PRIVACY.md` |
 | A blocked caller on the ACS adapter is not rejected: the call rings out | `telephony/azure_acs.py`; the telephony port has no reject operation | `docs/TELEPHONY.md` |
 | Items the automated security review left open: the engine still runs on the event loop, matchers are still built per owner name, zero-width joiners next to Indic letters remain word breaks, look-alike folding is partial, and there was no human penetration test | `docs/SECURITY_REVIEW.md` ("What is still open") | `docs/SECURITY_REVIEW.md`, `docs/THREAT_MODEL.md` rows 24 and 25 |
+
+## 8. Phase 2: the real-world telephony path
+
+Branch `feat/real-world-telephony`, from `f419af2` (Phase 1, merged). Goal: one real telephone call end to end. Result:
+**completion level A (code-complete)**; no real call was placed. The full account (inspection, blockers, decisions, what
+was verified and how, the smallest ask to reach a real call) is [PHASE2_REAL_WORLD_PLAN.md](PHASE2_REAL_WORLD_PLAN.md); the
+controlled whole-call tests are [PHASE2_CONTROLLED_RESULTS.md](PHASE2_CONTROLLED_RESULTS.md); the provider facts and their
+sources are [research/phase2-provider-verification.md](research/phase2-provider-verification.md).
+
+| # | Milestone | Status | Notes |
+| --- | --- | --- | --- |
+| P2-1 | `sparta doctor` provider preflight; `SPARTA_PROVIDER_ONLY_HOSTS` for tunnels | Committed (`3967114`) | Offline, `--online` (free, read-only) and `--allow-billable` (cents) checks; never prints a secret; always lists what only a real call can prove |
+| P2-2 | Streaming Azure Speech recognition through the Speech SDK | Committed (`2ef9805`) | Partials, confidence, language identification; REST fallback; hash-pinned SDK lock. Never run against Azure |
+| P2-3 | Azure OpenAI request adapts to the model family | Committed (`7219fcf`) | `max_tokens` or `max_completion_tokens`, `temperature`, from structured 400 answers |
+| P2-4 | Twilio Media Streams adapter, doctor support, Event Grid caller pinning | Committed (`305dd40`) | A second provider because ACS cannot supply a number; mu-law codec; signed webhooks and media socket; `<Dial>` takeover; never run against Twilio |
+| P2-5 | Honest takeover capability, cost caps, safe provider-failure closure, controlled matrix | Committed (`53b2406`) | 12 whole-call tests with scripted speech services |
+| P2-6 | Android: stale-state bug fix, physical-device checklist | Committed (`ccec1c8`) | No device or emulator was available: every checklist row says NOT RUN |
+| P2-7 | Infrastructure parameters (Twilio secret, caps, cost tag) and documentation | Committed (`db66c1c`) | The Bicep compiles and lints; not deployed |
+| P2-7b | Security review of the new path and its fixes | On the branch | [SECURITY_REVIEW_PHASE2.md](SECURITY_REVIEW_PHASE2.md): no critical or high finding; one medium (conditional) and three low, the first three fixed and the fourth accepted and documented; three smaller defects fixed |
+| P2-8 | A real call (Level B) | **Not started: blocked on external resources** | [PHASE2_REAL_WORLD_PLAN.md](PHASE2_REAL_WORLD_PLAN.md), section 6 |
+
+**Phase 2 verification** (2026-11-18; `c8a56c4` is the code of the branch, the Android rows were measured at `ccec1c8`, the last
+commit that changed Android code; `e468311` then changed the hash list of one lock file, test names and a docstring, and GitHub
+re-ran the backend on it). `scripts\check.ps1 -Security`: all 13 steps passed (ruff and format clean, mypy on 116
+files, `pytest` with PostgreSQL 16 and Redis 7: 2321 passed, OpenAPI contract current, dev-split evaluation unchanged (recall
+87.8%, precision 94.7%, protected 33/33, no violations), `pip-audit` no known vulnerabilities, `bandit` clean, web lockfile,
+`eslint`, `tsc`, 310 `vitest` tests, `next build`). Web `npm run e2e`: 112 of 112 (an earlier run of the same code failed one
+test with a connection reset in the test harness's own API client, the likely cause being a pooled connection meeting the
+server's idle keep-alive, which was not confirmed; the server stayed up and the rerun passed). Android: 634 JVM tests, lint 0
+errors and 21 warnings, debug APK built; `assembleDebugAndroidTest` fails in D8 as before. Docker Compose (PostgreSQL, Redis,
+API): healthy, `scripts\smoke.ps1` and `scripts\journey.py` passed. The API image builds with the Speech SDK and Trivy (CI's
+flags) reports nothing; the Bicep builds and lints; `gitleaks` finds no leak. One flaky test, found in the full run, was a
+race in the *fake* Speech SDK (it could emit the final before a partial under load) and was fixed in the fake. Not verified:
+a real call, any live provider, Azure Speech or OpenAI with credentials, an Azure deployment, Android on a device or emulator,
+and anything legal ([PHASE2_REAL_WORLD_PLAN.md](PHASE2_REAL_WORLD_PLAN.md), section 5).
+
+New external dependencies (in addition to section 5): an **upgraded** Twilio account with one voice-capable number (a trial
+account cannot be used); a public HTTPS URL for the API; a second phone to place the test call.

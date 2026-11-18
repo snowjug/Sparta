@@ -1,6 +1,7 @@
 """Pure-ASGI middleware (no ``BaseHTTPMiddleware``: it breaks WebSockets, streaming and context variables).
 
-Order, outermost first: request context -> security headers -> trusted hosts -> CORS -> error guard -> body limit.
+Order, outermost first: request context -> security headers -> trusted hosts -> provider-only hosts -> CORS -> error
+guard -> body limit.
 Putting the error guard inside CORS means even unexpected 500s carry CORS headers, so a browser reports the real error
 instead of an opaque network failure.
 """
@@ -24,6 +25,18 @@ from sparta.observability.tracing import span
 log = logging.getLogger("sparta.http")
 REQUEST_ID = re.compile(r"[A-Za-z0-9._\-]{8,64}")
 DOCS_PATHS = ("/docs", "/redoc")
+_HOST_HEADER = re.compile(r"(?:(?P<name>[a-z0-9._\-]+)|\[(?P<ipv6>[0-9a-f:.]+)\])(?::[0-9]{1,5})?")
+
+
+def canonical_host(value: str | None) -> str | None:
+    """A ``Host`` header (or a configured host) as a comparable name: lower case, without port or trailing dot.
+
+    ``None`` when it is missing or is not a plain ``host[:port]`` (``tunnel:1:2``, a URL, percent escapes).
+    """
+    match = _HOST_HEADER.fullmatch((value or "").strip().lower())
+    if match is None:
+        return None
+    return (match["name"] or match["ipv6"]).rstrip(".") or None
 
 
 def route_template(scope: Scope) -> str | None:
@@ -149,6 +162,51 @@ class SecurityHeadersMiddleware:
             await send(message)
 
         await self.app(scope, receive, send_secure)
+
+
+class ProviderOnlyHostsMiddleware:
+    """On the listed host names only the health probes and the provider callback and media routes exist.
+
+    A development tunnel is a public host name in front of a server that may be running the development identity (no
+    sign-in). Listing the tunnel's host here makes it serve nothing but what a telephony provider needs: every other
+    path, including the owner API and the interactive docs, answers 404 there, while the same server stays fully
+    usable through ``localhost``. The ``Host`` header is compared as a host name (lower case, without port or trailing
+    dot); a missing or malformed one is treated like a listed host, so this guard fails closed. A host that is merely
+    *different* from the listed ones (an alias of the tunnel) is only refused by ``TrustedHostMiddleware`` (outside
+    this one), which is why ``Settings.problems()`` requires an explicit ``SPARTA_TRUSTED_HOSTS`` whenever hosts are
+    listed here. This is a guard for development tunnels, not a substitute for sign-in in production.
+    """
+
+    ALLOWED_PREFIXES = ("/api/v1/webhooks/", "/api/v1/media/")
+    ALLOWED_PATHS = ("/healthz", "/readyz")
+
+    def __init__(self, app: ASGIApp, *, hosts: list[str]) -> None:
+        self.app = app
+        self.hosts: set[str] = set()
+        for entry in hosts:
+            if not entry.strip():
+                continue
+            host = canonical_host(entry)
+            if host is None:  # a typo (a URL, say) must not silently leave the host unguarded
+                raise ValueError(f"provider-only host {entry!r} is not a host name")
+            self.hosts.add(host)
+
+    def _blocked(self, scope: Scope) -> bool:
+        host = canonical_host(Headers(scope=scope).get("host"))
+        if host is not None and host not in self.hosts:
+            return False
+        path = str(scope.get("path", ""))
+        return not (path in self.ALLOWED_PATHS or path.startswith(self.ALLOWED_PREFIXES))
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] not in ("http", "websocket") or not self.hosts or not self._blocked(scope):
+            await self.app(scope, receive, send)
+            return
+        if scope["type"] == "websocket":
+            await receive()  # the connect event
+            await send({"type": "websocket.close", "code": 1008})
+            return
+        await error_response(404, "not_found", "Not Found")(scope, receive, send)
 
 
 class ErrorGuardMiddleware:

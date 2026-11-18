@@ -213,6 +213,8 @@ def test_only_provider_callbacks_are_hidden_from_the_api_document():
     assert hidden == {
         f"{API}/webhooks/acs/events",
         f"{API}/webhooks/acs/callbacks/{{call_id}}",
+        f"{API}/webhooks/twilio/voice",
+        f"{API}/webhooks/twilio/status",
         f"{API}/webhooks/generic",
     }
 

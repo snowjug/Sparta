@@ -11,13 +11,17 @@ ended, and a legitimate call that looks urgent is flagged so that the owner can 
 risk level with the evidence behind it, and a transcript the owner can delete. The assistant converses in English, Hindi and
 Kannada and follows callers who mix them (Hinglish and Kanglish, written in Latin script).
 
-> **Status: a prototype that has only run against a built-in simulator.** Nothing in this repository has been connected to
-> a live phone network, a live speech service or a live language model, and no native Hindi or Kannada speaker has
-> reviewed the language packs or the evaluation data. Read [Limitations](#limitations) before relying on any statement
-> about real calls.
+> **Status: a prototype that has only run against a built-in simulator and fakes.** Nothing in this repository has been
+> connected to a live phone network, a live speech service or a live language model, and no native Hindi or Kannada speaker
+> has reviewed the language packs or the evaluation data. Phase 2 added the code for a real telephone call (a Twilio
+> adapter, streaming Azure Speech recognition, a `sparta doctor` preflight, cost caps and safe failure handling) and proved
+> it against fakes only: **completion level A (code-complete), not a working phone line**
+> ([docs/PHASE2_REAL_WORLD_PLAN.md](docs/PHASE2_REAL_WORLD_PLAN.md)). Read [Limitations](#limitations) before relying on
+> any statement about real calls.
 
 ## Contents
 
+* [Product status](#product-status)
 * [How a call is handled](#how-a-call-is-handled)
 * [What is real and what is simulated](#what-is-real-and-what-is-simulated)
 * [Evaluation results](#evaluation-results)
@@ -32,11 +36,30 @@ Kannada and follows callers who mix them (Hinglish and Kanglish, written in Lati
 * [Contributing and security](#contributing-and-security)
 * [Licence](#licence)
 
+## Product status
+
+Three levels, and only the evidence listed counts:
+**A** code-complete (everything that does not need an external account is built and tested with fakes);
+**B** a real external telephone call reached Sparta and was answered, with real speech recognition and synthesis;
+**C** B plus a physical Android phone, a monitored deployment, several real calls and a legal review.
+**This repository is at level A.**
+
+| Area | Status | Evidence |
+| --- | --- | --- |
+| Simulator-based product (engine, rules, replies, apps, API) | **Verified** | Backend tests, web tests, Playwright, Android unit tests, CI; evaluation on synthetic scenarios |
+| Real-call path through the Twilio and ACS adapters, streaming speech recognition, owner takeover, cost caps, failure handling | **Verified against fakes only** | Adapter and API tests, plus a controlled matrix of whole calls over a real WebSocket with scripted speech services ([docs/PHASE2_CONTROLLED_RESULTS.md](docs/PHASE2_CONTROLLED_RESULTS.md)) |
+| A real call, real recognition, real voice, real model, real latency | **Unverified** | None was placed or measured. Needs an upgraded Twilio account and number, an Azure Speech resource and a public HTTPS URL ([docs/PHASE2_REAL_WORLD_PLAN.md](docs/PHASE2_REAL_WORLD_PLAN.md), section 6) |
+| Azure deployment | **Unverified** | The Bicep compiles and lints; it has never been deployed |
+| Android: build, unit tests, lint | **Verified** | 634 JVM unit tests, lint, debug APK |
+| Android on an emulator or a physical phone, call-screening role, notifications | **Not run** | No phone or emulator image was available; [docs/ANDROID_SETUP.md](docs/ANDROID_SETUP.md) has the checklist, every row "NOT RUN" |
+| Personal Voice | **Off, not usable** | Consent recording only, by design |
+| Legal and privacy review | **Not done** | [docs/PRIVACY.md](docs/PRIVACY.md), section 13 |
+
 ## How a call is handled
 
 ```mermaid
 flowchart LR
-  CALLER["Caller"] --> PROVIDER["Telephony provider<br/>simulator, Azure Communication Services, other"]
+  CALLER["Caller"] --> PROVIDER["Telephony provider<br/>simulator, Twilio, Azure Communication Services, other"]
   PROVIDER --> SERVICE["CallService<br/>stores, publishes events, plays replies, hangs up"]
   SERVICE --> ENGINE["ConversationEngine<br/>pure and deterministic"]
   ENGINE --> RULES["Risk rules and language packs<br/>TOML files"]
@@ -46,8 +69,8 @@ flowchart LR
   MODEL["Optional language model<br/>off by default"] -.->|"extra signals, filtered by the engine"| ENGINE
 ```
 
-1. A telephony provider delivers the call: the built-in simulator, Azure Communication Services, or another provider
-   through a plugin.
+1. A telephony provider delivers the call: the built-in simulator, Twilio Media Streams, Azure Communication Services, or
+   another provider through a plugin.
 2. `CallService` hands every caller utterance to `ConversationEngine`, which detects the language, matches the signals
    defined in `services/api/src/sparta/risk/policies/default-v1.toml` (36 signals, 14 of them requests for protected
    information), scores the risk, advances a state machine and chooses a reply. The engine is deterministic: the same
@@ -68,9 +91,10 @@ Details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/SAFETY_MODEL.md](do
 | Screening engine, risk rules, reply templates, output validator | Implemented in `services/api/src/sparta/{orchestrator,risk,language}` and covered by automated tests and by the evaluation below. |
 | Languages | English (`en-IN`), Hindi (`hi-IN`) and Kannada (`kn-IN`), plus Hinglish and Kanglish. Marathi, Tamil, Telugu, Malayalam and Bengali are listed as planned: a caller who speaks one of them is detected as unsupported and asked to continue in a supported language. Detection is a script-and-lexicon heuristic, not a trained model ([docs/MULTILINGUAL_SPEECH.md](docs/MULTILINGUAL_SPEECH.md)). |
 | Telephony: simulator | Works. Every simulated call is marked `simulated: true` and both apps show a simulated badge. Owner takeover on the simulator is a labelled simulation: no audio is bridged. |
-| Telephony: Azure Communication Services | Adapter and signed-webhook verification are implemented and unit-tested against fakes. They have never run against a live ACS resource. |
+| Telephony: Azure Communication Services | Adapter and signed-webhook verification are implemented and unit-tested against fakes. They have never run against a live ACS resource, and a new ACS customer cannot currently obtain a number (none in India at all): [docs/research/phase2-provider-verification.md](docs/research/phase2-provider-verification.md). |
+| Telephony: Twilio Media Streams | Added in Phase 2: signed voice and status webhooks, a media WebSocket (mu-law 8 kHz) with per-call tokens, barge-in, `<Dial>` takeover, `<Reject>` for blocked callers and calls over a cap, doctor checks. Tested against fakes and a scripted caller over a real WebSocket; never run against a Twilio account. A Twilio **trial** account cannot be used ([docs/TELEPHONY.md](docs/TELEPHONY.md), section 4.3). |
 | Telephony: another provider | A plugin interface and HMAC-signed generic webhook exist. No provider integration ships. |
-| Speech recognition and synthesis | The simulator produces no audio. Azure Speech adapters, and the real-time audio pipeline for provider media streams (voice-activity detection, per-utterance recognition, barge-in), are implemented and tested with fakes. They have never run with real credentials. |
+| Speech recognition and synthesis | The simulator produces no audio. Azure Speech adapters (streaming recognition through the Speech SDK with partials, confidence and language identification, or REST per utterance; text-to-speech including mu-law for Twilio), and the real-time audio pipeline for provider media streams (voice-activity detection, barge-in), are implemented and tested with fakes. A real call that cannot speak or hear is ended with a summary that says so. They have never run with real credentials. |
 | Language model | Optional and off by default. The Azure OpenAI adapter has never run with real credentials. Caller-speech translation is not implemented. |
 | Backend API | HTTP and WebSocket API with a generated contract ([docs/API_CONTRACT.md](docs/API_CONTRACT.md), `packages/contracts/openapi.json`). Sign-in is a development identity or OpenID Connect bearer tokens; the OIDC path has never run against a real identity provider. |
 | Web app | Eight screens including the Simulator Lab ([apps/web/README.md](apps/web/README.md), [docs/WEB_APP.md](docs/WEB_APP.md)). The default is the development identity. OpenID Connect sign-in (Authorization Code with PKCE, `NEXT_PUBLIC_AUTH_MODE=oidc`) is implemented and unit-tested with a fake client, but has never run against a real identity provider. |
@@ -279,34 +303,56 @@ simulator with deterministic rules: no cloud account, no cost, no audio. The var
 | `SPARTA_DATABASE_URL` | SQLite file under `services/api/var` | PostgreSQL with `postgresql+asyncpg://...`. |
 | `SPARTA_REDIS_URL` | unset | Shared rate limits, WebSocket tickets and call locks across instances. Unset means in-process memory, which is only correct for one instance. |
 | `SPARTA_DATA_KEYS`, `SPARTA_PEPPER`, `SPARTA_WEBHOOK_SECRET` | unset | Content encryption keys, caller-number hashing, webhook signing. All three are required in production. Outside production the first two are generated into `services/api/var` when unset; the webhook secret is not. `python -m sparta keygen` prints fresh values and stores nothing. |
-| `SPARTA_TELEPHONY_PROVIDER`, `SPARTA_STT_PROVIDER`, `SPARTA_TTS_PROVIDER`, `SPARTA_LLM_PROVIDER` | `simulator`, `simulator`, `simulator`, `rules` | Provider selection. Choosing `azure` or `azure_openai` makes the API refuse to start until the credentials listed in `.env.example` are present. |
+| `SPARTA_TELEPHONY_PROVIDER`, `SPARTA_STT_PROVIDER`, `SPARTA_TTS_PROVIDER`, `SPARTA_LLM_PROVIDER` | `simulator`, `simulator`, `simulator`, `rules` | Provider selection (`SPARTA_TELEPHONY_PROVIDER` is `simulator`, `azure`, `twilio` or `other`). Choosing a real provider makes the API refuse to start until the credentials listed in `.env.example` are present, and production also refuses real telephony with a simulated recogniser or voice. |
+| `SPARTA_DAILY_CALL_MINUTES_CAP`, `SPARTA_PER_NUMBER_DAILY_CALL_CAP`, `SPARTA_PROVIDER_FAILURE_LIMIT` | `240`, `10`, `2` | Cost brakes for real calls: minutes per owner per day, calls from one number per day (further calls are rejected without being answered), and how many speaking or listening failures in a row end a call. |
 | `SPARTA_CORS_ORIGINS` | `http://localhost:3000,http://127.0.0.1:3000` | Browser origins allowed to call the API. |
+
+Before any real call, run the provider preflight. It prints no secret, exits 1 when anything is BLOCKED, and always lists
+what only a real call can prove:
+
+```powershell
+python -m sparta doctor --provider twilio --online     # or --provider azure; add --allow-billable for a speech round trip
+```
 
 ## Testing
 
 Run the commands from the directory shown. Each tool reports its own result; the table below is the last verified run,
 pinned to a commit, and goes stale as the code changes.
 
-**Last verified 2026-11-18** on commit `99023e2`, on one Windows 11 machine, with this repository's own tools. The
-backend, web and end-to-end rows were run one commit earlier (`5f980d1`), which differs from it only in one Android test
-file; commits after `99023e2` change documentation only.
+**Last verified** on branch `feat/real-world-telephony` (Phase 2) at commit `c8a56c4`, on one Windows 11 machine, with this
+repository's own tools. The commits after it change documentation, test names and the hash list of one lock file (below);
+GitHub re-ran the backend on them. The Android rows were measured at `ccec1c8`, the last commit that changed Android code.
+Phase 1's record on `main` follows the table.
 
 | Check | Result |
 | --- | --- |
 | `scripts\check.ps1 -Security` (what CI runs) | all 13 steps passed |
-| Backend `pytest`, with PostgreSQL 16 and Redis 7 | 2021 passed |
-| `ruff check`, `ruff format --check`, `mypy src` | clean; no issues in 107 source files |
+| Backend `pytest`, with PostgreSQL 16 and Redis 7 | 2321 passed |
+| `ruff check`, `ruff format --check`, `mypy src` | clean; no issues in 116 source files |
 | `python -m sparta openapi --check` | the contract is current |
 | `python -m sparta evaluate --split dev` | scam recall 87.8%, precision 94.7%, protected requests refused 33/33, 0 violations, 0 fallbacks, deterministic (the split the rules were tuned on: [docs/EVALUATION.md](docs/EVALUATION.md)) |
 | `bandit`, `pip-audit` on the lock | no findings; no known vulnerabilities |
 | Web: `eslint`, `tsc`, `vitest`, `next build` | 0 problems, 0 errors, 310 tests passed, build OK |
-| Web: `npm run e2e` | 112 of 112 passed against the real API and the production build (Chromium only); axe-core finds no violations on any screen in either theme |
-| Android: `testDebugUnitTest` | 632 JVM tests passed, four runs in a row under full CPU load (8 busy loops on 8 cores, to flush out flaky tests), 0 failures each |
-| Android: `lintDebug assembleDebug assembleRelease bundleRelease` | lint 0 errors and 21 warnings; debug APK 22.7 MB; unsigned R8 release APK 2.4 MiB and AAB 5.3 MiB (built at `a17b54e`; every later Android change is a test file) |
-| Docker Compose (PostgreSQL, Redis, API, web) | all four healthy; `/readyz` ok at migration `0002`; `scripts\smoke.ps1` and `scripts\journey.py` passed |
-| `gitleaks` on the tree and the 52 commits of the history | no leaks (a planted key is detected) |
+| Web: `npm run e2e` | 112 of 112 passed against the real API and the production build (Chromium only); axe-core finds no violations on any screen in either theme. An earlier run of the same code failed one test with `ECONNRESET` in the test harness's own API client (the server stayed up and every other test passed; the likely cause, not confirmed, is a pooled connection meeting the server's 5 s idle keep-alive); the rerun passed 112 of 112 |
+| Android: `testDebugUnitTest` | 634 JVM tests passed, 0 failures (one run, at `ccec1c8`) |
+| Android: `lintDebug assembleDebug` | lint 0 errors and 21 warnings; debug APK 22,481,118 bytes (at `ccec1c8`). `assembleDebugAndroidTest` fails in D8 (see Limitations) and no emulator or device was available. The release APK and bundle were not rebuilt in Phase 2 |
+| Docker Compose (PostgreSQL, Redis, API) | all three healthy (the web service was not started); `/readyz` ready; `scripts\smoke.ps1` and `scripts\journey.py` passed |
+| API image and Bicep | the API image (with the Speech SDK) builds; the SDK imports and builds a streaming recogniser in the `python:3.12-slim` runtime image (loading only: nothing was recognised); Trivy 0.76.2 with CI's flags (`--severity HIGH,CRITICAL --ignore-unfixed`) reports nothing; the Bicep builds, builds its parameters and lints (Bicep 0.48.1); nothing was deployed |
+| Controlled call matrix (Phase 2) | 12 whole-call tests over a real WebSocket with scripted speech services; local processing time from the end of the caller's turn to the first audio, p50 about 92 ms and p95 about 205 ms, with zero-latency fakes: [docs/PHASE2_CONTROLLED_RESULTS.md](docs/PHASE2_CONTROLLED_RESULTS.md) |
+| `gitleaks` 8.30.1 (`gitleaks git`) on the history of the branch | no leaks; two fake test values it flagged are allowlisted by exact value ([docs/SECURITY_REVIEW_PHASE2.md](docs/SECURITY_REVIEW_PHASE2.md)) |
 
-**On GitHub** (pull request 1, 2026-11-18, `ubuntu-24.04` runners; the workflows had never run before): all 16 checks passed
+**Phase 2 on GitHub** (pull request 11, 2026-11-18, `ubuntu-24.04` runners): the first run failed three things that did not
+show locally, all fixed in `e468311`. `requirements-dev.lock` carried five md5 hashes for the Speech SDK (the package mirror
+it was generated through publishes them), which pip's hash-checking mode refuses, so the backend and backend-security jobs
+could not install. CodeQL reported three high alerts in test code: a fake Twilio account SID named `ACCOUNT`, which its name
+heuristic classes as sensitive account data as it flows through the test fixtures into Twilio's HMAC-SHA1 signature, and two
+`endswith` host checks. The constant was renamed and the checks made exact; nothing was suppressed or excluded. On the second
+run all checks passed: the backend with PostgreSQL and Redis service containers, backend security (`pip-audit`, `bandit`, lock
+hashes), Android, infrastructure and tooling, both container images built and scanned by Trivy, `gitleaks`, CodeQL for three
+languages with no open alert, dependency review and the `ci-ok` gate. The web job and the Playwright job were skipped by the
+changed-area filter, because no web file changed.
+
+**Phase 1 on GitHub** (pull request 1, 2026-11-18, `ubuntu-24.04` runners; the workflows had never run before): all 16 checks passed
 on `99023e2`: the changed-area filter, the backend job with PostgreSQL and Redis service containers, backend security
 (`pip-audit`, `bandit`, lock hashes), the web job, the Android job (unit tests, lint, debug APK), infrastructure and
 tooling (Compose, Bicep, workflows, scripts), both container images built and scanned by Trivy (no fixable HIGH or CRITICAL
@@ -325,11 +371,12 @@ Hinglish and Kanglish OTP scams, block, report, export, delete); and the deploy 
 skipped itself, as designed, because the three `AZURE_*` repository variables are not set. The deploying job (Azure login,
 `what-if`, `create`, migrations) has never run.
 
-**Never verified:** anything that needs a real account, device or number: Azure Communication Services calls and media,
-Azure Speech and Azure OpenAI with credentials, Personal Voice, OIDC against a real identity provider, PSTN transfer and
-carrier call forwarding, the Android app on a physical phone (the instrumented tests compile but have never been run),
-the deploying job of the deploy workflow (the publish job has run), any Azure deployment, and a native-speaker review of the Hindi and Kannada packs and of
-the dataset. See [Limitations](#limitations).
+**Never verified:** anything that needs a real account, device or number: any real call (Twilio or Azure Communication
+Services: media, signatures and tokens as the live service sends them, transfer), Azure Speech (streaming recognition and
+synthesis on telephone audio) and Azure OpenAI with credentials, Personal Voice, OIDC against a real identity provider,
+PSTN transfer and carrier call forwarding, the Android app on a physical phone or an emulator (the instrumented tests do
+not build, see [Limitations](#limitations)), the deploying job of the deploy workflow (the publish job has run), any Azure
+deployment, and a native-speaker review of the Hindi and Kannada packs and of the dataset. See [Limitations](#limitations).
 
 Backend, from `services/api` with the virtual environment active. Windows PowerShell:
 
@@ -382,7 +429,9 @@ Linux or macOS:
 ./gradlew testDebugUnitTest lintDebug assembleDebug
 ```
 
-`connectedDebugAndroidTest` needs a device or emulator. The instrumented tests compile but have never been run.
+`connectedDebugAndroidTest` needs a device or emulator, and `assembleDebugAndroidTest` currently fails (D8 refuses the
+backtick test names with spaces at `minSdk` 26; [docs/ANDROID_SETUP.md](docs/ANDROID_SETUP.md)), so the instrumented tests
+have never been run.
 
 Everything the backend and web CI would check, in one go: `scripts\check.ps1` (`-Fast` skips the slow steps) or `make check`;
 `scripts\test.ps1` or `make test` runs only the tests.
@@ -410,20 +459,28 @@ Everything the backend and web CI would check, in one go: `scripts\check.ps1` (`
 
 Not verified against any live service:
 
-* Azure Communication Services (call answering, callbacks, media streaming, transfer), Event Grid delivery tokens, Azure
-  Speech, Azure OpenAI and Personal Voice have never been exercised with real credentials. The code and its fakes are
-  tested; the real behaviour is **UNVERIFIED**.
+* Azure Communication Services and Twilio (call answering, webhooks and callbacks, media streaming, transfer), Event Grid
+  delivery tokens, Azure Speech (streaming recognition, language identification on telephone audio, Hinglish and Kanglish),
+  Azure OpenAI and Personal Voice have never been exercised with real credentials, and **no real telephone call has ever
+  reached Sparta**. The code and its fakes are tested; the real behaviour is **UNVERIFIED**. The controlled matrix in
+  [docs/PHASE2_CONTROLLED_RESULTS.md](docs/PHASE2_CONTROLLED_RESULTS.md) is not an external test, and its latencies are
+  local processing time with zero-latency fakes.
 * OpenID Connect sign-in (the backend's token verification and the web app's sign-in flow) has never been tried against a
   real identity provider.
 * Conditional call forwarding to a provider number is carrier-specific, and no carrier has been tested.
-* Android call screening has never run on a device or emulator.
+* Android call screening has never run on a device or emulator, and the Android instrumented tests do not build
+  (`assembleDebugAndroidTest` fails in D8 on test names with spaces at `minSdk` 26; see
+  [docs/ANDROID_SETUP.md](docs/ANDROID_SETUP.md)).
+* A takeover is requested, not confirmed: Sparta does not learn whether the owner's phone rang or answered.
 
 Not implemented:
 
 * The AI conversation does not happen on the phone itself. Android's call-screening role cannot answer, speak to, hear or
   record a call. The conversation exists only for calls that reach a telephony provider.
-* Azure Communication Services cannot provision Indian (+91) numbers directly, and its standalone telephony is
-  scheduled to retire; both points and the realistic alternatives are in
+* A first real call needs a paid provider account and a number that Sparta does not buy. Azure Communication Services
+  cannot provision Indian (+91) numbers, a new customer may not be able to get one at all, and its standalone telephony is
+  scheduled to retire; a Twilio trial account removes the TwiML Sparta needs; both points and the alternatives are in
+  [docs/research/phase2-provider-verification.md](docs/research/phase2-provider-verification.md),
   [docs/research/acs-android-verification.md](docs/research/acs-android-verification.md) and
   [docs/TELEPHONY.md](docs/TELEPHONY.md).
 * Translation of caller speech; the assistant's own lines carry an English rendering from the templates.
@@ -491,7 +548,8 @@ experiments/unsloth/     optional research notes (no code)
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Components, data flow, the conversation state machine, provider interfaces, storage, sequence diagrams, failure modes |
 | [docs/SAFETY_MODEL.md](docs/SAFETY_MODEL.md) | Protected information, the signal table, scoring, denial handling, escalation, what the model may and may not do |
 | [docs/MULTILINGUAL_SPEECH.md](docs/MULTILINGUAL_SPEECH.md) | Language detection, code-switching, locales and voices, fallbacks, test corpus |
-| [docs/TELEPHONY.md](docs/TELEPHONY.md) | What Android can and cannot do, the programmable-number path, provider setup, live-test checklist |
+| [docs/TELEPHONY.md](docs/TELEPHONY.md) | What Android can and cannot do, the programmable-number path (Twilio, ACS), provider setup, live-test checklist |
+| [docs/PHASE2_REAL_WORLD_PLAN.md](docs/PHASE2_REAL_WORLD_PLAN.md), [docs/PHASE2_CONTROLLED_RESULTS.md](docs/PHASE2_CONTROLLED_RESULTS.md), [docs/SECURITY_REVIEW_PHASE2.md](docs/SECURITY_REVIEW_PHASE2.md) | Phase 2 (the real-call path): blockers, decisions, completion level, the smallest ask to reach a real call; the controlled call matrix and its evidence; the security review of the new path |
 | [docs/PRIVACY.md](docs/PRIVACY.md) | What is stored, what is encrypted, retention, deletion paths, subprocessors |
 | [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md) | Assets, actors, abuse cases, mitigations with file references, residual risks |
 | [docs/EVALUATION.md](docs/EVALUATION.md) | Dataset, scoring, discipline, published numbers, reproduction |
@@ -501,7 +559,7 @@ experiments/unsloth/     optional research notes (no code)
 | [docs/SECURITY_REVIEW.md](docs/SECURITY_REVIEW.md) | Findings of the automated security review, what was fixed, what is still open |
 | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md), [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md) | Azure deployment, secrets, legal and approvals checklist, release steps |
 | [docs/DECISIONS/](docs/DECISIONS/) | Architecture decision records 0001 to 0006 |
-| [docs/research/](docs/research/) | Verified notes on Azure Communication Services, Android, Azure Speech and Azure OpenAI |
+| [docs/research/](docs/research/) | Verified notes on Azure Communication Services, Android, Azure Speech, Azure OpenAI and (Phase 2) the telephony providers |
 | [services/api/README.md](services/api/README.md), [apps/web/README.md](apps/web/README.md), [apps/android/README.md](apps/android/README.md), [packages/evaluation/README.md](packages/evaluation/README.md), [experiments/unsloth/README.md](experiments/unsloth/README.md) | Per-component notes |
 
 ## Contributing and security

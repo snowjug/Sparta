@@ -410,6 +410,16 @@ async def test_the_required_role_must_be_present_as_a_list_entry(key):
         assert await reason_of(v.verify(key.token(claims(ISS, AUD, roles=roles)))) == "missing required role"
 
 
+async def test_the_calling_application_must_be_allowed_when_a_list_is_configured(key):
+    app, other = "4962773b-9cdb-44cf-a8bf-237846a00ab7", "11111111-2222-3333-4444-555555555555"
+    v = verifier(StaticJwks(key), allowed_app_ids=[app.upper()])
+    assert (await v.verify(key.token(claims(ISS, AUD, azp=app))))["azp"] == app  # a v2 token
+    assert (await v.verify(key.token(claims(ISS, AUD, appid=app))))["appid"] == app  # a v1 token
+    for extra in ({}, {"azp": other}, {"appid": other}, {"azp": app, "appid": other}, {"azp": 5}, {"azp": ""}):
+        assert await reason_of(v.verify(key.token(claims(ISS, AUD, **extra)))) == "caller application not allowed"
+    assert (await verifier(StaticJwks(key)).verify(key.token(claims(ISS, AUD))))["iss"] == ISS  # no list: not checked
+
+
 @pytest.mark.parametrize(
     "kwargs",
     [
@@ -674,6 +684,22 @@ async def test_the_event_grid_role_check_can_be_switched_off_if_live_tokens_lack
     v = event_grid_verifier(make_settings(), MockHttp(jwks_response(key)).client, required_role=None)
     token = key.token(claims(f"https://login.microsoftonline.com/{TENANT}/v2.0", EVENT_GRID_AUDIENCE))
     assert (await v.verify(token))["aud"] == EVENT_GRID_AUDIENCE
+
+
+async def test_the_event_grid_factory_enforces_the_configured_caller_application(key, make_settings):
+    app = "4962773b-9cdb-44cf-a8bf-237846a00ab7"
+    v = event_grid_verifier(make_settings(event_grid_allowed_app_ids=f" {app} "), MockHttp(jwks_response(key)).client)
+    issuer = f"https://login.microsoftonline.com/{TENANT}/v2.0"
+    good = key.token(claims(issuer, EVENT_GRID_AUDIENCE, roles=[EVENT_GRID_ROLE], azp=app))
+    assert (await v.verify(good))["azp"] == app
+    writer_app = "22222222-2222-3333-4444-555555555555"  # holds the same role, but is not Event Grid
+    forged = key.token(claims(issuer, EVENT_GRID_AUDIENCE, roles=[EVENT_GRID_ROLE], azp=writer_app))
+    assert await reason_of(v.verify(forged)) == "caller application not allowed"
+
+
+def test_the_event_grid_allow_list_must_hold_application_id_guids(make_settings):
+    with pytest.raises(ConfigurationError, match="ALLOWED_APP_IDS"):
+        event_grid_verifier(make_settings(event_grid_allowed_app_ids="Microsoft.EventGrid"), httpx.AsyncClient())
 
 
 @pytest.mark.parametrize("tenant", [None, "", "common", "organizations", "contoso.onmicrosoft.com", "not-a-guid"])

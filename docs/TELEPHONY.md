@@ -2,12 +2,21 @@
 
 What each telephony path can and cannot do, how a call reaches Sparta, how to configure each provider, and what a human
 must do before any real call is trusted. Nothing in this document describes a live call that was tested: **no live phone
-call, Azure Communication Services resource, Event Grid subscription or Android device was available while Sparta was
-built.** Behaviour that depends on them is marked **UNVERIFIED**.
+call, Azure Communication Services resource, Twilio account, Event Grid subscription or Android device was available
+while Sparta was built.** Behaviour that depends on them is marked **UNVERIFIED**. What *was* exercised is listed in
+[PHASE2_CONTROLLED_RESULTS.md](PHASE2_CONTROLLED_RESULTS.md): whole calls through the Twilio adapter, a real media
+WebSocket, the audio pipeline and the call service, with scripted recognition and synthesis. That is a controlled test,
+not a call.
+
+Phase 2 added a second programmable-number provider (Twilio, section 4.3) because ACS cannot supply a number to a new
+customer and has none in India, and a preflight command: `python -m sparta doctor --provider azure|twilio --online`
+reports what is configured, what answers and what can only be proven by a real call.
 
 Related: [ARCHITECTURE.md](ARCHITECTURE.md) (ports and call flow), [ANDROID_SETUP.md](ANDROID_SETUP.md),
-[research/acs-android-verification.md](research/acs-android-verification.md) (documentation facts and their sources),
-[SAFETY_MODEL.md](SAFETY_MODEL.md), [PRIVACY.md](PRIVACY.md), [DEPLOYMENT.md](DEPLOYMENT.md).
+[research/acs-android-verification.md](research/acs-android-verification.md) and
+[research/phase2-provider-verification.md](research/phase2-provider-verification.md) (documentation facts and their
+sources), [PHASE2_REAL_WORLD_PLAN.md](PHASE2_REAL_WORLD_PLAN.md), [SAFETY_MODEL.md](SAFETY_MODEL.md),
+[PRIVACY.md](PRIVACY.md), [DEPLOYMENT.md](DEPLOYMENT.md).
 
 ## 1. Three paths, three different capabilities
 
@@ -15,7 +24,7 @@ Related: [ARCHITECTURE.md](ARCHITECTURE.md) (ports and call flow), [ANDROID_SETU
 | --- | --- | --- | --- |
 | **Simulator** (`TELEPHONY_PROVIDER=simulator`, the default) | A complete, credential-free provider for development and demos: scripted, typed, browser-microphone and uploaded-audio calls through the real conversation engine, with live events, barge-in, silence timers and a labelled takeover simulation | Carry a real call or real audio. Every call is `simulated: true`, `two_way_audio: false`, `live_calls_supported: false` | Implemented and tested (`telephony/simulator.py`) |
 | **Native Android call screening** (`CallScreeningService`) | On the phone, for each incoming call: allow, silence the ringer or reject, from local rules and synced block and trust lists; reports the decision to the backend as a `screening_only` call | Answer a call, speak to the caller, bridge a call, record, or hear any call audio. It receives call metadata only | Implemented in `apps/android`; **never run on a device or emulator** ([ANDROID_SETUP.md](ANDROID_SETUP.md) section 10) |
-| **Programmable-number provider** (`TELEPHONY_PROVIDER=azure` or `other`) | Receives calls delivered to a provider-owned number, answers them, streams caller audio to Sparta, plays the assistant's speech, hangs up and can transfer to the owner | Intercept calls to the owner's own SIM by itself. The owner has to forward unknown or unanswered calls to the provider's number (section 3) | Azure adapter implemented against fakes of the SDK and the media socket; **UNVERIFIED live**. The `other` route is a plugin hook plus signed webhooks, tested only with a stand-in plugin |
+| **Programmable-number provider** (`TELEPHONY_PROVIDER=azure`, `twilio` or `other`) | Receives calls delivered to a provider-owned number, answers them, streams caller audio to Sparta, plays the assistant's speech, hangs up and can transfer to the owner | Intercept calls to the owner's own SIM by itself. The owner has to forward unknown or unanswered calls to the provider's number (section 3) | Azure and Twilio adapters implemented against fakes of the SDK, the REST API and the media socket; **UNVERIFIED live**. The `other` route is a plugin hook plus signed webhooks, tested only with a stand-in plugin |
 
 The AI conversation exists only on the first and third paths. On a normal cellular call that reaches only the Android
 phone, Sparta can screen (allow, silence, reject) but cannot talk to the caller. The apps and `CallDetail.capabilities`
@@ -72,7 +81,8 @@ flowchart LR
   will belong to a different user from the one who signs in. There is no per-number routing between owners.
 * A caller on the owner's blocked list is not answered and the call is ended in Sparta without a spoken refusal. With the
   Azure adapter the underlying call is left to ring out, because reject and redirect are not part of the telephony port
-  (`telephony/azure_acs.py`, `handle_incoming`).
+  (`telephony/azure_acs.py`, `handle_incoming`). With the Twilio adapter the voice webhook answers `<Reject>`, which Twilio
+  does not bill (`telephony/twilio.py`); the same happens to a call over one of the caps (section 4.3).
 * The `trusted_contact_behavior = "allow_directly"` pass-through exists only for simulated calls. A real provider cannot
   hand a call back to the owner's phone through this port, so trusted callers are screened there as well.
 
@@ -103,7 +113,7 @@ Settings (environment variables; secrets belong in a secret store, never in the 
 | `SPARTA_STT_PROVIDER=azure`, `SPARTA_TTS_PROVIDER=azure`, `SPARTA_AZURE_SPEECH_KEY`, `SPARTA_AZURE_SPEECH_REGION` | Speech recognition and synthesis. Startup refuses `TELEPHONY_PROVIDER=azure` with simulated STT. With simulated TTS the provider cannot speak (`play` is refused and `can_play_audio` is false) |
 | `SPARTA_TELEPHONY_OWNER_USER_ID` | The owner who receives the calls (section 3) |
 | `SPARTA_FORWARDING_NUMBER` | The provider number shown to the apps |
-| Owner preference `takeover_number` (Assistant Studio) | E.164 number to transfer to on Take Over; without it the action is refused |
+| Owner preference `takeover_number` (Assistant Studio) | Number, with its country code, to transfer to on Take Over (spaces and dashes are fine; a number without a country code is not used); without a usable one the apps show Take Over as unavailable and the action is refused |
 
 What the adapter does:
 
@@ -138,10 +148,83 @@ Constraints from the verification notes (read the note for sources and the date 
   test. Also unconfirmed: the form of the callback token audience, the `RS256` versus `RSA256` algorithm name (only
   `RS256` is accepted), whether live Event Grid deliveries carry the expected role claim, and chunked streaming of
   synthesised speech.
-* Azure's speech-to-text adapter is utterance based: Azure produces no partial transcripts, so there are no live
-  captions for a real call.
+* Azure's speech-to-text adapter has two modes. With the Speech SDK installed (`azure` extra, `SPARTA_AZURE_SPEECH_STREAMING=auto`)
+  each utterance is recognised on a streaming connection and produces partial transcripts (live captions) and a final
+  with its confidence; without it the REST adapter transcribes each utterance after it ends and produces no partials.
+  Neither mode has recognised a real caller's audio yet (**UNVERIFIED**, see [MULTILINGUAL_SPEECH.md](MULTILINGUAL_SPEECH.md)).
+* Event Grid deliveries can additionally be pinned to the calling application: set `SPARTA_EVENT_GRID_ALLOWED_APP_IDS` to
+  the application id of the `Microsoft.EventGrid` service principal in your tenant (the `appid`/`azp` claim must match).
+  The `AzureEventGridSecureWebhookSubscriber` role is also granted to the subscription-writer app, so the role alone does
+  not show that Event Grid is the caller. `sparta doctor` warns while it is unset, and with `SPARTA_ENV=production` the
+  server refuses to start with `TELEPHONY_PROVIDER=azure` until it is set.
+* The ACS resource id is documented by Microsoft's own sample as the *immutable resource id* (a GUID, not the ARM path)
+  and used as the audience of callback and media tokens. A live token has not been inspected: **UNVERIFIED**.
 
-### 4.3 Another provider (`TELEPHONY_PROVIDER=other`)
+### 4.3 Twilio Media Streams (`TELEPHONY_PROVIDER=twilio`)
+
+Added in Phase 2 because ACS cannot give a new customer a number and has no +91 numbers
+([PHASE2_REAL_WORLD_PLAN.md](PHASE2_REAL_WORLD_PLAN.md)). Adapter: `services/api/src/sparta/telephony/twilio.py` (and
+`g711.py` for mu-law); routes in `api/routers/webhooks.py`. It is reported as provider kind `other`, so the API contract,
+the web app and the Android app are unchanged. **Exercised only against fakes (a fake Twilio REST client and a scripted
+WebSocket client over the real app); no Twilio account, number or call was involved: UNVERIFIED live.**
+
+Settings:
+
+| Variable | Purpose |
+| --- | --- |
+| `SPARTA_TELEPHONY_PROVIDER=twilio` | Select the adapter |
+| `SPARTA_TWILIO_ACCOUNT_SID` | Account SID (`AC` + 32 hex digits); the account, not an API key |
+| `SPARTA_TWILIO_AUTH_TOKEN` | Auth token (secret). It signs every webhook Twilio sends, authenticates the REST API and keys the per-call stream tokens, so Sparta needs nothing else from Twilio |
+| `SPARTA_TWILIO_CALLBACK_BASE_URL` | Public `https://` origin Twilio calls and streams audio to. Signatures are checked against this configured origin, never against the `Host` header |
+| `SPARTA_TWILIO_CALLER_ID` | Optional. E.164 number shown on a takeover call; default is the Twilio number that was dialled |
+| `SPARTA_TWILIO_VERIFY_MEDIA_SIGNATURE` | Default `true`. Whether the media WebSocket upgrade must carry `X-Twilio-Signature`. The per-call token in the `start` message authenticates the socket either way. A debugging switch: the server refuses to start with `false` when `SPARTA_ENV=production` (reproduce a mismatch on a development tunnel) |
+| `SPARTA_STT_PROVIDER=azure`, `SPARTA_TTS_PROVIDER=azure`, `SPARTA_AZURE_SPEECH_KEY`, `SPARTA_AZURE_SPEECH_REGION` | Required in production: a silent or deaf assistant would never make the AI disclosure |
+| `SPARTA_TELEPHONY_OWNER_USER_ID`, `SPARTA_FORWARDING_NUMBER` | As in section 3 (`SPARTA_FORWARDING_NUMBER` is the Twilio number callers dial; the doctor checks it on the account) |
+| Owner preference `takeover_number` | Destination of Take Over, with its country code (`+91 98123 45670`: spaces and dashes are fine; a number without a country code is refused, never completed with a guess). **Without a usable one the apps show Take Over as unavailable and the tap is refused** |
+
+What the adapter does:
+
+1. **Voice webhook.** `POST /api/v1/webhooks/twilio/voice` (form body, `X-Twilio-Signature` verified before anything is
+   acted on). The call is created once per `CallSid` (Twilio retries are answered with the same TwiML). A blocked caller, or a
+   call over a limit (active calls, daily calls, daily minutes, calls per number), gets `<Reject>`, which Twilio does not
+   bill. Otherwise the answer is `<Connect><Stream url="wss://<base>/api/v1/media/twilio/{call_id}">` with the per-call
+   token as a `<Parameter>` (a Stream URL cannot carry a query string).
+2. **Media socket.** `WS /api/v1/media/twilio/{call_id}`: the upgrade must carry a valid signature (checked against both
+   the `wss://` and `https://` forms of the URL, with and without the default port, because which form Twilio signs is
+   **UNVERIFIED**), and the `start` message must name this call's `CallSid`, carry its token and announce
+   `audio/x-mulaw`, 8000 Hz, one channel. Frames before an authenticated `start` are dropped and counted; 500 malformed
+   frames close the socket. A stranger's socket can never end anyone's call, and a socket becomes the live stream only
+   once its `start` message has proven the token, so it cannot displace the live one either; a socket that sends no valid
+   `start` within 10 s is closed.
+3. **Caller audio.** mu-law 8 kHz, converted to PCM16 and handed to `services/audio_pipeline.py` (voice-activity detection,
+   one streaming recognition per utterance). DTMF digits are received and ignored.
+4. **Assistant speech.** The TTS provider synthesises mu-law 8 kHz, sent as 80 ms `media` messages, followed by a `mark`
+   named after the playback. The `mark` echo means the caller heard it; if the echo never comes the call carries on after
+   the estimated duration plus five seconds.
+5. **Barge-in.** `clear` empties what Twilio has buffered; the late `mark` echoes of the cleared audio are ignored.
+6. **Take over.** The call is redirected with inline TwiML `<Dial callerId=...><Number>owner</Number></Dial>`
+   (`<Hangup/>` if the owner does not answer). The redirect waits (at most 8 s) until the announcement of the transfer has
+   been heard, and Sparta never hangs up a call it has handed over. The transfer is requested once and never retried. That
+   the owner's phone rings and bridges is **UNVERIFIED**, and Sparta does not learn whether the owner answered.
+7. **End.** `Status=completed` on the Call resource (a `400` or `404` means the call was already over). The optional
+   `POST /api/v1/webhooks/twilio/status` callback ends the call here if the stream did not.
+
+Constraints (sources: [research/phase2-provider-verification.md](research/phase2-provider-verification.md)):
+
+* **A Twilio trial account cannot be used.** Twilio removes `<Stream>` and `<Dial><Number>` from the TwiML of trial
+  accounts, which would leave Sparta unable to hear the caller or hand the call over. Upgrade the account first;
+  `sparta doctor --provider twilio --online` reports a trial account as BLOCKED.
+* **Number availability is not solved.** A US number is the simplest first test. For India, Twilio lists `+91800` toll-free
+  numbers with a regulatory bundle and an address outside India; eligibility and inventory for a given applicant are
+  **UNVERIFIED**, and Sparta never buys or ports a number.
+* The same public URL must serve the voice webhook, the media WebSocket and (optionally) the status callback. With a dev
+  tunnel, set `SPARTA_PROVIDER_ONLY_HOSTS` to the tunnel's host name and `SPARTA_TRUSTED_HOSTS` to that host name plus
+  `localhost` (the server refuses to start with a wildcard) so that only the provider routes are reachable through
+  it ([DEPLOYMENT.md](DEPLOYMENT.md)).
+* Twilio's own charges (number, per-minute, Stream) are Twilio's: Sparta's `SPARTA_ESTIMATED_*` settings only let the
+  doctor print a worst-case figure from prices you enter.
+
+### 4.4 Another provider (`TELEPHONY_PROVIDER=other`)
 
 For a provider that can speak WebSockets and webhooks, such as an Indian programmable-voice provider. Two parts:
 
@@ -172,9 +255,13 @@ For a provider that can speak WebSockets and webhooks, such as an Indian program
 
 * No live call has been placed through any provider; no audio has been heard by a person.
 * One owner per deployment for provider calls (section 3).
-* Azure speech recognition is per utterance; there is no streaming recognition and no live captions for real calls.
-* The adapters were exercised only against fakes of the Azure SDK client and of the media WebSocket, and Azure Speech
-  and Azure OpenAI only against mocked HTTP.
+* Azure speech recognition streams through the Speech SDK when it is installed (partials and a final per utterance, one
+  connection per utterance); without the SDK it is per utterance over REST with no partials. Neither has recognised a real
+  caller yet.
+* The adapters were exercised only against fakes of the Azure SDK client, the Twilio REST API and the media WebSocket, and
+  Azure Speech and Azure OpenAI only against mocked HTTP and a scripted SDK.
+* A takeover is requested, not confirmed: Sparta does not learn whether the owner's phone rang or answered, and if the
+  transfer is refused the call stays in the take-over state until the owner ends it or a limit ends it.
 * Take over is a provider transfer to a phone number the owner sets; on the simulator it is labelled as a simulation. The
   Android app cannot bridge a call.
 * Push notifications are not implemented, so an escalation raised while the apps are closed can reach the owner late
@@ -203,12 +290,27 @@ result for each step.
 
 **Provider wiring (Azure example)**
 
+- [ ] Run `python -m sparta doctor --provider azure --online` against the deployed API: nothing may be BLOCKED, and
+  every UNVERIFIED line it prints is one of the steps below.
 - [ ] Settings in section 4.2 are set; `GET /api/v1/system/status` reports `telephony.provider: "azure"` and
   `live_calls_supported: true`, and the Simulator Lab lists Azure as available.
 - [ ] The Event Grid subscription (Event Grid schema, Entra-secured webhook) validates; `POST .../acs/events` accepts the
-  handshake. Record whether the delivery token carries the expected role claim.
+  handshake. Record whether the delivery token carries the expected role claim and which `appid`/`azp` it carries
+  (set `SPARTA_EVENT_GRID_ALLOWED_APP_IDS` to it).
 - [ ] A call from the second phone to the provider number creates a call in the apps within the ring window.
-- [ ] The media socket connects; record the actual key casing of the frames ACS sends and expects.
+- [ ] The media socket connects; record the actual key casing of the frames ACS sends and expects, and the audience of the
+  callback token (the resource's immutable id, or something else).
+
+**Provider wiring (Twilio)**
+
+- [ ] The Twilio account is upgraded (not a trial), the number is on it and `SPARTA_FORWARDING_NUMBER` is that number.
+- [ ] Run `python -m sparta doctor --provider twilio --online` against the deployed API. It checks the account type,
+  that the number's voice webhook is `https://<host>/api/v1/webhooks/twilio/voice` over HTTP POST (and not a TwiML
+  application), that an unsigned request is refused and that a WebSocket upgrade without a signature is refused.
+- [ ] A call from the second phone creates a call in the apps; the greeting is audible. If the caller hears Twilio's own
+  error message instead, read the Twilio debugger first (a signature mismatch is logged here as `webhook rejected`).
+- [ ] Record whether the media socket upgrade is accepted with the signature check on (`SPARTA_TWILIO_VERIFY_MEDIA_SIGNATURE`),
+  and which URL form (`wss` or `https`) the signature covered.
 
 **Conversation**
 
@@ -216,15 +318,18 @@ result for each step.
 - [ ] Speech in English, Hindi and Kannada appears as a transcript with the right language; record the quality honestly,
   including code-switched speech.
 - [ ] Reading an OTP request aloud makes the assistant refuse and end the call; a spoken "ignore your rules" ends it too.
-- [ ] Speaking over the assistant stops it quickly; record the delay.
+- [ ] Speaking over the assistant stops it quickly; record the delay (the call's diagnostic report has the
+  `interruption` figure; [PHASE2_CONTROLLED_RESULTS.md](PHASE2_CONTROLLED_RESULTS.md) lists what is measured and what is not).
 - [ ] Two silences end the call; the summary appears.
 - [ ] A legitimate-sounding delivery call raises an escalation to the apps.
 
 **Owner controls**
 
-- [ ] Take Over with a `takeover_number` transfers the call to the owner's phone; record what ACS reports
-  (`CallTransferAccepted` or `CallTransferFailed`) and whether PSTN transfer needs a source caller id.
-- [ ] A blocked number is not answered; record what the caller hears.
+- [ ] The apps show Take Over as unavailable until a `takeover_number` is set, and as available afterwards.
+- [ ] Take Over with a `takeover_number` transfers the call to the owner's phone; record what the provider reports
+  (ACS: `CallTransferAccepted` or `CallTransferFailed` and whether PSTN transfer needs a source caller id; Twilio: whether
+  the owner's phone rings, what the caller hears while it does, and what happens if the owner does not answer).
+- [ ] A blocked number is not answered; record what the caller hears (Twilio: a rejected call).
 
 **Forwarding and Android**
 
@@ -237,11 +342,16 @@ result for each step.
 
 **Failure behaviour**
 
-- [ ] With the speech key removed or the TTS region wrong, the call degrades with a visible `provider.error` and does not
-  hang.
-- [ ] A forged request to each webhook route is rejected (401) and a redelivered Event Grid event does not create a second
+- [ ] With the speech key removed or the TTS region wrong, the call degrades with a visible `provider.error` and, after
+  `SPARTA_PROVIDER_FAILURE_LIMIT` (default 2) failures in a row, ends with a summary that says Sparta could not screen it;
+  it does not hang.
+- [ ] A forged request to each webhook route is rejected (401) and a redelivered provider event does not create a second
   call.
+- [ ] A caller who rings more than `SPARTA_PER_NUMBER_DAILY_CALL_CAP` times, and an owner whose calls pass
+  `SPARTA_DAILY_CALL_MINUTES_CAP`, are rejected without being answered.
 
-**Known untested at the time of writing:** ACS callback wire casing, chunked synthesised speech over the media socket, the
-Event Grid role claim, PSTN transfer, Azure Speech and Azure OpenAI behaviour with real credentials, OIDC sign-in with a
-real identity provider, Android screening on a device, and push notifications (not implemented).
+**Known untested at the time of writing:** ACS and Twilio callback and media wire formats, the signature URL form Twilio
+signs for the media socket, chunked synthesised speech over the media socket, the Event Grid role and `azp` claims, PSTN
+transfer, Azure Speech (streaming recognition, language identification on telephone audio, Hinglish and Kanglish) and
+Azure OpenAI behaviour with real credentials, OIDC sign-in with a real identity provider, Android screening on a device,
+and push notifications (not implemented).

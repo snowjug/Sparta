@@ -41,10 +41,16 @@ param environmentName string = 'prod'
 @description('Azure region. It must offer every service you enable: Container Apps, PostgreSQL Flexible Server, Azure Managed Redis (SKU below), and the Speech voices you need (hi-IN, kn-IN, en-IN).')
 param location string = resourceGroup().location
 
-param tags object = {
-  application: 'sparta'
-  environment: environmentName
-}
+@description('Optional cost-allocation tag added to every resource (for example a budget or project code).')
+param costCenter string = ''
+
+param tags object = union(
+  {
+    application: 'sparta'
+    environment: environmentName
+  },
+  empty(costCenter) ? {} : { costCenter: costCenter }
+)
 
 // ---------------------------------------------------------------------------------------------------------------------
 // Images
@@ -98,6 +104,10 @@ param azureOpenAiKey string = ''
 @secure()
 @description('Bring-your-own ACS connection string (leave empty with deployAcs = true).')
 param acsConnectionString string = ''
+
+@secure()
+@description('Twilio auth token, when telephonyProvider is twilio. Create the Twilio account and number yourself (docs/TELEPHONY.md): nothing in this template talks to Twilio.')
+param twilioAuthToken string = ''
 
 // ---------------------------------------------------------------------------------------------------------------------
 // Network and data tier
@@ -176,6 +186,7 @@ param simulatorEnabled bool = false
 @allowed([
   'simulator'
   'azure'
+  'twilio'
   'other'
 ])
 param telephonyProvider string = 'simulator'
@@ -204,12 +215,30 @@ param speechRegion string = location
 param acsResourceId string = ''
 param entraTenantId string = ''
 param eventGridAudience string = ''
+
+@description('Application (client) id of the Microsoft.EventGrid service principal in your tenant, comma-separated if several. Event Grid deliveries are accepted only from it. Required when telephonyProvider is azure: the API refuses to start in production without it. Look it up with: az ad sp list --display-name Microsoft.EventGrid --query [].appId -o tsv')
+param eventGridAllowedAppIds string = ''
+
+@description('Twilio account SID (starts with AC). Not secret; the auth token is twilioAuthToken.')
+param twilioAccountSid string = ''
+
+@description('Caller id shown on a takeover call (an E.164 Twilio number you own). Empty = the Twilio number that was dialled.')
+param twilioCallerId string = ''
 param telephonyOwnerUserId string = ''
 param forwardingNumber string = ''
 param otlpEndpoint string = ''
 param logLevel string = 'INFO'
 param dailyCallCap int = 200
 param maxActiveCalls int = 5
+
+@description('Minutes of real calls per owner per UTC day before further calls are rejected (0 = off). The main cost brake.')
+param dailyCallMinutesCap int = 240
+
+@description('Real calls accepted from one caller number per owner per UTC day (0 = off).')
+param perNumberDailyCallCap int = 10
+
+@description('Consecutive speaking or listening failures after which a real call is ended (0 = never).')
+param providerFailureLimit int = 2
 
 // ---------------------------------------------------------------------------------------------------------------------
 // Optional resources
@@ -315,6 +344,7 @@ module keyVault 'modules/keyvault.bicep' = {
     azureOpenAiKey: azureOpenAiKey
     speechKey: deploySpeech ? '' : speechKey
     acsConnectionString: deployAcs ? '' : acsConnectionString
+    twilioAuthToken: twilioAuthToken
     registryPassword: registryPassword
   }
 }
@@ -390,6 +420,7 @@ module speech 'modules/speech.bicep' = if (deploySpeech) {
 var hasSpeechKey = deploySpeech || !empty(speechKey)
 var hasOpenAiKey = !empty(azureOpenAiKey)
 var hasAcsConnectionString = deployAcs || !empty(acsConnectionString)
+var hasTwilioToken = !empty(twilioAuthToken)
 var hasRegistryPassword = !empty(registryPassword)
 
 // The Key Vault secrets the api app and the migrate job reference, which is exactly what their identity may read.
@@ -407,6 +438,7 @@ var apiVaultSecretNames = concat(
   hasSpeechKey ? ['sparta-speech-key'] : [],
   hasOpenAiKey ? ['sparta-openai-key'] : [],
   hasAcsConnectionString ? ['sparta-acs-connection-string'] : [],
+  hasTwilioToken ? ['sparta-twilio-auth-token'] : [],
   hasRegistryPassword ? ['sparta-registry-password'] : []
 )
 
@@ -488,12 +520,19 @@ module containerApps 'modules/containerapps.bicep' = {
     acsResourceId: deployAcs ? acs!.outputs.acsResourceId : acsResourceId
     entraTenantId: entraTenantId
     eventGridAudience: eventGridAudience
+    eventGridAllowedAppIds: eventGridAllowedAppIds
+    hasTwilioToken: hasTwilioToken
+    twilioAccountSid: twilioAccountSid
+    twilioCallerId: twilioCallerId
     telephonyOwnerUserId: telephonyOwnerUserId
     forwardingNumber: forwardingNumber
     otlpEndpoint: otlpEndpoint
     logLevel: logLevel
     dailyCallCap: dailyCallCap
     maxActiveCalls: maxActiveCalls
+    dailyCallMinutesCap: dailyCallMinutesCap
+    perNumberDailyCallCap: perNumberDailyCallCap
+    providerFailureLimit: providerFailureLimit
   }
   // The apps resolve Key Vault secrets written by these modules, so they must exist first (ACS is already an implicit
   // dependency through acs!.outputs above), and the identities must be allowed to read them before the apps start.

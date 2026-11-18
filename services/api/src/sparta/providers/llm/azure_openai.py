@@ -19,7 +19,10 @@ The model is an *advisor*, never an authority. Sparta's deterministic engine own
 Two request parameters differ between model families and are **UNVERIFIED** for the deployed model, so they are
 configurable instead of guessed: ``output_limit_param`` (``max_tokens`` works for GPT-4-class deployments;
 reasoning-model deployments need ``max_completion_tokens``) and ``temperature`` (``None`` omits it, which reasoning
-models require).
+models require). With ``output_limit_param="auto"`` (``SPARTA_AZURE_OPENAI_OUTPUT_LIMIT_PARAM``, the default) the adapter
+starts with ``max_tokens`` and, when the service rejects it or the temperature with ``error.code`` ``unsupported_parameter``
+or ``unsupported_value`` (decided by ``error.param``, never by the message), fixes the request and retries once per
+parameter and remembers the answer.
 """
 
 import json
@@ -283,14 +286,15 @@ class AzureOpenAIConversationModel:
         clock: Clock | None = None,
         metrics: Metrics | None = None,
         temperature: float | None = 0.0,
-        output_limit_param: Literal["max_tokens", "max_completion_tokens"] = "max_tokens",
+        output_limit_param: Literal["auto", "max_tokens", "max_completion_tokens"] = "max_tokens",
     ) -> None:
         self._clock = clock or SystemClock()
         self._timeout_s = settings.provider_timeout_s
         self._key: SecretStr | None = settings.azure_openai_key
         self._api_version = settings.azure_openai_api_version
         self._temperature = temperature
-        self._limit_param = output_limit_param
+        self._adapt = output_limit_param == "auto"  # learn from an "unsupported parameter" rejection, once
+        self._limit_param: str = "max_tokens" if output_limit_param == "auto" else output_limit_param
         self._url, self._problem = self._resolve_url(settings)
         self.meta = ProviderMeta(
             provider=PROVIDER, simulated=False, model=settings.azure_openai_deployment, version=self._api_version
@@ -472,17 +476,13 @@ class AzureOpenAIConversationModel:
         return await self._callers[stage].call(lambda: self._post(stage, url, key, body), trace_id=trace_id)
 
     async def _post(self, stage: str, url: str, key: SecretStr, body: dict[str, Any]) -> _Completion:
-        request = self._http.build_request(
-            "POST",
-            url,
-            params={"api-version": self._api_version},
-            headers={"api-key": key.get_secret_value(), "Accept": "application/json"},
-            json=body,
-            timeout=self._timeout_s,
-        )
-        response, payload = await send_bounded(
-            self._http, request, provider=PROVIDER, stage=stage, timeout_s=self._timeout_s
-        )
+        response, payload = await self._send(stage, url, key, body)
+        for _ in range(2):  # at most the output-limit parameter and the temperature, one fix each
+            fixed = self._adapted(body, payload) if response.status_code == 400 and self._adapt else None
+            if fixed is None:
+                break
+            body = fixed
+            response, payload = await self._send(stage, url, key, body)
         if response.status_code == 400 and (rejection := _filter_rejection(stage, payload)) is not None:
             raise rejection
         error = error_for_status(
@@ -494,3 +494,40 @@ class AzureOpenAIConversationModel:
             return _Completion.model_validate_json(payload)
         except ValidationError:
             raise ProviderError(PROVIDER, stage, "unexpected response format") from None
+
+    async def _send(self, stage: str, url: str, key: SecretStr, body: dict[str, Any]) -> tuple[httpx.Response, bytes]:
+        request = self._http.build_request(
+            "POST",
+            url,
+            params={"api-version": self._api_version},
+            headers={"api-key": key.get_secret_value(), "Accept": "application/json"},
+            json=body,
+            timeout=self._timeout_s,
+        )
+        return await send_bounded(self._http, request, provider=PROVIDER, stage=stage, timeout_s=self._timeout_s)
+
+    def _adapted(self, body: dict[str, Any], payload: bytes) -> dict[str, Any] | None:
+        """The request body fixed for a rejected model-family parameter, or ``None`` when nothing can be fixed.
+
+        Decided by the structured fields of the error (``error.code`` and ``error.param``), never by its message, and
+        remembered: a deployment keeps its family for as long as this adapter lives.
+        """
+        if not payload or len(payload) > MAX_ERROR_BODY_BYTES:
+            return None
+        try:
+            error = json.loads(payload).get("error")
+        except (ValueError, AttributeError):
+            return None
+        if not isinstance(error, dict) or error.get("code") not in {"unsupported_parameter", "unsupported_value"}:
+            return None
+        param = error.get("param")
+        fixed = dict(body)
+        if param == "max_tokens" and "max_tokens" in fixed:
+            fixed["max_completion_tokens"] = fixed.pop("max_tokens")
+            self._limit_param = "max_completion_tokens"
+            return fixed
+        if param == "temperature" and "temperature" in fixed:
+            del fixed["temperature"]
+            self._temperature = None
+            return fixed
+        return None

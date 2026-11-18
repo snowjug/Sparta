@@ -8,18 +8,21 @@ rejections are generic (the specific reason goes to the log as a static label on
 import json
 import logging
 from typing import Annotated, Literal
+from urllib.parse import parse_qsl
 
 from fastapi import APIRouter, Path, Request, WebSocket
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from sparta.api.deps import CALL_ID_PATTERN, get_container
 from sparta.api.errors import error_response
 from sparta.providers.base import ProviderError
 from sparta.services.container import Container
+from sparta.services.errors import ServiceError
 from sparta.services.kv import KeyValueStore
 from sparta.telephony.azure_acs import AzureAcsTelephonyProvider
 from sparta.telephony.base import IncomingCall
+from sparta.telephony.twilio import CALL_SID, STATUS_PATH, VOICE_PATH, TwilioTelephonyProvider, reject_twiml
 from sparta.telephony.webhooks import (
     INCOMING_CALL_EVENT,
     WebhookRejected,
@@ -34,6 +37,7 @@ router = APIRouter(prefix="/webhooks", tags=["webhooks"], include_in_schema=Fals
 media_router = APIRouter(prefix="/media", tags=["webhooks"], include_in_schema=False)
 CallId = Annotated[str, Path(pattern=CALL_ID_PATTERN)]
 REPLAY_TTL_S = 700
+MAX_FORM_FIELDS = 100
 
 
 class KvReplayGuard:
@@ -132,6 +136,107 @@ async def acs_media(ws: WebSocket, call_id: CallId) -> None:
         await provider.media_verifier().verify(bearer_token(ws.headers.get("authorization")))
     except WebhookRejected as exc:
         log.warning("media socket rejected", extra={"reason": exc.reason})
+        await ws.close(code=1008)
+        return
+    await ws.accept()
+    try:
+        await provider.attach_media(call_id, ws)
+    except ProviderError:
+        await ws.close(code=1008)
+
+
+# ------------------------------------------------------------------------------------------------- Twilio
+def _twilio(c: Container) -> TwilioTelephonyProvider | None:
+    provider = c.providers.telephony
+    return provider if isinstance(provider, TwilioTelephonyProvider) else None
+
+
+def _twiml(body: str) -> Response:
+    return Response(content=body, media_type="text/xml")
+
+
+async def _verified_form(
+    request: Request, provider: TwilioTelephonyProvider, path: str, what: str
+) -> list[tuple[str, str]] | JSONResponse:
+    """The form fields of a Twilio webhook, or the rejection. Nothing is acted on before the signature is right."""
+    body = await request.body()
+    try:
+        fields = parse_qsl(
+            body.decode("utf-8"), keep_blank_values=True, max_num_fields=MAX_FORM_FIELDS, strict_parsing=False
+        )
+    except (UnicodeDecodeError, ValueError):
+        return _rejected(WebhookRejected("malformed form", status_code=400), what)
+    try:
+        valid = provider.verify_webhook(path, request.headers.get("x-twilio-signature"), fields)
+    except ProviderError:
+        return _rejected(WebhookRejected("not configured", status_code=503), what)
+    if not valid:
+        return _rejected(WebhookRejected("signature mismatch"), what)
+    return fields
+
+
+@router.post("/twilio/voice")
+async def twilio_voice(request: Request) -> Response:
+    """The number's voice webhook: creates the call and answers with TwiML that streams its audio to this server."""
+    c = get_container(request)
+    provider = _twilio(c)
+    if provider is None:
+        return _not_configured()
+    verified = await _verified_form(request, provider, VOICE_PATH, "twilio_voice")
+    if isinstance(verified, JSONResponse):
+        return verified
+    fields = dict(verified)
+    call_sid = fields.get("CallSid", "")
+    if CALL_SID.fullmatch(call_sid):
+        async with c.db.uow() as repo:
+            known = await repo.has_provider_event("twilio", call_sid)
+        if known:  # Twilio retried a request that was already handled: repeat the answer, never a second call
+            return _twiml(provider.redeliver(call_sid))
+    try:
+        result = await provider.handle_voice_webhook(fields)
+    except ServiceError:
+        return _twiml(reject_twiml("busy"))  # over a call limit: a rejected call is not billed
+    except ProviderError as exc:
+        return _rejected(WebhookRejected(exc.message, status_code=400), "twilio_voice")
+    async with c.db.uow() as repo:
+        await repo.add_provider_event("twilio", call_sid, "incoming_call", result.call_id, None, c.clock.now())
+    return _twiml(result.twiml)
+
+
+@router.post("/twilio/status")
+async def twilio_status(request: Request) -> JSONResponse:
+    """Call-status webhook (optional): a terminal status ends the call here if the stream did not already."""
+    c = get_container(request)
+    provider = _twilio(c)
+    if provider is None:
+        return _not_configured()
+    verified = await _verified_form(request, provider, STATUS_PATH, "twilio_status")
+    if isinstance(verified, JSONResponse):
+        return verified
+    fields = dict(verified)
+    event_id = f"{fields.get('CallSid', '')}:{fields.get('CallStatus', '')}"
+    async with c.db.uow() as repo:
+        if not await repo.add_provider_event("twilio", event_id, "call.status", None, None, c.clock.now()):
+            return JSONResponse({"status": "duplicate"})
+    await provider.handle_status_callback(fields)
+    return JSONResponse({"status": "ok"})
+
+
+@media_router.websocket("/twilio/{call_id}")
+async def twilio_media(ws: WebSocket, call_id: CallId) -> None:
+    """Bidirectional audio for a Twilio call. The upgrade must carry Twilio's signature, and the ``start`` message
+    the per-call token; a socket that fails either is refused (before it is accepted) or closed."""
+    c = get_container(ws)
+    provider = _twilio(c)
+    if provider is None:
+        await ws.close(code=1008)
+        return
+    try:
+        valid = provider.verify_media_upgrade(call_id, ws.headers.get("x-twilio-signature"))
+    except ProviderError:
+        valid = False
+    if not valid:
+        log.warning("media socket rejected", extra={"reason": "signature mismatch", "provider": "twilio"})
         await ws.close(code=1008)
         return
     await ws.accept()

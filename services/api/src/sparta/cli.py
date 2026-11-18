@@ -1,7 +1,8 @@
 """Command line entry point: ``python -m sparta <command>`` (or the ``sparta`` script).
 
 Commands: ``serve`` (HTTP API), ``migrate`` (database schema), ``seed`` (development owner), ``openapi`` (export the API
-contract), ``evaluate`` (run the evaluation dataset) and ``keygen`` (generate secrets for ``.env``).
+contract), ``evaluate`` (run the evaluation dataset), ``keygen`` (generate secrets for ``.env``) and ``doctor`` (provider
+preflight: can a real call work with this configuration?).
 """
 
 import argparse
@@ -139,6 +140,30 @@ def cmd_evaluate(args: argparse.Namespace) -> int:
     return run_evaluation(args)
 
 
+def cmd_doctor(args: argparse.Namespace) -> int:
+    """Check that a real telephone, speech and model setup can work. Prints no secret; exit status 1 when blocked."""
+    from sparta.doctor import run_doctor
+    from sparta.doctor.runner import load_settings
+
+    settings = load_settings()
+    try:
+        report = asyncio.run(
+            run_doctor(
+                settings,
+                providers=args.provider or ["azure"],
+                online=args.online,
+                allow_billable=args.allow_billable,
+                callback_url=args.callback_url,
+                timeout_s=args.timeout,
+            )
+        )
+    except ValueError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
+    sys.stdout.write(report.render_json() if args.json else report.render_text(colour=sys.stdout.isatty()))
+    return report.exit_code()
+
+
 def cmd_keygen(_: argparse.Namespace) -> int:
     from sparta.db.crypto import generate_key
 
@@ -185,6 +210,30 @@ def build_parser() -> argparse.ArgumentParser:
     evaluate.set_defaults(func=cmd_evaluate)
 
     sub.add_parser("keygen", help="generate secrets for .env").set_defaults(func=cmd_keygen)
+
+    doctor = sub.add_parser(
+        "doctor",
+        help="check that a real telephone, speech and model setup can work (prints no secret)",
+        description="Provider preflight. Reports PASS, WARNING, BLOCKED or UNVERIFIED per check and exits 1 when "
+        "anything is BLOCKED. Without --online nothing leaves this machine.",
+    )
+    doctor.add_argument(
+        "--provider",
+        action="append",
+        choices=("azure", "twilio", "simulator", "all"),
+        default=None,
+        help="telephony provider to check (repeatable; default: azure). Speech and the language model are Azure's either way",
+    )
+    doctor.add_argument("--online", action="store_true", help="also make free network requests (health, keys, voices)")
+    doctor.add_argument(
+        "--allow-billable",
+        action="store_true",
+        help="with --online: also run tiny probes that cost a fraction of a cent (a speech round trip, one model turn)",
+    )
+    doctor.add_argument("--callback-url", default=None, help="check this public https origin instead of the setting")
+    doctor.add_argument("--timeout", type=float, default=8.0, help="seconds per network request (default 8)")
+    doctor.add_argument("--json", action="store_true", help="machine-readable output")
+    doctor.set_defaults(func=cmd_doctor)
     return parser
 
 

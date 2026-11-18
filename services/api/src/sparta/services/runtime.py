@@ -124,6 +124,8 @@ class CallRuntime:
         self.state = CallState.INITIALIZING
         self.last_activity = now
         self.pipeline: Any = None
+        self.stage_failures: dict[str, int] = {}  # consecutive failures of a stage a live call cannot do without
+        self.failure_ending = False
 
     def cancel_timers(self) -> None:
         for task in (self.silence_task, self.owner_task, self.limit_task):

@@ -5,6 +5,7 @@ import io.github.snowjug.sparta.R
 import io.github.snowjug.sparta.core.live.LiveCallReducer
 import io.github.snowjug.sparta.core.live.VoicePhase
 import io.github.snowjug.sparta.data.remote.SpartaJson
+import io.github.snowjug.sparta.data.remote.dto.CallState
 import io.github.snowjug.sparta.data.remote.dto.CallStatus
 import io.github.snowjug.sparta.data.remote.dto.LiveEventDto
 import io.github.snowjug.sparta.data.remote.ws.LiveCloseCodes
@@ -22,6 +23,7 @@ import io.github.snowjug.sparta.ui.incoming.Unavailable
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -143,6 +145,37 @@ class LiveCallViewModelTest {
         val request = h.api.takeRequest()
         assertEquals("/api/v1/calls/call_01HZX/takeover", request.path)
         assertEquals(R.string.detail_msg_simulated_action, (state.message as UiMessage.Text).res)
+    }
+
+    @Test
+    fun `once the socket reports the takeover the snapshot's stale state no longer leaves Take over enabled`() {
+        bind()
+        socket.events.tryEmit(snapshot())
+        socket.events.tryEmit(event("state.changed", 6, mapOf("from" to JsonPrimitive("ESCALATE"), "to" to JsonPrimitive("OWNER_TAKEOVER"))))
+
+        val state = vm.state.await { it.live.callState == CallState.OWNER_TAKEOVER }
+
+        val takeOver = state.liveControls.first { it.id == ControlId.TAKE_OVER }
+        assertFalse(takeOver.enabled)
+        assertEquals(Unavailable.ALREADY_TAKEN_OVER, takeOver.unavailable)
+    }
+
+    @Test
+    fun `without a socket snapshot a successful takeover still disables Take over`() {
+        bind()
+        vm.state.await { it.restCall != null }
+        h.api.takeRequest()
+        h.api.enqueueJson(
+            """{"action":{"id":"a1","call_id":"call_01HZX","action":"takeover","created_at":"2026-11-17T10:00:20Z","simulated":true,"result":"ok"},"call":{"id":"call_01HZX","provider":"simulator","simulated":true,"status":"active","state":"OWNER_TAKEOVER","started_at":"2026-11-17T10:00:00Z","caller_display":"x"},"capabilities":{"can_take_over":true,"can_continue":true,"can_end":true}}""",
+        )
+
+        vm.takeOver()
+        val state = vm.state.await { it.busy == null && it.message != null }
+
+        assertNull(state.live.call)
+        val takeOver = state.liveControls.first { it.id == ControlId.TAKE_OVER }
+        assertFalse(takeOver.enabled)
+        assertEquals(Unavailable.ALREADY_TAKEN_OVER, takeOver.unavailable)
     }
 
     @Test

@@ -3,6 +3,8 @@
 Production guards fail fast with an actionable message instead of a stack trace.
 """
 
+import importlib.util
+import re
 from enum import StrEnum
 from functools import lru_cache
 from typing import Annotated, Literal
@@ -25,10 +27,21 @@ class ConfigurationError(RuntimeError):
         super().__init__("Invalid Sparta configuration:\n  - " + "\n  - ".join(problems))
 
 
+_BARE_HOST = re.compile(r"[A-Za-z0-9][A-Za-z0-9.\-]*")
+
+
 def _split_csv(value: object) -> object:
     if isinstance(value, str):
         return [item.strip() for item in value.split(",") if item.strip()]
     return value
+
+
+def _module_available(name: str) -> bool:
+    """Whether ``name`` can be imported, without importing it (a missing parent package counts as unavailable)."""
+    try:
+        return importlib.util.find_spec(name) is not None
+    except (ImportError, ValueError):
+        return False
 
 
 class Settings(BaseSettings):
@@ -77,6 +90,14 @@ class Settings(BaseSettings):
     )
     allowed_ws_origins: Annotated[list[str], NoDecode] = Field(default_factory=list)
     trusted_hosts: Annotated[list[str], NoDecode] = Field(default_factory=lambda: ["*"])
+    provider_only_hosts: Annotated[list[str], NoDecode] = Field(
+        default_factory=list,
+        description="Host names that may only reach the health probes and the provider callback and media routes "
+        "(a development tunnel, for instance). Every other route answers 404 on those hosts, so a public tunnel never "
+        "exposes the owner API of a development-identity server. Needs SPARTA_TRUSTED_HOSTS to list explicit host names "
+        "(a listed host name is matched exactly, so every other Host header must be refused by trusted hosts). Not a "
+        "substitute for sign-in in production.",
+    )
     public_base_url: str = "http://localhost:8000"
     max_request_bytes: int = 512_000
     max_audio_bytes: int = 8_000_000
@@ -84,7 +105,7 @@ class Settings(BaseSettings):
     expose_metrics: bool = False
 
     # --- providers (selected by configuration) --------------------------------------
-    telephony_provider: Literal["simulator", "azure", "other"] = Field(
+    telephony_provider: Literal["simulator", "azure", "twilio", "other"] = Field(
         default="simulator",
         validation_alias=AliasChoices("TELEPHONY_PROVIDER", "SPARTA_TELEPHONY_PROVIDER"),
     )
@@ -97,10 +118,27 @@ class Settings(BaseSettings):
     azure_speech_endpoint: str | None = Field(
         default=None, description="Custom-domain Speech endpoint; defaults to the regional host"
     )
+    azure_speech_streaming: Literal["auto", "on", "off"] = Field(
+        default="auto",
+        description="Live recognition through the Speech SDK (partial transcripts, lower latency): 'auto' uses it when "
+        "the SDK is installed and falls back to one REST request per utterance otherwise; 'on' requires the SDK; "
+        "'off' always uses REST.",
+    )
     azure_openai_endpoint: str | None = None
     azure_openai_key: SecretStr | None = None
     azure_openai_deployment: str | None = None
     azure_openai_api_version: str = "2024-10-21"
+    azure_openai_output_limit_param: Literal["auto", "max_tokens", "max_completion_tokens"] = Field(
+        default="auto",
+        description="Name of the output-limit parameter the deployment accepts. GPT-4-class deployments take "
+        "max_tokens, reasoning-model deployments take max_completion_tokens; 'auto' starts with max_tokens and "
+        "switches (once, remembered) when the service reports it as unsupported.",
+    )
+    azure_openai_send_temperature: bool = Field(
+        default=True,
+        description="Send temperature=0. Reasoning-model deployments reject it: 'auto' handling drops it after the "
+        "first rejection, or set this to false.",
+    )
     acs_connection_string: SecretStr | None = None
     acs_callback_base_url: str | None = None
     acs_resource_id: str | None = Field(
@@ -108,6 +146,30 @@ class Settings(BaseSettings):
     )
     entra_tenant_id: str | None = Field(default=None, description="Tenant that issues Event Grid delivery tokens")
     event_grid_audience: str | None = Field(default=None, description="Audience of Event Grid secure-webhook tokens")
+    event_grid_allowed_app_ids: str | None = Field(
+        default=None,
+        description="Comma-separated application ids (the appid/azp claim) allowed to deliver Event Grid events: the "
+        "Microsoft.EventGrid application of your cloud. The role alone does not prove the caller, because the "
+        "subscription-writer app holds it too.",
+    )
+    twilio_account_sid: str | None = Field(
+        default=None, description="Twilio account SID (AC followed by 32 hex digits)"
+    )
+    twilio_auth_token: SecretStr | None = Field(
+        default=None, description="Twilio auth token: signs webhooks, authenticates the REST API, keys stream tokens"
+    )
+    twilio_callback_base_url: str | None = Field(
+        default=None, description="Public https origin Twilio calls (the voice webhook) and streams audio to"
+    )
+    twilio_caller_id: str | None = Field(
+        default=None,
+        description="E.164 Twilio number shown to the owner on a takeover; defaults to the number the caller dialled",
+    )
+    twilio_verify_media_signature: bool = Field(
+        default=True,
+        description="Require Twilio's X-Twilio-Signature on the media WebSocket upgrade (the per-call token in the "
+        "start message is always required). Switch off only to debug a signature mismatch, never in production.",
+    )
     provider_timeout_s: float = 6.0
     provider_max_retries: int = 2
     simulator_enabled: bool = True
@@ -134,9 +196,26 @@ class Settings(BaseSettings):
     call_create_rate_limit_per_minute: int = 20
     profile_write_rate_limit_per_minute: int = 12  # assistant-profile saves (a new owner name builds matchers)
     daily_call_cap: int = 200
+    daily_call_minutes_cap: float = Field(
+        default=240.0,
+        ge=0,
+        description="Minutes of real (not simulated) calls per owner per UTC day; further calls are rejected. 0 = off",
+    )
+    per_number_daily_call_cap: int = Field(
+        default=10,
+        ge=0,
+        description="Real calls accepted from one caller number per owner per UTC day; further calls are rejected "
+        "without being answered. 0 = off",
+    )
     daily_screening_event_cap: int = 2000  # native Android screening events per owner per UTC day
     max_call_duration_s: int = 600
     abandoned_call_timeout_s: int = 180
+    provider_failure_limit: int = Field(
+        default=2,
+        ge=0,
+        description="Consecutive failures of speaking or listening after which a real call is ended with a summary "
+        "that says Sparta could not screen it. 0 = never end a call for that",
+    )
     reaper_interval_s: float = 15.0
     retention_job_interval_s: float = 3600.0
     escalation_resolver_interval_s: float = 5.0
@@ -150,7 +229,9 @@ class Settings(BaseSettings):
     otel_enabled: bool = True
     otlp_endpoint: str | None = None
 
-    @field_validator("cors_origins", "allowed_ws_origins", "trusted_hosts", "oidc_algorithms", mode="before")
+    @field_validator(
+        "cors_origins", "allowed_ws_origins", "trusted_hosts", "provider_only_hosts", "oidc_algorithms", mode="before"
+    )
     @classmethod
     def _csv(cls, value: object) -> object:
         return _split_csv(value)
@@ -158,6 +239,11 @@ class Settings(BaseSettings):
     @property
     def is_production(self) -> bool:
         return self.env is Environment.PRODUCTION
+
+    @property
+    def telephony_kind(self) -> Literal["simulator", "azure", "other"]:
+        """The provider kind the API contract knows: Twilio is reported as the generic ``other`` kind."""
+        return "other" if self.telephony_provider == "twilio" else self.telephony_provider
 
     @property
     def ws_origins(self) -> list[str]:
@@ -177,12 +263,41 @@ class Settings(BaseSettings):
             out.append(
                 "TELEPHONY_PROVIDER=azure requires SPARTA_ACS_CONNECTION_STRING and SPARTA_ACS_CALLBACK_BASE_URL"
             )
+        if self.telephony_provider == "twilio" and not (
+            self.twilio_account_sid and self.twilio_auth_token and self.twilio_callback_base_url
+        ):
+            out.append(
+                "TELEPHONY_PROVIDER=twilio requires SPARTA_TWILIO_ACCOUNT_SID, SPARTA_TWILIO_AUTH_TOKEN and "
+                "SPARTA_TWILIO_CALLBACK_BASE_URL"
+            )
         if self.telephony_provider == "other" and not self.telephony_plugin:
             out.append("TELEPHONY_PROVIDER=other requires SPARTA_TELEPHONY_PLUGIN='package.module:factory'")
+        if self.provider_only_hosts:
+            if not all(_BARE_HOST.fullmatch(host) for host in self.provider_only_hosts):
+                out.append(
+                    "SPARTA_PROVIDER_ONLY_HOSTS lists bare host names (no scheme, port or path), "
+                    "for example 'abc-8000.devtunnels.ms'"
+                )
+            if "*" in self.trusted_hosts:
+                # The guard only recognises the listed names; trusted hosts is what rejects every other Host header.
+                out.append(
+                    "SPARTA_PROVIDER_ONLY_HOSTS requires SPARTA_TRUSTED_HOSTS to list explicit host names (the tunnel "
+                    "host and localhost): with '*' any other Host header (an alias of the tunnel, say) would reach "
+                    "the whole owner API"
+                )
         if self.stt_provider == "azure" and not (self.azure_speech_key and self.azure_speech_region):
             out.append("SPARTA_STT_PROVIDER=azure requires SPARTA_AZURE_SPEECH_KEY and SPARTA_AZURE_SPEECH_REGION")
         if self.tts_provider == "azure" and not (self.azure_speech_key and self.azure_speech_region):
             out.append("SPARTA_TTS_PROVIDER=azure requires SPARTA_AZURE_SPEECH_KEY and SPARTA_AZURE_SPEECH_REGION")
+        if (
+            self.stt_provider == "azure"
+            and self.azure_speech_streaming == "on"
+            and not _module_available("azure.cognitiveservices.speech")
+        ):
+            out.append(
+                "SPARTA_AZURE_SPEECH_STREAMING=on requires the azure-cognitiveservices-speech package "
+                "(pip install 'sparta-api[azure]'); use 'auto' to fall back to per-utterance recognition"
+            )
         if self.llm_provider == "azure_openai" and not (
             self.azure_openai_endpoint and self.azure_openai_key and self.azure_openai_deployment
         ):
@@ -191,10 +306,25 @@ class Settings(BaseSettings):
                 "SPARTA_AZURE_OPENAI_KEY and SPARTA_AZURE_OPENAI_DEPLOYMENT"
             )
         if self.is_production:
-            if self.telephony_provider == "azure" and self.stt_provider == "simulator":
+            if self.telephony_provider in ("azure", "twilio") and self.stt_provider == "simulator":
                 out.append(
-                    "TELEPHONY_PROVIDER=azure delivers the caller's audio, which needs speech recognition: "
-                    "set SPARTA_STT_PROVIDER=azure"
+                    f"TELEPHONY_PROVIDER={self.telephony_provider} delivers the caller's audio, which needs speech "
+                    "recognition: set SPARTA_STT_PROVIDER=azure"
+                )
+            if self.telephony_provider in ("azure", "twilio") and self.tts_provider == "simulator":
+                out.append(
+                    f"TELEPHONY_PROVIDER={self.telephony_provider} speaks to the caller, which needs speech "
+                    "synthesis: set SPARTA_TTS_PROVIDER=azure"
+                )
+            if self.telephony_provider == "twilio" and not self.twilio_verify_media_signature:
+                out.append(
+                    "SPARTA_TWILIO_VERIFY_MEDIA_SIGNATURE=false is a debugging switch: it is forbidden when "
+                    "SPARTA_ENV=production (reproduce the mismatch on a development tunnel instead)"
+                )
+            if self.telephony_provider == "azure" and not (self.event_grid_allowed_app_ids or "").strip():
+                out.append(
+                    "TELEPHONY_PROVIDER=azure requires SPARTA_EVENT_GRID_ALLOWED_APP_IDS in production: the Event "
+                    "Grid role alone does not show who delivered an IncomingCall event"
                 )
             if self.auth_mode == "dev":
                 out.append("SPARTA_AUTH_MODE=dev is forbidden when SPARTA_ENV=production (use oidc)")

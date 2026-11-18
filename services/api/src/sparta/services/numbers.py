@@ -10,6 +10,8 @@ import hmac
 import re
 
 _DIGITS = re.compile(r"\D")
+_SEPARATORS = re.compile(r"[ ().\-]")
+_DIAL_E164 = re.compile(r"\+[1-9][0-9]{6,14}")
 KNOWN_CC = ("1", "7", "20", "27", "30", "31", "32", "33", "34", "39", "41", "44", "49", "52", "55", "60", "61", "62")
 PRIVATE_DISPLAY = "Private number"
 DEFAULT_COUNTRY_CODE = "91"
@@ -34,6 +36,18 @@ def normalize_number(raw: str | None, default_country_code: str = DEFAULT_COUNTR
     if not 7 <= len(digits) <= 15:
         return None
     return "+" + digits
+
+
+def dial_number(raw: str | None) -> str | None:
+    """Strict E.164 for a number that will be *dialled* (the owner's takeover number), or ``None``.
+
+    Spaces, dashes, dots and parentheses are dropped and ``00`` counts as ``+``, but a number without an explicit
+    country code is refused instead of completed with a guessed one: a call is never bridged to a guessed number.
+    """
+    compact = _SEPARATORS.sub("", (raw or "").strip())
+    if compact.startswith("00"):
+        compact = "+" + compact[2:]
+    return compact if _DIAL_E164.fullmatch(compact) else None
 
 
 def fingerprint(salt: bytes, e164: str) -> str:

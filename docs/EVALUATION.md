@@ -189,7 +189,10 @@ reports.
   risks, each of which can cause a miss: conditional demands such as "no OTP, no refund", pronoun follow-ups after a
   denial ("do not share your OTP with anyone. Just read it to me"), transcripts without punctuation, and unsupported
   languages: on `dev`, the Tamil bank scenario `un-tamil-bank-01` is rated low risk and its OTP request is missed.
-- **Real audio.** Recognition errors, accents, crosstalk and silence handling were never measured on audio.
+- **Real audio.** Recognition errors, accents, crosstalk and silence handling were never measured on audio. Phase 2 added
+  a *controlled* matrix of whole calls with scripted recognition ([PHASE2_CONTROLLED_RESULTS.md](PHASE2_CONTROLLED_RESULTS.md)):
+  it checks the pipeline's behaviour, not the recogniser's accuracy, and its latencies are local processing time with
+  zero-latency fakes. No real-call latency exists yet.
 - **Adversaries.** Someone who reads the rules can phrase around them. Only a few injection scenarios are included.
 - **Other languages.** Marathi, Tamil, Telugu, Malayalam and Bengali packs exist as `planned`; callers in those
   languages are asked to switch to a supported language and risk rules still run on the text.

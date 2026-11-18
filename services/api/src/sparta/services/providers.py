@@ -78,8 +78,10 @@ def build_providers(settings: Settings, *, clock: Clock, metrics: Metrics) -> Pr
     stt: SpeechToTextProvider
     if settings.stt_provider == "azure":
         from sparta.providers.stt.azure import AzureSpeechToText
+        from sparta.providers.stt.azure_sdk import build_stt
 
-        stt = register(AzureSpeechToText(settings, http=shared_http(), clock=clock, metrics=metrics))
+        rest_stt = AzureSpeechToText(settings, http=shared_http(), clock=clock, metrics=metrics)
+        stt = register(build_stt(settings, rest_stt, clock=clock, metrics=metrics))
     else:
         stt = SimulatedSpeechToText()
 
@@ -95,7 +97,16 @@ def build_providers(settings: Settings, *, clock: Clock, metrics: Metrics) -> Pr
     if settings.llm_provider == "azure_openai":
         from sparta.providers.llm.azure_openai import AzureOpenAIConversationModel
 
-        llm = register(AzureOpenAIConversationModel(settings, http=shared_http(), clock=clock, metrics=metrics))
+        llm = register(
+            AzureOpenAIConversationModel(
+                settings,
+                http=shared_http(),
+                clock=clock,
+                metrics=metrics,
+                temperature=0.0 if settings.azure_openai_send_temperature else None,
+                output_limit_param=settings.azure_openai_output_limit_param,
+            )
+        )
     else:
         llm = RulesConversationModel()
 
@@ -104,6 +115,10 @@ def build_providers(settings: Settings, *, clock: Clock, metrics: Metrics) -> Pr
         from sparta.telephony.azure_acs import build_acs_provider
 
         telephony = register(build_acs_provider(settings, tts=tts, http=shared_http(), clock=clock, metrics=metrics))
+    elif settings.telephony_provider == "twilio":
+        from sparta.telephony.twilio import build_twilio_provider
+
+        telephony = register(build_twilio_provider(settings, tts=tts, http=shared_http(), clock=clock, metrics=metrics))
     elif settings.telephony_provider == "other":
         assert settings.telephony_plugin is not None  # enforced by Settings.problems()
         telephony = register(_load_plugin(settings.telephony_plugin)(settings, tts=tts, clock=clock, metrics=metrics))
