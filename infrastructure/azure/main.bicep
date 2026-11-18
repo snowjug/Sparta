@@ -2,11 +2,16 @@
 //
 //   Log Analytics + Application Insights  -> modules/monitoring.bicep
 //   Virtual network + private DNS         -> modules/network.bicep      (privateNetworking = true)
-//   Key Vault (RBAC) + managed identity   -> modules/keyvault.bicep
+//   Key Vault (RBAC)                      -> modules/keyvault.bicep
+//   Read access to single secrets         -> modules/secretaccess.bicep (one role assignment per secret, never per vault)
 //   PostgreSQL Flexible Server            -> modules/postgres.bicep
 //   Azure Managed Redis                   -> modules/redis.bicep
 //   Container Apps: api, web, migrate job -> modules/containerapps.bicep
 //   Optional: ACS, Speech, alerts         -> modules/acs.bicep, modules/speech.bicep, modules/alerts.bicep
+//
+// Identities: the api app and the migrate job share one user-assigned managed identity that can read exactly the Key Vault
+// secrets they reference. The web app is internet-facing and needs no secret, so it has no identity at all, unless a
+// private-registry password is configured: then it gets its own identity that can read that one secret only.
 //
 // Deploy into an existing resource group (see docs/DEPLOYMENT.md for the commands and the secrets flow):
 //   az deployment group create -g <rg> -f infrastructure/azure/main.bicep -p infrastructure/azure/main.bicepparam
@@ -233,7 +238,8 @@ var suffix = take(uniqueString(resourceGroup().id), 6)
 var baseName = '${namePrefix}-${environmentName}'
 
 var names = {
-  identity: 'id-${baseName}'
+  identity: 'id-${baseName}-api'
+  webIdentity: 'id-${baseName}-web'
   vault: 'kv-${baseName}-${suffix}'
   logs: 'log-${baseName}'
   appInsights: 'appi-${baseName}'
@@ -254,8 +260,17 @@ var names = {
 // Resources
 // ---------------------------------------------------------------------------------------------------------------------
 
+// Identity of the api app and the migrate job: reads the Key Vault secrets they reference (modules/secretaccess.bicep).
 resource identity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
   name: names.identity
+  location: location
+  tags: tags
+}
+
+// Identity of the web app, created only when a private-registry password has to be read from Key Vault. It can read that
+// one secret and nothing else.
+resource webIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = if (hasRegistryPassword) {
+  name: names.webIdentity
   location: location
   tags: tags
 }
@@ -292,7 +307,6 @@ module keyVault 'modules/keyvault.bicep' = {
     location: location
     tags: tags
     vaultName: names.vault
-    identityPrincipalId: identity.properties.principalId
     publicNetworkAccess: keyVaultPublicNetworkAccess
     enablePurgeProtection: keyVaultPurgeProtection
     dataKeys: dataKeys
@@ -376,6 +390,57 @@ module speech 'modules/speech.bicep' = if (deploySpeech) {
 var hasSpeechKey = deploySpeech || !empty(speechKey)
 var hasOpenAiKey = !empty(azureOpenAiKey)
 var hasAcsConnectionString = deployAcs || !empty(acsConnectionString)
+var hasRegistryPassword = !empty(registryPassword)
+
+// The Key Vault secrets the api app and the migrate job reference, which is exactly what their identity may read.
+// modules/containerapps.bicep references the same secrets under the same switches: keep the two lists in step (a secret
+// that is referenced but not listed here fails the deployment with "forbidden"; a name listed here that does not exist
+// fails the role assignment).
+var apiVaultSecretNames = concat(
+  [
+    'sparta-data-keys'
+    'sparta-pepper'
+    'sparta-webhook-secret'
+    'sparta-database-url'
+    'sparta-redis-url'
+  ],
+  hasSpeechKey ? ['sparta-speech-key'] : [],
+  hasOpenAiKey ? ['sparta-openai-key'] : [],
+  hasAcsConnectionString ? ['sparta-acs-connection-string'] : [],
+  hasRegistryPassword ? ['sparta-registry-password'] : []
+)
+
+// One role assignment per secret, created after every module that writes a secret (the assignment is scoped to the secret).
+module apiSecretAccess 'modules/secretaccess.bicep' = {
+  name: 'secretaccess-api'
+  params: {
+    vaultName: names.vault
+    principalId: identity.properties.principalId
+    secretNames: apiVaultSecretNames
+  }
+  dependsOn: [
+    keyVault
+    postgres
+    redis
+    speech
+    acs
+  ]
+}
+
+// The web app reads the registry password and nothing else.
+module webSecretAccess 'modules/secretaccess.bicep' = if (hasRegistryPassword) {
+  name: 'secretaccess-web'
+  params: {
+    vaultName: names.vault
+    principalId: webIdentity!.properties.principalId
+    secretNames: [
+      'sparta-registry-password'
+    ]
+  }
+  dependsOn: [
+    keyVault
+  ]
+}
 
 module containerApps 'modules/containerapps.bicep' = {
   name: 'containerapps'
@@ -389,12 +454,13 @@ module containerApps 'modules/containerapps.bicep' = {
     workspaceName: monitoring.outputs.workspaceName
     infrastructureSubnetId: privateNetworking ? network!.outputs.acaSubnetId : ''
     identityId: identity.id
+    webIdentityId: hasRegistryPassword ? webIdentity!.id : ''
     vaultUri: keyVault.outputs.vaultUri
     apiImage: apiImage
     webImage: webImage
     registryServer: registryServer
     registryUsername: registryUsername
-    hasRegistryPassword: !empty(registryPassword)
+    hasRegistryPassword: hasRegistryPassword
     apiCpu: apiCpu
     apiMemory: apiMemory
     apiMinReplicas: apiMinReplicas
@@ -430,11 +496,13 @@ module containerApps 'modules/containerapps.bicep' = {
     maxActiveCalls: maxActiveCalls
   }
   // The apps resolve Key Vault secrets written by these modules, so they must exist first (ACS is already an implicit
-  // dependency through acs!.outputs above).
+  // dependency through acs!.outputs above), and the identities must be allowed to read them before the apps start.
   dependsOn: [
     postgres
     redis
     speech
+    apiSecretAccess
+    webSecretAccess
   ]
 }
 
@@ -468,4 +536,5 @@ output logAnalyticsWorkspaceName string = monitoring.outputs.workspaceName
 output postgresServerName string = postgres.outputs.serverName
 output redisName string = redis.outputs.redisName
 output identityName string = identity.name
+output webIdentityName string = hasRegistryPassword ? webIdentity!.name : ''
 output acsResourceIdOut string = deployAcs ? acs!.outputs.acsResourceId : acsResourceId

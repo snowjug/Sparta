@@ -2,9 +2,12 @@
 // "migrate" job that runs `python -m sparta migrate` with the same image and settings as the API. Production never
 // migrates at startup, so the job is the release step (docs/DEPLOYMENT.md, Migrations).
 //
-// Every secret is a Key Vault reference resolved with the user-assigned managed identity: no secret value is stored in the
-// template, the parameters or the app definition. Probes send the API's own host name in the Host header because the API
-// rejects unknown hosts in production (SPARTA_TRUSTED_HOSTS); without it a probe to the container IP gets HTTP 400.
+// Every secret is a Key Vault reference resolved with a user-assigned managed identity: no secret value is stored in the
+// template, the parameters or the app definition. The api app and the migrate job share one identity that can read exactly
+// the secrets they reference; the internet-facing web app needs no secret, so it has NO identity, unless a private-registry
+// password is used (then it gets its own identity that can read that one secret only). Probes send the API's own host name
+// in the Host header because the API rejects unknown hosts in production (SPARTA_TRUSTED_HOSTS); without it a probe to the
+// container IP gets HTTP 400.
 
 param location string
 param tags object
@@ -18,8 +21,11 @@ param workspaceName string
 @description('Subnet delegated to Microsoft.App/environments. Empty = no VNet integration (public mode).')
 param infrastructureSubnetId string = ''
 
-@description('Resource id of the user-assigned managed identity that reads Key Vault.')
+@description('Resource id of the user-assigned managed identity of the api app and the migrate job. It must be allowed to read every Key Vault secret they reference (modules/secretaccess.bicep, called from main.bicep).')
 param identityId string
+
+@description('Resource id of the web app\'s own user-assigned identity, which may read only the registry-password secret. Empty = the web app has no managed identity (the default: it needs no secret).')
+param webIdentityId string = ''
 
 @description('Key Vault URI including the trailing slash, for example https://kv-example.vault.azure.net/')
 param vaultUri string
@@ -106,6 +112,9 @@ resource managedEnvironment 'Microsoft.App/managedEnvironments@2025-01-01' = {
 var apiFqdn = '${apiAppName}.${managedEnvironment.properties.defaultDomain}'
 var webFqdn = '${webAppName}.${managedEnvironment.properties.defaultDomain}'
 
+// Key Vault references of the api app and the migrate job. KEEP THIS LIST IN STEP with apiVaultSecretNames in main.bicep: that
+// list decides which secrets their identity may read (one role assignment per secret), so a secret referenced here but not
+// listed there fails the deployment with "forbidden".
 var baseSecrets = [
   {
     name: 'data-keys'
@@ -365,12 +374,18 @@ resource webApp 'Microsoft.App/containerApps@2025-01-01' = {
   name: webAppName
   location: location
   tags: union(tags, { 'sparta-component': 'web' })
-  identity: {
-    type: 'UserAssigned'
-    userAssignedIdentities: {
-      '${identityId}': {}
-    }
-  }
+  // Internet-facing and secret-free: no managed identity, so it cannot reach Key Vault at all. Only a private-registry
+  // password (a Key Vault reference) needs one, and that identity can read nothing else.
+  identity: empty(webIdentityId)
+    ? {
+        type: 'None'
+      }
+    : {
+        type: 'UserAssigned'
+        userAssignedIdentities: {
+          '${webIdentityId}': {}
+        }
+      }
   properties: {
     environmentId: managedEnvironment.id
     workloadProfileName: 'Consumption'
@@ -381,7 +396,7 @@ resource webApp 'Microsoft.App/containerApps@2025-01-01' = {
             {
               name: 'registry-password'
               keyVaultUrl: '${vaultUri}secrets/sparta-registry-password'
-              identity: identityId
+              identity: webIdentityId
             }
           ]
         : []

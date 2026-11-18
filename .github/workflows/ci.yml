@@ -62,15 +62,20 @@ jobs:
             set_all
             exit 0
           fi
-          files="$(gh api --paginate "repos/${REPOSITORY}/pulls/${PR_NUMBER}/files" --jq '.[].filename')"
-          count="$(printf '%s\n' "$files" | grep -c . || true)"
+          # One row per changed file: its name and, for a rename, its previous name. A file moved out of a folder must still
+          # select that folder's checks: with only the new name the move would skip them and "ci-ok" counts skipped as success.
+          rows="$(gh api --paginate "repos/${REPOSITORY}/pulls/${PR_NUMBER}/files" --jq '.[] | [.filename, (.previous_filename // "")] | @tsv')"
+          count="$(printf '%s\n' "$rows" | grep -c . || true)"
+          files="$(printf '%s\n' "$rows" | tr '\t' '\n' | grep . || true)"
           echo "The pull request touches ${count} file(s)."
           # The API lists at most 3000 files: when in doubt, run everything.
           if [ "$count" -ge 3000 ]; then
             set_all
             exit 0
           fi
-          has() { printf '%s\n' "$files" | grep -Eq "$1"; }
+          # A here-string, not `printf | grep -q`: under pipefail grep -q exits at the first match, printf then dies of
+          # SIGPIPE on a long list and the helper reports "no match" for an area that did change.
+          has() { grep -Eq "$1" <<<"$files"; }
           backend=false
           web=false
           android=false

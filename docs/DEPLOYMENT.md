@@ -47,7 +47,8 @@ flowchart LR
 | --- | --- | --- | --- | --- |
 | Log Analytics workspace + Application Insights | `monitoring` | All container logs (one redacted JSON line per event) and platform metrics | PerGB2018, 30 days, 1 GB/day cap | retention, daily cap |
 | Virtual network, private DNS zones | `network` | Lets PostgreSQL and Redis have no public endpoint | /16 with `aca`, `postgres`, `endpoints` subnets | none of its own; private endpoints and DNS zones cost a little |
-| User-assigned managed identity | `main` | Reads Key Vault secrets (only that) | `Key Vault Secrets User` on the one vault | none |
+| User-assigned managed identity `id-...-api` | `main`, `secretaccess` | Resolves the Key Vault references of the api app and the migrate job | `Key Vault Secrets User`, one role assignment **per secret** they reference, none on the vault itself | none |
+| User-assigned managed identity `id-...-web` (only when a registry password is set) | `main`, `secretaccess` | Lets the web app read the private-registry password to pull its image | `Key Vault Secrets User` on `sparta-registry-password` only | none |
 | Key Vault | `keyvault` | Holds every runtime secret; RBAC, soft delete, purge protection | Standard | none worth tuning |
 | PostgreSQL Flexible Server 16 + database `sparta` | `postgres` | The system of record (call content is encrypted by the application before it is stored) | Burstable `Standard_B1ms`, 32 GB, 7-day backups, no HA | SKU, HA, storage |
 | Azure Managed Redis | `redis` | Shared rate limits, WebSocket tickets, call locks, live events | `Balanced_B0`, TLS only | SKU, HA |
@@ -57,7 +58,9 @@ flowchart LR
 | Action group and alert rules (optional) | `alerts` | Notify on 5xx, restarts, no replicas, PostgreSQL CPU/storage | off (`alertEmail`) | none |
 
 The template deliberately has **no secret in a parameter, output or app definition**: secrets are Key Vault secrets, written
-by the module that owns them, and the apps reference them with the managed identity.
+by the module that owns them, and the apps reference them with their managed identities. The web app is internet-facing and
+needs no secret, so by default it has **no managed identity at all** and cannot reach Key Vault; no identity is ever granted
+access to the vault as a whole (see [Secrets and rotation](#secrets-and-rotation)).
 
 ## Before you start
 
@@ -122,9 +125,9 @@ first: **a custom domain you control makes this a single pass**. Without one, pl
    az deployment group create   -g rg-sparta-prod -f main.bicep -p main.bicepparam --query properties.outputs
    ```
 
-   The first deployment creates a role assignment and then immediately asks Container Apps to read Key Vault with it.
-   If it fails with a Key Vault "forbidden" or "secret not found" error, role propagation was slower than the deployment:
-   run the same command again.
+   The first deployment creates the role assignments (one per secret) and then immediately asks Container Apps to read Key
+   Vault with them. If it fails with a Key Vault "forbidden" or "secret not found" error, role propagation was slower than
+   the deployment: run the same command again.
 
 4. **Run the migrations** (production never migrates at startup; see [Migrations](#migrations)):
 
@@ -170,18 +173,45 @@ variables below exist it does nothing except explain why.**
    az role assignment create --assignee "$appId" --role "Role Based Access Control Administrator" --scope /subscriptions/<sub>/resourceGroups/rg-sparta-prod
    ```
 
-   The second role is needed because the template creates a role assignment (Key Vault Secrets User). Scope it tightly.
-   These commands were **not run**.
+   The second role is needed because the template creates role assignments (Key Vault Secrets User, one per secret). Scope
+   it tightly. These commands were **not run**.
 
 2. In the repository settings add the **variables** `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`
    (required), `AZURE_RESOURCE_GROUP` (default `rg-sparta-prod`), `AZURE_LOCATION` (default `centralindia`),
    `SPARTA_OIDC_ISSUER`, `SPARTA_OIDC_AUDIENCE`, optionally `SPARTA_ENVIRONMENT_NAME`; and for the web image build
    `NEXT_PUBLIC_API_BASE_URL`, `NEXT_PUBLIC_AUTH_MODE`, `NEXT_PUBLIC_OIDC_AUTHORITY`, `NEXT_PUBLIC_OIDC_CLIENT_ID`.
-3. Create the **environment** `production` (Settings, Environments) and add **required reviewers**; add its **secrets**
-   `SPARTA_DATA_KEYS`, `SPARTA_PEPPER`, `SPARTA_WEBHOOK_SECRET`, `POSTGRES_ADMIN_PASSWORD` and optionally
-   `AZURE_SPEECH_KEY`, `AZURE_OPENAI_KEY`. Environment secrets exist only for approved runs of that environment.
+3. Create the **environment** `production` (Settings, Environments) and **protect it**: it is the gate in front of the Azure
+   login and the production secrets.
+   * **Deployment branches and tags:** "Selected branches and tags" with **only `main`**. A run from any other branch is then
+     refused by GitHub before any of its steps runs.
+   * **Required reviewers:** at least one person who is not the one starting the run, with **Prevent self-review** switched
+     on, and do not let administrators bypass the rules.
+   * Add its **secrets** `SPARTA_DATA_KEYS`, `SPARTA_PEPPER`, `SPARTA_WEBHOOK_SECRET`, `POSTGRES_ADMIN_PASSWORD` and optionally
+     `AZURE_SPEECH_KEY`, `AZURE_OPENAI_KEY`. Environment secrets exist only for approved runs of that environment.
 4. Run **Deploy** manually (choose an image tag, or "what if only" for a preview), or let it follow a successful
-   **Container images** run on `main`.
+   **Container images** run on `main`. The automatic path starts only for a **push to this repository's `main`**: a pull
+   request (a fork's included, even from a branch that is also called `main`), another branch or a tag never starts it.
+
+#### Protect the release path
+
+The workflow's own checks only help when these repository settings exist; they are **not** in the repository and nothing in
+the files can enforce them:
+
+* **`main` is the only source of deployments.** Whatever the trigger, the deploy job refuses a commit that is not part of
+  main's history (`git merge-base --is-ancestor <commit> origin/main`) before it checks that commit out or signs in to Azure.
+  That is only as strong as `main`: protect it (a ruleset or branch protection that requires pull requests, a review from a
+  code owner and the `ci-ok` check, and blocks force pushes and deletion).
+* **Protect the `v*` tags.** `container.yml` publishes images to GHCR for every `v*.*.*` tag, and an operator may deploy an
+  image by that tag. Create a **tag ruleset** (Settings, Rules, Rulesets, target "tags", pattern `v*`) that restricts who can
+  create, update and delete them to the maintainers.
+* **The federated credential** (step 1) names the environment in its subject, so only jobs of the `production` environment,
+  hence only runs from `main` once the branch restriction above is on, can obtain an Azure token. Keep that subject; never
+  widen it to the repository or to a branch pattern.
+* **Fork pull requests:** under Settings, Actions, General require approval to run workflows from outside collaborators, and
+  leave "Send write tokens to workflows from pull requests" off. "Container images" and CI run for forks without secrets.
+
+None of the settings above, and none of the workflow paths they protect, has been exercised on GitHub (**UNVERIFIED**, see
+[What is not verified](#what-is-not-verified)); the shell logic of the checks was tested locally.
 
 ## Configuration reference
 
@@ -233,20 +263,28 @@ telephony provider is reported but does not make the API unready).
 
 ## Secrets and rotation
 
-| Key Vault secret | Setting | Written by | Notes |
-| --- | --- | --- | --- |
-| `sparta-data-keys` | `SPARTA_DATA_KEYS` | `keyvault` | Fernet keys, newest first, comma-separated |
-| `sparta-pepper` | `SPARTA_PEPPER` | `keyvault` | HMAC pepper for caller-number fingerprints |
-| `sparta-webhook-secret` | `SPARTA_WEBHOOK_SECRET` | `keyvault` | HMAC for generic webhooks |
-| `sparta-database-url` | `SPARTA_DATABASE_URL` | `postgres` | `postgresql+asyncpg://...?ssl=require`, password URL-encoded |
-| `sparta-redis-url` | `SPARTA_REDIS_URL` | `redis` | `rediss://:<key>@<host>:10000/0` |
-| `sparta-speech-key` | `SPARTA_AZURE_SPEECH_KEY` | `speech` or `keyvault` | optional |
-| `sparta-openai-key` | `SPARTA_AZURE_OPENAI_KEY` | `keyvault` | optional |
-| `sparta-acs-connection-string` | `SPARTA_ACS_CONNECTION_STRING` | `acs` or `keyvault` | optional |
-| `sparta-registry-password` | registry credential | `keyvault` | only for a private registry |
+| Key Vault secret | Setting | Written by | Read by | Notes |
+| --- | --- | --- | --- | --- |
+| `sparta-data-keys` | `SPARTA_DATA_KEYS` | `keyvault` | api, migrate job | Fernet keys, newest first, comma-separated |
+| `sparta-pepper` | `SPARTA_PEPPER` | `keyvault` | api, migrate job | HMAC pepper for caller-number fingerprints |
+| `sparta-webhook-secret` | `SPARTA_WEBHOOK_SECRET` | `keyvault` | api, migrate job | HMAC for generic webhooks |
+| `sparta-database-url` | `SPARTA_DATABASE_URL` | `postgres` | api, migrate job | `postgresql+asyncpg://...?ssl=require`, password URL-encoded |
+| `sparta-redis-url` | `SPARTA_REDIS_URL` | `redis` | api, migrate job | `rediss://:<key>@<host>:10000/0` |
+| `sparta-speech-key` | `SPARTA_AZURE_SPEECH_KEY` | `speech` or `keyvault` | api, migrate job | optional |
+| `sparta-openai-key` | `SPARTA_AZURE_OPENAI_KEY` | `keyvault` | api, migrate job | optional |
+| `sparta-acs-connection-string` | `SPARTA_ACS_CONNECTION_STRING` | `acs` or `keyvault` | api, migrate job | optional |
+| `sparta-registry-password` | registry credential | `keyvault` | api, migrate job, **web** (its own identity) | only for a private registry |
 
-The apps and the job carry **references** to these secrets, resolved with the managed identity. A replica reads them when
-it starts. After you change a secret in Key Vault, restart the revision so every replica picks it up:
+**Who may read what.** Read access is granted **per secret** (`modules/secretaccess.bicep`: one `Key Vault Secrets User`
+role assignment on each secret, never on the vault). The identity of the api app and the migrate job can read exactly the
+secrets in the table that are in use in your deployment, and nothing else that may be in the vault. The internet-facing web
+app has no identity, and so no access, unless you configure a private-registry password: then it gets its own identity that
+can read `sparta-registry-password` and nothing else. The list of secrets the api identity may read is `apiVaultSecretNames`
+in `main.bicep`; it must stay in step with the secrets that `modules/containerapps.bicep` references (a mismatch fails the
+deployment with "forbidden", it never silently widens access).
+
+The apps and the job carry **references** to these secrets, resolved with their managed identities. A replica reads them
+when it starts. After you change a secret in Key Vault, restart the revision so every replica picks it up:
 
 ```bash
 az containerapp revision restart -n <apiAppName> -g rg-sparta-prod --revision <active revision name>
@@ -449,7 +487,17 @@ No prices are quoted here because they change; use the Azure pricing calculator 
 **Other deliberate trade-offs and follow-ups:**
 
 * **Key Vault stays reachable on its public endpoint** (every call needs Entra authentication and RBAC; only the managed
-  identity can read secrets). A private endpoint is the next hardening step and is not implemented.
+  identities, and each of them only for its own secrets, can read secret values). A private endpoint is the next hardening
+  step and is not implemented.
+* **Per-secret role assignments.** Microsoft's general advice is to assign Key Vault roles at the vault when a vault belongs
+  to one application. This template assigns `Key Vault Secrets User` **per secret** instead, so the internet-facing web app
+  never has vault-wide read access and a secret added to the vault later is not readable by default. The cost is one role
+  assignment per secret and the list that must be kept in step (see Secrets and rotation). The assignments for the database
+  and Redis URLs can only be created after PostgreSQL and Redis exist, that is right before the apps start, so they have
+  less time to propagate than one vault-level assignment created first would have: if a first deployment fails with
+  "forbidden", deploy again. That Container Apps resolves a Key Vault reference through a role assignment scoped to a single
+  secret was **not verified in Azure**; if it does not work in your environment, give the api identity the role on the whole
+  vault (one assignment in `secretaccess.bicep`) and keep the web app identity-free.
 * **The application connects as the PostgreSQL administrator.** Create a least-privilege runtime role (DML only) and give
   only the migration job the DDL-capable login; the template does not do this yet.
 * **`--forwarded-allow-ips *`** (see above) and **`ssl=require`** without certificate verification (see Domain and TLS).
@@ -499,6 +547,19 @@ packs, safety policy, scenarios or Alembic scripts are missing from the wheel, o
   differ by the Debian packages published in between; the Python packages never differ. Trivy scans every CI build and
   Dependabot watches the tag.
 * `SPARTA_EXTRAS` accepts only an empty value or `azure,otlp`, because the locks cover exactly those two sets.
+
+**Publishing** (`.github/workflows/container.yml`, not yet run on GitHub): pull requests build and scan only; pushes to
+`main` and `v*.*.*` tags also publish to GHCR.
+
+* **The published image is a second build, not the exact scanned artifact.** The workflow builds each image once (loaded into
+  the runner's Docker daemon) and scans that build with Trivy. If the scan passes it builds the image **again** for the push,
+  reusing the cached layers of the first build. The pushed image is therefore expected to be, but is not guaranteed to be, the
+  very artifact that was scanned: a cache miss rebuilds layers (the `apt-get upgrade` step then takes whatever Debian has
+  published meanwhile) and the image configuration always carries a new timestamp. Pushing the scanned image itself would close
+  the gap but would lose the provenance and SBOM attestations that the push build attaches, so the workflow does not do that.
+  If you need the guarantee, also scan the published digest (not done here).
+* **Who can publish.** Every `v*.*.*` tag publishes, and an operator may deploy an image by that tag, so protect the `v*`
+  tags with a tag ruleset and protect `main` (see [Protect the release path](#protect-the-release-path)).
 
 **Web image** (`apps/web/Dockerfile`, owned by the web app): the Next.js standalone output as a non-root user, `npm ci`
 from `package-lock.json`. `NEXT_PUBLIC_*` values are build arguments (they are compiled into the browser bundle and the
@@ -566,7 +627,7 @@ None of these can be created by the repository or its pipelines:
 | Azure subscription (permissions to create resources and role assignments) | Everything in this document |
 | Microsoft Entra tenant, API and client app registrations | Sign-in (OIDC) for the web and Android apps |
 | Pipeline identity with an OIDC federated credential | `deploy.yml` |
-| GitHub environment `production` with reviewers, variables and secrets | `deploy.yml` |
+| GitHub environment `production` (restricted to `main`, required reviewers with prevent-self-review), variables and secrets | `deploy.yml` |
 | Container registry access (public GHCR package, or a read-only token) | Pulling images |
 | Azure AI Speech resource | Real speech recognition and synthesis |
 | Azure OpenAI resource and a model deployment | LLM replies and summaries (optional; rules work without it) |
@@ -595,17 +656,30 @@ None of these can be created by the repository or its pipelines:
   `rediss://:<encoded key>@host:port/0`) work with the API's own code against local TLS servers (self-signed certificates).
 * The backend CI commands (`ruff`, `mypy`, `pytest` including the PostgreSQL integration tests, the OpenAPI drift check, the
   evaluation gate, `bandit`, `pip-audit`) pass in a Debian container with Python 3.12 using the locked dependencies.
-* The Bicep templates compile and lint cleanly (`bicep build`, `bicep lint`, `build-params` with placeholder values).
-* The workflows pass `actionlint` (with `shellcheck`) and parse as YAML; the secret scan configuration finds no leak in the
-  working tree or in the committed history and still detects a planted canary.
+* The Bicep templates compile and lint cleanly (`bicep build`, `bicep lint`, `build-params` with placeholder values). The
+  identity model was also **evaluated offline** with `bicep snapshot` for four parameter sets (defaults, a private registry,
+  everything optional switched on, bring-your-own Speech and ACS keys; run on a scratch copy with the `@secure()` decorators
+  removed, because the offline evaluator cannot read secure parameters): the api identity may read exactly the secrets that
+  the api app and the migrate job reference, no role assignment is scoped to the vault itself, and the web app has no identity
+  and no secret unless a registry password is set (then one identity, one secret). That is the template's logic evaluated
+  locally, not a deployment.
+* The workflows pass `actionlint` (with `shellcheck`) and parse as YAML. The shell logic of the deploy workflow's guards
+  (image tag and commit validation, including a newline-injection attempt, and the "commit must be in main's history" check
+  against a throwaway git repository) and of the CI path filter (renames, 2,500-file lists) was run against throwaway inputs.
+  The secret scan configuration finds no leak in a clean copy of the working tree or in the committed history, and detects a
+  planted canary in every location except the few that gitleaks' own built-in defaults ignore (any `node_modules/` folder
+  and any `package-lock.json`).
 
 **UNVERIFIED (not run, with the reason):**
 
-* **Any Azure deployment** (`validate`, `what-if`, `create`), Key Vault reference resolution and timing, private endpoint and
+* **Any Azure deployment** (`validate`, `what-if`, `create`), Key Vault reference resolution and timing (in particular that
+  Container Apps resolves a reference through a role assignment scoped to a single secret), private endpoint and
   DNS behaviour, SKU and region availability, role-assignment propagation, Container Apps probe behaviour, the migration job,
   alert rules, restore and rollback commands. No Azure subscription was used.
 * **The GitHub Actions workflows on GitHub** (including the path filter, caching, service containers, Playwright, the Android
-  build, CodeQL, dependency review, the container build, Trivy, GHCR publishing and the deploy job). They run on GitHub only.
+  build, CodeQL, dependency review, the container build, Trivy, GHCR publishing and the deploy job), and the **GitHub
+  settings** the release path relies on (the `production` environment's branch restriction and required reviewers with
+  prevent-self-review, the `v*` tag ruleset, branch protection of `main`, fork-approval settings). They run on GitHub only.
   The Android job needs a JDK and the Android SDK that were not available locally.
 * **OIDC federation** to Azure and **Entra sign-in** end to end, including the web app's OIDC mode (unit-tested with a fake
   user manager only) and the API's token validation against a real issuer.
@@ -625,7 +699,9 @@ None of these can be created by the repository or its pipelines:
 | `error: Cannot reach the database (...)` / `error: Cannot reach Redis (...)`, exit status 2 | The database or Redis is not reachable from the container: firewall or private DNS, wrong host or password, server not started. The message names the target without credentials |
 | Revision never becomes ready; probes answer 400 | The probe's `Host` header is not in `SPARTA_TRUSTED_HOSTS` (check the API host and any custom domain) |
 | Readiness answers 503 | `/readyz` reports which of `database` or `shared_state` is not `ok`. `database: "migrations_pending"` means the schema is older than this image: run the migration job (`python -m sparta migrate`). `unavailable` means connectivity (or a database that was never migrated); telephony status never blocks readiness |
-| Deployment fails resolving a Key Vault secret on the first run | Role assignment still propagating; run the deployment again |
+| Deployment fails resolving a Key Vault secret on the first run | Role assignment still propagating; run the deployment again. If it keeps failing with "forbidden" for one secret, that secret is referenced by an app but missing from `apiVaultSecretNames` in `main.bicep` |
+| **Deploy** stops with "Refusing to deploy: Commit ... is not part of the history of main" | The run's commit is not on `main` (a feature branch, a fork, or a commit that was rewritten away). Merge it to `main` first, or run **Deploy** from `main` with the image tag you want |
+| **Deploy** is skipped after "Container images" although it succeeded | The automatic path only follows a successful run for a push to `main` of this repository, and only when the three `AZURE_*` variables exist; start it manually otherwise |
 | `The vault name is already in use` after deleting a resource group | Purge protection keeps the soft-deleted vault for 90 days; use `keyVaultPurgeProtection=false` in throwaway environments or purge it |
 | Web app calls the wrong API | `NEXT_PUBLIC_*` values are baked in at build time: rebuild the web image after changing them |
 | Browser blocks calls with a CORS error | The web origin is not in `SPARTA_CORS_ORIGINS` (`extraCorsOrigins` for a custom domain) |

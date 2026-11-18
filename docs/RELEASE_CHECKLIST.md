@@ -46,8 +46,15 @@ images** workflow publishes `ghcr.io/<owner>/sparta-api` and `sparta-web` for ta
       when dependencies changed, and so were the image locks (`make lock`: `requirements.lock`, `requirements-extras.lock`,
       `requirements-build.lock`). `make verify-locks` confirms every hash is a file digest that pypi.org publishes.
 - [ ] The secret scan (gitleaks) is clean and no secret was ever committed; if one was, it was rotated first.
-- [ ] The container scan (Trivy) passed for both images; a finding with no fix was reviewed and written down.
+- [ ] The container scan (Trivy) passed for both images; a finding with no fix was reviewed and written down. The published
+      image is a second build that reuses the scanned build's cached layers, not the byte-identical scanned artifact
+      ([`DEPLOYMENT.md`](DEPLOYMENT.md), "The container images"): for a release that matters, also scan the published digest.
 - [ ] GitHub Actions are pinned (first-party by major tag, others by commit SHA) and Dependabot is current.
+- [ ] The release path is protected on GitHub ([`DEPLOYMENT.md`](DEPLOYMENT.md#protect-the-release-path)): `main` accepts only
+      reviewed pull requests with a green `ci-ok` and no force pushes; the **`v*` tags are protected** by a tag ruleset (only
+      maintainers can create, update or delete them), because **Container images** publishes to GHCR for every `v*.*.*` tag;
+      the `production` environment is **restricted to `main`** and needs a reviewer other than the person who starts the run
+      (**Prevent self-review** on, no administrator bypass). `git tag -l 'v*'` lists only tags you created.
 
 ## 5. Data, migrations and infrastructure
 
@@ -58,6 +65,10 @@ images** workflow publishes `ghcr.io/<owner>/sparta-api` and `sparta-web` for ta
 - [ ] A backup or a point-in-time restore target is noted (time, server) before the deployment starts.
 - [ ] Secrets that the release needs exist in Key Vault; secrets due for rotation are scheduled ([`DEPLOYMENT.md`](DEPLOYMENT.md),
       "Secrets and rotation").
+- [ ] Key Vault access is still per secret: no role assignment on the vault itself, the web app has no managed identity (or
+      only the one that reads the registry password), and if the secret list changed, `apiVaultSecretNames` in
+      `infrastructure/azure/main.bicep` matches the secrets that `modules/containerapps.bicep` references (the what-if should
+      list one `Key Vault Secrets User` assignment per secret and none on the vault).
 - [ ] `NEXT_PUBLIC_*` repository variables hold this environment's values (they are compiled into the web image).
 - [ ] Migrations that this release adds (see `services/api/migrations/versions`) are named in the release notes. Production
       does not migrate at startup: the **Deploy** workflow's migration job (or `python -m sparta migrate`) must run them, and
@@ -75,11 +86,13 @@ images** workflow publishes `ghcr.io/<owner>/sparta-api` and `sparta-web` for ta
 
 ## 7. Tag, publish, deploy
 
-- [ ] Tag the commit: `git tag -a vX.Y.Z -m "Sparta vX.Y.Z"` and push the tag.
+- [ ] Tag a commit that is on `main`: `git tag -a vX.Y.Z -m "Sparta vX.Y.Z"` and push the tag (only a maintainer can: the `v*`
+      tags are protected). **Deploy** refuses any commit that is not in main's history.
 - [ ] The **Container images** run for the tag succeeded: both images scanned, then published with the `sha-<commit>`, version
       and `latest` tags.
-- [ ] Deploy to a test or staging environment first: **Deploy** with the tag, review the what-if, approve the `production`
-      (or staging) environment, wait for the migration job and the smoke test.
+- [ ] Deploy to a test or staging environment first: **Deploy** from `main` with the tag, review the what-if, approve the
+      `production` (or staging) environment (a second person approves, not the one who started the run), wait for the
+      migration job and the smoke test.
 - [ ] Verify by hand: `/readyz` is 200; `GET /api/v1/system/status` shows `env: production`, `auth_mode: oidc`,
       `dev_banner: false`, the intended telephony provider and `simulated` flag; sign in with a bearer token from your
       identity provider (`curl -H "Authorization: Bearer ..." https://<api host>/api/v1/me`; the web app's own OIDC sign-in

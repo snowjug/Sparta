@@ -1,14 +1,11 @@
-// Key Vault with Azure RBAC (no access policies), soft delete and purge protection. It holds every secret the API reads at
-// runtime. Container Apps resolves them with the user-assigned managed identity, which gets only "Key Vault Secrets User"
-// (read secret values) on this one vault. Secrets owned by other modules (database URL, Redis URL, ACS, Speech) are
-// written by those modules so no secret ever travels through a template output.
+// Key Vault with Azure RBAC (no access policies), soft delete and purge protection. It holds every secret the apps read at
+// runtime. Nobody gets access to the vault as a whole: modules/secretaccess.bicep grants each managed identity read access
+// (Key Vault Secrets User) to the individual secrets it needs and to nothing else. Secrets owned by other modules (database
+// URL, Redis URL, ACS, Speech) are written by those modules so no secret ever travels through a template output.
 
 param location string
 param tags object
 param vaultName string
-
-@description('Principal (object) id of the user-assigned identity that reads the secrets.')
-param identityPrincipalId string
 
 @description('Public network access to the vault. Every call is still authenticated with Microsoft Entra ID and authorised by RBAC; see docs/DEPLOYMENT.md for the private-endpoint trade-off.')
 @allowed([
@@ -46,8 +43,6 @@ param acsConnectionString string = ''
 @secure()
 param registryPassword string = ''
 
-var keyVaultSecretsUserRoleId = '4633458b-17de-408a-b874-0445c86b69e6'
-
 resource vault 'Microsoft.KeyVault/vaults@2024-11-01' = {
   name: vaultName
   location: location
@@ -67,16 +62,6 @@ resource vault 'Microsoft.KeyVault/vaults@2024-11-01' = {
       defaultAction: 'Allow'
       bypass: 'AzureServices'
     }
-  }
-}
-
-resource secretsUser 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  scope: vault
-  name: guid(vault.id, identityPrincipalId, keyVaultSecretsUserRoleId)
-  properties: {
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', keyVaultSecretsUserRoleId)
-    principalId: identityPrincipalId
-    principalType: 'ServicePrincipal'
   }
 }
 
@@ -146,4 +131,3 @@ resource acsConnectionStringSecret 'Microsoft.KeyVault/vaults/secrets@2024-11-01
 output vaultName string = vault.name
 output vaultUri string = vault.properties.vaultUri
 output vaultId string = vault.id
-output roleAssignmentId string = secretsUser.id

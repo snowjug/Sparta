@@ -1,19 +1,26 @@
 # gitleaks configuration for Sparta (used by .github/workflows/secret-scan.yml and by local runs):
 #     gitleaks dir . --config .gitleaks.toml --redact          # working tree
 #     gitleaks git . --config .gitleaks.toml --redact          # committed history
-# It extends the default rule set. Only dependency/build folders and values that are documented dummies are allowlisted;
-# never add a real credential here. A new test fixture that looks like a key must be added below on purpose.
+# It extends the default rule set. Only dependency/build folders at their exact paths and values that are documented dummies
+# are allowlisted; never add a real credential here. A new test fixture that looks like a key must be added below on purpose.
 title = "Sparta gitleaks configuration"
 
 [extend]
 useDefault = true
 
 [[allowlists]]
-description = "Dependency folders, build output and test reports (git-ignored; they only exist on a developer machine)"
+description = "Generated folders that exist only on a developer machine (git-ignored), by their exact location. A path allowlist hides everything under it from the scan and CI reads this file from the pull request, so never widen these to a pattern that matches at any depth."
 paths = [
-  '''(^|/)(node_modules|\.venv|venv|\.next|dist|build|\.gradle|\.kotlin|test-results|playwright-report|blob-report|coverage)/''',
-  '''(^|/)package-lock\.json$''',
-  '''(^|/)requirements-dev\.lock$''',
+  '''^apps/web/(node_modules|\.next|test-results|playwright-report|blob-report|coverage)/''',
+  '''^apps/android/(\.gradle|\.kotlin|build|app/build)/''',
+  '''^services/api/\.venv/''',
+]
+
+[[allowlists]]
+description = "Lock files whose integrity hashes look like secrets, by exact path"
+paths = [
+  '''^apps/web/package-lock\.json$''',
+  '''^services/api/requirements-dev\.lock$''',
 ]
 
 [[allowlists]]
@@ -25,5 +32,5 @@ regexes = [
   '''sparta-dev-only''',                                   # docker-compose / .env.example development password
   '''sparta-ci-only''',                                    # CI service-container password
   '''ci-placeholder-0123456789''',                         # ci.yml: placeholder so main.bicepparam compiles (not a password)
-  '''4633458b-17de-408a-b874-0445c86b69e6''',              # public built-in Azure role id "Key Vault Secrets User" (keyvault.bicep)
+  '''4633458b-17de-408a-b874-0445c86b69e6''',              # public built-in Azure role id "Key Vault Secrets User" (secretaccess.bicep)
 ]

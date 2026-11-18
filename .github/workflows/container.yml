@@ -5,6 +5,9 @@
 #   ghcr.io/<repository owner>/sparta-api and sparta-web with the GITHUB_TOKEN. Tags: sha-<full commit>, the branch,
 #   the semantic version, and "latest" on main.
 # * A scan finding with a published fix at HIGH or CRITICAL severity fails the job BEFORE anything is pushed.
+# * The pushed image is a SECOND build that reuses the cached layers of the scanned one (so that the push can carry
+#   provenance and SBOM attestations): it is expected to be, but not guaranteed to be, the byte-identical artifact that was
+#   scanned (docs/DEPLOYMENT.md, "The container images"). Every v*.*.* tag publishes: protect the v* tags (a tag ruleset).
 # * NEXT_PUBLIC_* values are baked into the web image when it is built: set the repository variables
 #   NEXT_PUBLIC_API_BASE_URL, NEXT_PUBLIC_AUTH_MODE (and the OIDC ones) to your deployment's public values before tagging
 #   a release (see docs/DEPLOYMENT.md).
@@ -135,7 +138,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Push (cached layers from the scanned build)
+      - name: Push (a second build from the cached layers of the scanned one, with attestations)
         id: push
         if: steps.gate.outputs.publish == 'true'
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
