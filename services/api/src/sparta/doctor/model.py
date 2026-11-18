@@ -13,6 +13,7 @@ rendered string is passed through :func:`sparta.logging_setup.redact_text` as a 
 """
 
 import json
+import re
 from collections import Counter
 from dataclasses import dataclass, field
 from enum import StrEnum
@@ -20,9 +21,17 @@ from typing import Any
 
 from sparta.logging_setup import redact_text
 
+_CONTROL = re.compile(r"[\x00-\x08\x0b-\x1f\x7f-\x9f]")  # keeps tab and newline
+
+
+def _plain(text: str) -> str:
+    """Redacted, with control characters (terminal escape sequences, say) replaced: no check text may drive a terminal."""
+    return _CONTROL.sub("?", redact_text(text))
+
 
 class Status(StrEnum):
-    PASS = "PASS"  # noqa: S105  # nosec B105 - a status name, not a password
+    # "PASS" is a status name, not a password (the scanners' hard-coded-password rules match on the word)
+    PASS = "PASS"  # noqa: S105  # nosec B105
     WARNING = "WARNING"
     BLOCKED = "BLOCKED"
     UNVERIFIED = "UNVERIFIED"
@@ -42,7 +51,9 @@ class Check:
     fix: str = ""  # what to do next
 
     def safe(self) -> "Check":
-        return Check(self.id, self.group, self.title, self.status, redact_text(self.detail), redact_text(self.fix))
+        return Check(
+            self.id, self.group, _CONTROL.sub("?", self.title), self.status, _plain(self.detail), _plain(self.fix)
+        )
 
 
 @dataclass

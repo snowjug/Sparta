@@ -171,7 +171,8 @@ sources are [research/phase2-provider-verification.md](research/phase2-provider-
 | P2-4 | Twilio Media Streams adapter, doctor support, Event Grid caller pinning | Committed (`305dd40`) | A second provider because ACS cannot supply a number; mu-law codec; signed webhooks and media socket; `<Dial>` takeover; never run against Twilio |
 | P2-5 | Honest takeover capability, cost caps, safe provider-failure closure, controlled matrix | Committed (`53b2406`) | 12 whole-call tests with scripted speech services |
 | P2-6 | Android: stale-state bug fix, physical-device checklist | Committed (`ccec1c8`) | No device or emulator was available: every checklist row says NOT RUN |
-| P2-7 | Infrastructure parameters (Twilio secret, caps, cost tag), documentation, security review | On the branch | The Bicep compiles and lints; not deployed |
+| P2-7 | Infrastructure parameters (Twilio secret, caps, cost tag) and documentation | Committed (`db66c1c`) | The Bicep compiles and lints; not deployed |
+| P2-7b | Security review of the new path and its fixes | On the branch | [SECURITY_REVIEW_PHASE2.md](SECURITY_REVIEW_PHASE2.md): no critical or high finding; one medium (conditional) and three low, the first three fixed and the fourth accepted and documented; three smaller defects fixed |
 | P2-8 | A real call (Level B) | **Not started: blocked on external resources** | [PHASE2_REAL_WORLD_PLAN.md](PHASE2_REAL_WORLD_PLAN.md), section 6 |
 
 New external dependencies (in addition to section 5): an **upgraded** Twilio account with one voice-capable number (a trial

@@ -65,7 +65,12 @@ def test_wildcard_origins_and_raw_audio_storage_are_refused_in_production():
 
 
 def test_production_telephony_that_delivers_audio_needs_a_real_recogniser_and_a_real_voice():
-    azure = {"telephony_provider": "azure", "acs_connection_string": "endpoint=x", "acs_callback_base_url": "https://x"}
+    azure = {
+        "telephony_provider": "azure",
+        "acs_connection_string": "endpoint=x",
+        "acs_callback_base_url": "https://x",
+        "event_grid_allowed_app_ids": "00000000-0000-0000-0000-000000000001",
+    }
     speech = {"azure_speech_key": "k", "azure_speech_region": "centralindia"}
     with pytest.raises(ConfigurationError, match="SPARTA_STT_PROVIDER=azure"):
         Settings(**prod(**azure), _env_file=None)
@@ -90,6 +95,50 @@ def test_twilio_needs_its_account_token_and_callback_url_in_any_environment():
         assert name in problems
     assert Settings(telephony_provider="twilio", _env_file=None).telephony_kind == "other"
     assert Settings(telephony_provider="azure", _env_file=None).telephony_kind == "azure"
+
+
+def test_production_azure_telephony_needs_the_event_grid_caller_pinned_but_development_does_not():
+    azure = {
+        "telephony_provider": "azure",
+        "acs_connection_string": "endpoint=x",
+        "acs_callback_base_url": "https://x",
+        "stt_provider": "azure",
+        "tts_provider": "azure",
+        "azure_speech_key": "k",
+        "azure_speech_region": "centralindia",
+    }
+    for unset in (None, "", "  "):
+        with pytest.raises(ConfigurationError, match="SPARTA_EVENT_GRID_ALLOWED_APP_IDS"):
+            Settings(**prod(**azure, event_grid_allowed_app_ids=unset), _env_file=None)
+    assert "EVENT_GRID_ALLOWED_APP_IDS" not in " ".join(Settings(**azure, _env_file=None).problems())
+
+
+def test_the_twilio_media_signature_check_cannot_be_switched_off_in_production():
+    twilio = {
+        "telephony_provider": "twilio",
+        "twilio_account_sid": "AC" + "0" * 32,
+        "twilio_auth_token": "t",
+        "twilio_callback_base_url": "https://x",
+        "stt_provider": "azure",
+        "tts_provider": "azure",
+        "azure_speech_key": "k",
+        "azure_speech_region": "centralindia",
+    }
+    Settings(**prod(**twilio), _env_file=None)
+    with pytest.raises(ConfigurationError, match="SPARTA_TWILIO_VERIFY_MEDIA_SIGNATURE=false"):
+        Settings(**prod(**twilio, twilio_verify_media_signature=False), _env_file=None)
+    assert Settings(**twilio, twilio_verify_media_signature=False, _env_file=None).problems() == []
+
+
+def test_provider_only_hosts_need_explicit_trusted_hosts_and_bare_host_names():
+    tunnel = "my-tunnel.example.test"
+    wildcard = " ".join(Settings(provider_only_hosts=tunnel, _env_file=None).problems())
+    assert "SPARTA_PROVIDER_ONLY_HOSTS requires SPARTA_TRUSTED_HOSTS" in wildcard
+    assert Settings(provider_only_hosts=tunnel, trusted_hosts=f"{tunnel},localhost", _env_file=None).problems() == []
+    for entry in (f"https://{tunnel}", f"{tunnel}:8000", f"{tunnel}/x"):
+        problems = Settings(provider_only_hosts=entry, trusted_hosts=f"{tunnel},localhost", _env_file=None).problems()
+        assert any("bare host names" in p for p in problems), entry
+    assert Settings(_env_file=None).problems() == []  # nothing listed: nothing to back up
 
 
 def test_selecting_a_real_provider_requires_its_credentials_in_any_environment():

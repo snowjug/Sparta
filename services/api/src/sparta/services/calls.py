@@ -92,7 +92,7 @@ from sparta.services.ids import IdFactory
 from sparta.services.kv import KeyValueStore
 from sparta.services.live import LiveHub
 from sparta.services.notifier import PushNotification, PushNotifier
-from sparta.services.numbers import PRIVATE_DISPLAY, fingerprint, mask_number, normalize_number
+from sparta.services.numbers import PRIVATE_DISPLAY, dial_number, fingerprint, mask_number, normalize_number
 from sparta.services.runtime import (
     NETWORK_PROFILES,
     CallRuntime,
@@ -1090,9 +1090,11 @@ class CallService:
                 prefs = await repo.get_preferences(principal.id)
             if action is OwnerActionType.CONTINUE and ctx.state is not CallState.ESCALATE:
                 raise Conflict("Sparta is not waiting for your decision on this call.")
-            if action is OwnerActionType.TAKEOVER and not rt.simulated and not prefs.takeover_number:
+            destination = dial_number(prefs.takeover_number)
+            if action is OwnerActionType.TAKEOVER and not rt.simulated and not destination:
                 raise UnsupportedByProvider(
-                    "Set the phone number Sparta should bridge you to (Assistant Studio) before using Take Over."
+                    "Set the phone number Sparta should bridge you to, with its country code (Assistant Studio), "
+                    "before using Take Over."
                 )
             record = OwnerAction(
                 id=self.ids.new("act"),
@@ -1129,7 +1131,7 @@ class CallService:
             if result is None or "call_not_active" in result.notes:
                 raise Conflict("This call has ended.")
             if action is OwnerActionType.TAKEOVER:
-                outcome = await rt.provider.transfer(rt.ref, prefs.takeover_number)
+                outcome = await rt.provider.transfer(rt.ref, destination or prefs.takeover_number)
                 if not outcome.accepted:
                     await self._report_provider_error(
                         rt,
@@ -1559,15 +1561,17 @@ class CallService:
 
     @staticmethod
     def _with_takeover_destination(caps: CallCapabilities, takeover_number: str | None) -> CallCapabilities:
-        """A real provider can only hand a call over when the owner has said where to: no destination, no Take over."""
-        if caps.simulated or not caps.can_take_over or takeover_number:
+        """A real provider can only hand a call over when the owner has said where to: no usable destination, no
+        Take over. A number without its country code is not usable, because a call is never bridged to a guess."""
+        if caps.simulated or not caps.can_take_over or dial_number(takeover_number):
             return caps
-        return caps.model_copy(
-            update={
-                "can_take_over": False,
-                "takeover_note": "Set the phone number Sparta should bridge you to (Assistant Studio) to enable Take Over.",
-            }
+        note = (
+            "Set the phone number Sparta should bridge you to (Assistant Studio) to enable Take Over."
+            if not takeover_number
+            else "The takeover number needs its country code, for example +91 98123 45670 (Assistant Studio), to "
+            "enable Take Over."
         )
+        return caps.model_copy(update={"can_take_over": False, "takeover_note": note})
 
     async def _load_detail(self, repo: Repository, principal: Principal, call_id: str) -> tuple[CallDetail, int]:
         row = await repo.get_call_row(principal.id, call_id)

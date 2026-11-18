@@ -87,6 +87,7 @@ MAX_TRACKED = 1024
 PENDING_TTL_S = 120.0
 MARK_GRACE_S = 5.0  # how long past the estimated duration a missing mark echo is waited for
 TRANSFER_SPEECH_WAIT_S = 8.0  # how long a takeover waits for its announcement to be heard before it redirects
+START_TIMEOUT_S = 10.0  # how long a media socket may take to send a valid start message before it is closed
 TOKEN_CHARS = 32
 
 CALL_SID = re.compile(r"CA[0-9a-f]{32}")
@@ -135,12 +136,21 @@ def url_variants(url: str, *, schemes: Sequence[str] = ()) -> list[str]:
     return out
 
 
+def _same_secret(candidate: str, expected: str) -> bool:
+    """Constant-time equality for text that came from the network.
+
+    ``hmac.compare_digest`` on ``str`` raises ``TypeError`` for non-ASCII input, so both sides are compared as bytes.
+    ``surrogatepass`` keeps a lone surrogate (valid in a JSON string) from raising.
+    """
+    return hmac.compare_digest(candidate.encode("utf-8", "surrogatepass"), expected.encode("utf-8", "surrogatepass"))
+
+
 def verify_twilio_signature(
     auth_token: str, header: str | None, urls: Sequence[str], fields: Sequence[tuple[str, str]]
 ) -> bool:
     if not header or len(header) > 128:
         return False
-    return any(hmac.compare_digest(twilio_signature(auth_token, url, fields), header) for url in urls)
+    return any(_same_secret(twilio_signature(auth_token, url, fields), header) for url in urls)
 
 
 def stream_token(auth_token: str, call_id: str) -> str:
@@ -277,6 +287,7 @@ class TwilioMediaSession:
         expected_call_sid: str | None,
         on_mark: Any = None,
         on_stop: Any = None,
+        on_authenticated: Any = None,
         metrics: Metrics | None = None,
         max_invalid_frames: int = MAX_INVALID_FRAMES,
     ) -> None:
@@ -287,6 +298,7 @@ class TwilioMediaSession:
         self._call_sid = expected_call_sid
         self._on_mark = on_mark
         self._on_stop = on_stop
+        self._on_authenticated = on_authenticated
         self._metrics = metrics or Metrics()
         self._max_invalid = max_invalid_frames
         self.stream_sid: str | None = None
@@ -390,7 +402,7 @@ class TwilioMediaSession:
             self._drop("bad_start")
         elif self._call_sid is not None and call_sid != self._call_sid:
             self._fail_auth("wrong_call")
-        elif not isinstance(token, str) or not hmac.compare_digest(token, self._token):
+        elif not isinstance(token, str) or not _same_secret(token, self._token):
             self._fail_auth("bad_token")
         elif not good_format:
             self._fail_auth("bad_format")
@@ -399,6 +411,8 @@ class TwilioMediaSession:
             self.authenticated = True
             self.stats["start"] += 1
             self.ready.set()
+            if self._on_authenticated is not None:
+                self._on_authenticated()
 
     def _fail_auth(self, reason: str) -> None:
         self._drop(reason)
@@ -497,9 +511,13 @@ class TwilioMediaSession:
         if not self.closed and self.stream_sid is not None:
             await self._send_json({"event": "clear", "streamSid": self.stream_sid})
 
-    async def close(self) -> None:
+    def shut(self) -> None:
+        """Stop sending and receiving; the owner of the socket ends the connection itself."""
         self.closed = True
         self._generation += 1
+
+    async def close(self) -> None:
+        self.shut()
 
 
 # ---------------------------------------------------------------------------------------------------- provider
@@ -549,6 +567,7 @@ class TwilioTelephonyProvider:
         metrics: Metrics | None = None,
         http: httpx.AsyncClient | None = None,
         media_attach_timeout_s: float = 10.0,
+        media_start_timeout_s: float = START_TIMEOUT_S,
     ) -> None:
         self._settings = settings
         self._tts = tts
@@ -557,6 +576,7 @@ class TwilioTelephonyProvider:
         self._metrics = metrics or Metrics()
         self._http = http
         self._media_attach_timeout_s = media_attach_timeout_s
+        self._media_start_timeout_s = media_start_timeout_s
         self._sink: TelephonyEventSink | None = None
         self._calls: dict[str, _Call] = {}
         self._ended: OrderedDict[str, None] = OrderedDict()
@@ -939,15 +959,16 @@ class TwilioTelephonyProvider:
 
     # ------------------------------------------------------------------------------------ media socket
     async def attach_media(self, call_id: str, websocket: WebSocketLike) -> None:
-        """Run the media session for ``call_id`` until its WebSocket closes. The route verified the upgrade first."""
+        """Run the media session for ``call_id`` until its WebSocket closes. The route verified the upgrade first.
+
+        A socket is only *pending* until its ``start`` message proves the per-call token: it becomes the call's live
+        stream then, and not before. So a socket that cannot (a stranger's, even when the upgrade signature check is
+        switched off) never displaces the live one.
+        """
         sink = self._require_sink()
         state = self._calls.get(call_id)
         if state is None:
             raise ProviderRejected(PROVIDER, "media", "unknown or ended call")
-        if state.media_task is not None and not state.media_task.done():
-            state.media_task.cancel()
-        if state.session is not None:
-            await state.session.close()
 
         def on_mark(name: str) -> None:
             event = state.marks.get(name)
@@ -957,6 +978,20 @@ class TwilioTelephonyProvider:
         async def on_stop() -> None:
             await self._remote_hangup(state, "disconnected")
 
+        def on_authenticated() -> None:
+            # Runs inside the socket's own start handling: the socket becomes the live stream the moment it proves
+            # the token (a reconnect replaces the previous one), and not one step earlier.
+            if self._calls.get(call_id) is not state:  # the call ended while the socket was still pending
+                task.cancel()
+                return
+            previous, previous_task = state.session, state.media_task
+            state.session, state.media_task = session, task
+            state.media_ready.set()
+            if previous_task is not None and previous_task is not task:
+                previous_task.cancel()
+            if previous is not None and previous is not session:
+                previous.shut()
+
         session = TwilioMediaSession(
             call_id,
             websocket,
@@ -965,11 +1000,11 @@ class TwilioTelephonyProvider:
             expected_call_sid=state.call_sid,
             on_mark=on_mark,
             on_stop=on_stop,
+            on_authenticated=on_authenticated,
             metrics=self._metrics,
         )
         task = asyncio.ensure_future(session.run())
-        state.session, state.media_task = session, task
-        watcher = asyncio.ensure_future(self._announce_ready(state, session))
+        watcher = asyncio.ensure_future(self._cancel_unless_started(session, task))
         try:
             await asyncio.wait({task})
         finally:
@@ -993,10 +1028,12 @@ class TwilioTelephonyProvider:
             # the call is over. A socket that never authenticated (a stranger's) must not end anyone's call.
             await self._remote_hangup(state, "disconnected")
 
-    async def _announce_ready(self, state: _Call, session: TwilioMediaSession) -> None:
-        await session.ready.wait()
-        if state.session is session:
-            state.media_ready.set()
+    async def _cancel_unless_started(self, session: TwilioMediaSession, task: asyncio.Task[None]) -> None:
+        """A socket that has not sent a valid start message in time is cancelled, so strangers cannot hold it open."""
+        try:
+            await asyncio.wait_for(session.ready.wait(), timeout=self._media_start_timeout_s)
+        except TimeoutError:
+            task.cancel()
 
     # ---------------------------------------------------------------------------------- status webhook
     async def handle_status_callback(self, fields: Mapping[str, str]) -> None:

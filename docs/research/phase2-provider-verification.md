@@ -171,6 +171,7 @@ service.
 Microsoft dev tunnels provide public HTTPS and WSS endpoints; the tunnel host authenticates unless `--allow-anonymous` is
 used, which a webhook from Azure or Twilio needs. The application must still verify provider tokens and signatures.
 Microsoft's own ACS sample derives a `wss://` media URL from a dev-tunnel URL. ngrok exposes HTTPS and WebSockets on one
-endpoint. **No call through either was tested.** Sparta's `SPARTA_PROVIDER_ONLY_HOSTS` makes a tunnel host serve only
+endpoint. **No call through either was tested.** Sparta's `SPARTA_PROVIDER_ONLY_HOSTS` (with an explicit
+`SPARTA_TRUSTED_HOSTS`) makes a tunnel host serve only
 `/healthz`, `/readyz`, `/api/v1/webhooks/*` and `/api/v1/media/*`.
 https://learn.microsoft.com/en-us/azure/developer/dev-tunnels/security , https://ngrok.com/docs/using-ngrok-with/websockets

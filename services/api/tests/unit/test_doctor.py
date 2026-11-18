@@ -179,6 +179,16 @@ async def test_the_callback_host_must_be_trusted():
     assert by_id(wildcard)["http.trusted_hosts"].status is Status.BLOCKED
 
 
+async def test_provider_only_hosts_without_explicit_trusted_hosts_are_blocked_because_the_server_would_not_start():
+    unbacked = await run_doctor(azure_settings(trusted_hosts=["*"], provider_only_hosts=[HOST]))
+    check = by_id(unbacked)["http.trusted_hosts"]
+    assert check.status is Status.BLOCKED and "refuses to start" in check.detail
+    backed = await run_doctor(azure_settings(trusted_hosts=[HOST, "localhost"], provider_only_hosts=[HOST]))
+    assert by_id(backed)["http.trusted_hosts"].status is Status.PASS
+    # a wildcard on its own stays a warning outside production, as before
+    assert by_id(await run_doctor(azure_settings(trusted_hosts=["*"])))["http.trusted_hosts"].status is Status.WARNING
+
+
 async def test_the_inbound_number_is_validated_and_never_proven_offline():
     ok = by_id(await run_doctor(azure_settings()))["telephony.inbound_number"]
     assert ok.status is Status.UNVERIFIED and NUMBER not in ok.detail
@@ -423,6 +433,25 @@ async def test_a_not_ready_deployment_is_blocked_with_the_reason(sqlite_url):
         report = await run_doctor(azure_settings(database_url=sqlite_url, redis_url=None), online=True, http=http)
     check = by_id(report)["callback.ready"]
     assert check.status is Status.BLOCKED and "migrations_pending" in check.detail
+
+
+async def test_what_a_remote_readyz_says_is_shown_as_short_plain_text_and_cannot_drive_the_terminal(sqlite_url):
+    checks = {"database\x1b[2J": "ok\x1b]0;owned\x07" + "x" * 500, "é" * 5: "\u202eevil"}
+    checks.update({f"k{i}": "v" for i in range(40)})
+    ready = httpx.Response(200, json={"checks": checks})
+    async with client_for(good_handler({f"GET https://{HOST}/readyz": ready})) as http:
+        report = await run_doctor(azure_settings(database_url=sqlite_url, redis_url=None), online=True, http=http)
+    detail = by_id(report)["callback.ready"].detail
+    assert "\x1b" not in detail and "\x07" not in detail and "\u202e" not in detail
+    assert len(detail) < 1100 and detail.count(": ") <= 12  # at most twelve entries, each of bounded length
+
+
+def test_no_check_text_can_carry_control_characters_into_a_terminal():
+    safe = Check("x", "g", "t\x1b[2J", Status.PASS, "a\x1b[31mred\x00\x07 b\nc\td", "fix\x9b").safe()
+    assert "\x1b" not in safe.title + safe.detail + safe.fix
+    assert (
+        not any(ch in safe.detail + safe.fix for ch in "\x00\x07\x9b") and "\n" in safe.detail and "\t" in safe.detail
+    )
 
 
 async def test_a_rejected_speech_key_and_a_missing_default_voice_are_blocked(sqlite_url):

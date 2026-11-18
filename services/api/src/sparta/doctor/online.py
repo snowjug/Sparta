@@ -45,6 +45,11 @@ class Unreachable(Exception):
         self.reason = reason
 
 
+def _remote_text(value: str, limit: int = 40) -> str:
+    """Text a remote server sent, reduced to plain printable ASCII and a short length before it is shown."""
+    return "".join(ch if ch.isascii() and ch.isprintable() else "?" for ch in value)[:limit]
+
+
 @dataclass(frozen=True)
 class Reply:
     status: int
@@ -403,7 +408,8 @@ async def callback_online(
         parsed = ready.json()
         reasons = ""
         if isinstance(parsed, dict) and isinstance(parsed.get("checks"), dict):
-            reasons = " (" + ", ".join(f"{k}: {v}" for k, v in parsed["checks"].items() if isinstance(v, str)) + ")"
+            shown = [(k, v) for k, v in parsed["checks"].items() if isinstance(k, str) and isinstance(v, str)]
+            reasons = " (" + ", ".join(f"{_remote_text(k)}: {_remote_text(v)}" for k, v in shown[:12]) + ")"
         out.append(
             Check(
                 f"{prefix}.ready",

@@ -187,6 +187,9 @@ access call audio.
 | `POST /webhooks/acs/events` | Azure Event Grid delivery: subscription-validation handshake + `IncomingCall`; Event Grid bearer-token validated |
 | `POST /webhooks/acs/callbacks/{call_id}` | Call Automation callbacks; ACS callback JWT (RS256, JWKS) validated |
 | `WS /media/acs/{call_id}` | ACS bidirectional audio stream (PCM 16 kHz mono JSON frames) |
+| `POST /webhooks/twilio/voice` | Twilio voice webhook for a call to the number: `X-Twilio-Signature` validated (HMAC-SHA1 of the configured public URL plus the sorted form fields); creates the call and answers with TwiML that streams its audio here (a per-call stream token travels as a `<Parameter>`), or `<Reject>` when a cost limit is reached; idempotent per `CallSid` |
+| `POST /webhooks/twilio/status` | Twilio call-status callback (optional): signature validated; a terminal status ends the call if the media stream did not already |
+| `WS /media/twilio/{call_id}` | Twilio Media Streams (G.711 mu-law 8 kHz, base64 JSON messages `connected`, `start`, `media`, `mark`, `stop`); the upgrade must carry Twilio's signature and the `start` message the per-call token |
 | `POST /webhooks/generic` | HMAC-SHA256 signed (`X-Sparta-Signature`) events for other providers; replay-protected with timestamp + nonce |
 
 All webhook handlers are idempotent on the provider event id and never trust unsigned input. See `docs/TELEPHONY.md`.

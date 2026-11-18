@@ -82,7 +82,7 @@ def ref(call_id: str = CALL) -> ProviderCallRef:
 
 
 def make(make_settings, *, tts=None, client=None, **kw):
-    ctor = {k: kw.pop(k) for k in ("media_attach_timeout_s",) if k in kw}
+    ctor = {k: kw.pop(k) for k in ("media_attach_timeout_s", "media_start_timeout_s") if k in kw}
     values = {
         "telephony_provider": "twilio",
         "twilio_account_sid": ACCOUNT,
@@ -175,7 +175,7 @@ def test_verification_accepts_only_the_right_token_url_fields_and_header():
     assert not verify_twilio_signature(TOKEN, header, [f"{BASE}/y"], fields)
     assert not verify_twilio_signature(TOKEN, header, [f"{BASE}/x"], [("CallSid", SID), ("From", "+1999")])
     assert not verify_twilio_signature(TOKEN, header, [f"{BASE}/x"], [*fields, ("Extra", "1")])
-    for bad in (None, "", "x" * 200, header[:-2], header.lower()):
+    for bad in (None, "", "x" * 200, header[:-2], header.lower(), "é" * 28, "\ud800" * 28):  # the last two: not ASCII
         assert not verify_twilio_signature(TOKEN, bad, [f"{BASE}/x"], fields)
 
 
@@ -659,6 +659,46 @@ async def test_a_reconnect_replaces_the_socket_without_ending_the_call(make_sett
     second_ws.disconnect()
     await asyncio.wait_for(second, 1.0)
     assert sink.hangups == [(CALL, "disconnected")] and first_ws is not second_ws
+
+
+async def test_a_socket_that_cannot_prove_the_token_never_displaces_the_live_stream(make_settings):
+    """Even with the upgrade signature switched off, only a socket that has authenticated can replace the live one."""
+    provider, _client, sink, _tts = make(make_settings, twilio_verify_media_signature=False)
+    await accept(provider, sink)
+    _live_ws, live = await attach(provider)
+    live_session = provider._calls[CALL].session
+    assert live_session is not None and live_session.authenticated
+    for bad_token in ("guessed-token", "tökén", "\ud800"):  # wrong, non-ASCII, a lone surrogate
+        _stranger_ws, stranger = await attach(provider, token=bad_token)
+        await asyncio.wait_for(stranger, 1.0)  # refused and closed on its own
+        assert provider._calls[CALL].session is live_session and not live_session.closed and not live.done()
+        assert provider.capabilities_for_call(CALL).two_way_audio is True
+    assert sink.hangups == [] and sink.errors == []
+
+
+async def test_a_socket_that_never_sends_start_is_closed_and_displaces_nothing(make_settings):
+    provider, _client, sink, _tts = make(make_settings, media_start_timeout_s=0.05)
+    await accept(provider, sink)
+    _live_ws, live = await attach(provider)
+    live_session = provider._calls[CALL].session
+    idle_ws = FakeWebSocket()
+    idle_ws.feed({"event": "connected", "protocol": "Call", "version": "1.0.0"})
+    await asyncio.wait_for(provider.attach_media(CALL, idle_ws), 1.0)  # returns once the start timeout cancels it
+    assert provider._calls[CALL].session is live_session and not live_session.closed and not live.done()
+    assert sink.hangups == []
+
+
+async def test_a_socket_that_authenticates_after_the_call_ended_is_dropped_not_attached(make_settings):
+    provider, _client, sink, _tts = make(make_settings)
+    await accept(provider, sink)
+    token = provider._calls[CALL].token
+    late_ws = FakeWebSocket()
+    late = asyncio.create_task(provider.attach_media(CALL, late_ws))
+    await settle()  # pending: nothing sent yet
+    await provider.hangup(ref(), "ended")
+    late_ws.feed(start_message(token))
+    await asyncio.wait_for(late, 1.0)
+    assert CALL not in provider._calls and sink.hangups == []
 
 
 async def test_hang_up_is_idempotent_and_ends_the_twilio_call(make_settings):

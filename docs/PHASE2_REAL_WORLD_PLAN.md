@@ -71,6 +71,7 @@ Nothing was bought, created or deployed, no secret was read or printed, and no r
 | `ccec1c8` | Android: Take Over stays disabled once taken over (a stale snapshot bug); physical-device checklist | Android unit tests (634), lint, debug build; checklist rows all say NOT RUN |
 | `305dd40` | Twilio adapter (signed webhooks and media upgrade, per-call token, mu-law, marks, clear, `<Dial>` takeover, `<Reject>`), doctor support, Event Grid caller pinning, v2 endpoint for continuous language identification, TTS required in production | 100+ adapter, codec, API and doctor tests |
 | `53b2406` | Honest takeover capability, cost caps, safe provider-failure closure, abandoned-playback fix, stage latency metrics, the controlled matrix | 12 matrix tests ([PHASE2_CONTROLLED_RESULTS.md](PHASE2_CONTROLLED_RESULTS.md)) |
+| the commit that adds [SECURITY_REVIEW_PHASE2.md](SECURITY_REVIEW_PHASE2.md) | Fixes from the security review of this path: provider-only hosts compare names and fail closed (and need explicit trusted hosts), a media socket displaces the live stream only after it proves the token, production requires the Event Grid caller pin and refuses to skip the media signature, non-ASCII credentials are refused cleanly, a takeover number is dialled as strict E.164 and never guessed, doctor output from a remote host is sanitised; two documented dummy test values allowlisted in `.gitleaks.toml` | 23 tests in the five affected test files fail on the earlier code and pass now (plus `test_numbers.py`, which cannot import `dial_number` there), and the whole suite passes |
 
 Later commits on the branch add the infrastructure parameters and the documentation. The final regression results are in
 the pull request.
@@ -107,7 +108,7 @@ Any one of these routes works; the first is the shortest.
 2. **An Azure Speech resource in `centralindia`** (key and region), and optionally an Azure OpenAI deployment.
 3. **A public HTTPS URL** for the API: either authorise the Azure deployment (`docs/DEPLOYMENT.md`; it creates billable
    resources and says which ones to stop afterwards) or run the API locally behind a dev tunnel with
-   `SPARTA_PROVIDER_ONLY_HOSTS` set.
+   `SPARTA_PROVIDER_ONLY_HOSTS` and `SPARTA_TRUSTED_HOSTS` set (both are required).
 4. **A second phone you control** to place the test call, and your consent to be recorded if you want audio kept (none is
    stored by default).
 5. Then run `python -m sparta doctor --provider twilio --online --allow-billable` (cents), place the call, and follow

@@ -4,6 +4,7 @@ Production guards fail fast with an actionable message instead of a stack trace.
 """
 
 import importlib.util
+import re
 from enum import StrEnum
 from functools import lru_cache
 from typing import Annotated, Literal
@@ -24,6 +25,9 @@ class ConfigurationError(RuntimeError):
     def __init__(self, problems: list[str]) -> None:
         self.problems = problems
         super().__init__("Invalid Sparta configuration:\n  - " + "\n  - ".join(problems))
+
+
+_BARE_HOST = re.compile(r"[A-Za-z0-9][A-Za-z0-9.\-]*")
 
 
 def _split_csv(value: object) -> object:
@@ -90,7 +94,9 @@ class Settings(BaseSettings):
         default_factory=list,
         description="Host names that may only reach the health probes and the provider callback and media routes "
         "(a development tunnel, for instance). Every other route answers 404 on those hosts, so a public tunnel never "
-        "exposes the owner API of a development-identity server. Not a substitute for sign-in in production.",
+        "exposes the owner API of a development-identity server. Needs SPARTA_TRUSTED_HOSTS to list explicit host names "
+        "(a listed host name is matched exactly, so every other Host header must be refused by trusted hosts). Not a "
+        "substitute for sign-in in production.",
     )
     public_base_url: str = "http://localhost:8000"
     max_request_bytes: int = 512_000
@@ -162,7 +168,7 @@ class Settings(BaseSettings):
     twilio_verify_media_signature: bool = Field(
         default=True,
         description="Require Twilio's X-Twilio-Signature on the media WebSocket upgrade (the per-call token in the "
-        "start message is always required). Switch off only to debug a signature mismatch.",
+        "start message is always required). Switch off only to debug a signature mismatch, never in production.",
     )
     provider_timeout_s: float = 6.0
     provider_max_retries: int = 2
@@ -266,6 +272,19 @@ class Settings(BaseSettings):
             )
         if self.telephony_provider == "other" and not self.telephony_plugin:
             out.append("TELEPHONY_PROVIDER=other requires SPARTA_TELEPHONY_PLUGIN='package.module:factory'")
+        if self.provider_only_hosts:
+            if not all(_BARE_HOST.fullmatch(host) for host in self.provider_only_hosts):
+                out.append(
+                    "SPARTA_PROVIDER_ONLY_HOSTS lists bare host names (no scheme, port or path), "
+                    "for example 'abc-8000.devtunnels.ms'"
+                )
+            if "*" in self.trusted_hosts:
+                # The guard only recognises the listed names; trusted hosts is what rejects every other Host header.
+                out.append(
+                    "SPARTA_PROVIDER_ONLY_HOSTS requires SPARTA_TRUSTED_HOSTS to list explicit host names (the tunnel "
+                    "host and localhost): with '*' any other Host header (an alias of the tunnel, say) would reach "
+                    "the whole owner API"
+                )
         if self.stt_provider == "azure" and not (self.azure_speech_key and self.azure_speech_region):
             out.append("SPARTA_STT_PROVIDER=azure requires SPARTA_AZURE_SPEECH_KEY and SPARTA_AZURE_SPEECH_REGION")
         if self.tts_provider == "azure" and not (self.azure_speech_key and self.azure_speech_region):
@@ -296,6 +315,16 @@ class Settings(BaseSettings):
                 out.append(
                     f"TELEPHONY_PROVIDER={self.telephony_provider} speaks to the caller, which needs speech "
                     "synthesis: set SPARTA_TTS_PROVIDER=azure"
+                )
+            if self.telephony_provider == "twilio" and not self.twilio_verify_media_signature:
+                out.append(
+                    "SPARTA_TWILIO_VERIFY_MEDIA_SIGNATURE=false is a debugging switch: it is forbidden when "
+                    "SPARTA_ENV=production (reproduce the mismatch on a development tunnel instead)"
+                )
+            if self.telephony_provider == "azure" and not (self.event_grid_allowed_app_ids or "").strip():
+                out.append(
+                    "TELEPHONY_PROVIDER=azure requires SPARTA_EVENT_GRID_ALLOWED_APP_IDS in production: the Event "
+                    "Grid role alone does not show who delivered an IncomingCall event"
                 )
             if self.auth_mode == "dev":
                 out.append("SPARTA_AUTH_MODE=dev is forbidden when SPARTA_ENV=production (use oidc)")

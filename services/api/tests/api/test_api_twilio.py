@@ -273,6 +273,37 @@ def twiml_of(text: str) -> ET.Element:
     return ET.fromstring(text.split("?>", maxsplit=1)[-1])
 
 
+async def test_a_takeover_number_is_dialled_as_strict_e164_and_never_completed_with_a_guessed_country():
+    async with running_env(**TWILIO) as env:
+        kit = Kit(env)
+        await kit.voice()
+        call_id = (await phone_calls(env))[0]["id"]
+        url = f"{API}/calls/{call_id}"
+
+        async def save(number: str) -> None:
+            prefs = (await env.client.get(f"{API}/preferences", headers=PHONE_OWNER)).json()
+            saved = await env.client.put(
+                f"{API}/preferences", json={**prefs, "takeover_number": number}, headers=PHONE_OWNER
+            )
+            assert saved.status_code == 200, saved.text
+
+        await save("098123 45670")  # accepted as a preference, but it has no country code: not usable
+        caps = (await env.client.get(url, headers=PHONE_OWNER)).json()["capabilities"]
+        assert caps["can_take_over"] is False and "country code" in caps["takeover_note"]
+        refused = await env.client.post(f"{url}/takeover", headers=PHONE_OWNER)
+        assert refused.status_code == 409 and refused.json()["error"]["code"] == "unsupported_by_provider"
+        assert kit.rest.redirects == []
+        detail = (await env.client.get(url, headers=PHONE_OWNER)).json()
+        assert detail["status"] == "active"  # the refused tap changed nothing about the call
+
+        await save("+91 (98123) 45-670")  # formatted: dialled as +919812345670
+        assert (await env.client.get(url, headers=PHONE_OWNER)).json()["capabilities"]["can_take_over"] is True
+        took = await env.client.post(f"{url}/takeover", headers=PHONE_OWNER)
+        assert took.status_code == 200, took.text
+        dial = twiml_of(kit.rest.redirects[0][1]).find("./Dial")
+        assert dial is not None and dial.findtext("Number") == "+919812345670"
+
+
 # --------------------------------------------------------------------------------------------- media socket
 async def test_the_media_socket_refuses_unsigned_upgrades_and_closes_unknown_calls():
     async with running_env(**TWILIO) as env:

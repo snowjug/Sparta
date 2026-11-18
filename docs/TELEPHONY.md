@@ -113,7 +113,7 @@ Settings (environment variables; secrets belong in a secret store, never in the 
 | `SPARTA_STT_PROVIDER=azure`, `SPARTA_TTS_PROVIDER=azure`, `SPARTA_AZURE_SPEECH_KEY`, `SPARTA_AZURE_SPEECH_REGION` | Speech recognition and synthesis. Startup refuses `TELEPHONY_PROVIDER=azure` with simulated STT. With simulated TTS the provider cannot speak (`play` is refused and `can_play_audio` is false) |
 | `SPARTA_TELEPHONY_OWNER_USER_ID` | The owner who receives the calls (section 3) |
 | `SPARTA_FORWARDING_NUMBER` | The provider number shown to the apps |
-| Owner preference `takeover_number` (Assistant Studio) | E.164 number to transfer to on Take Over; without it the action is refused |
+| Owner preference `takeover_number` (Assistant Studio) | Number, with its country code, to transfer to on Take Over (spaces and dashes are fine; a number without a country code is not used); without a usable one the apps show Take Over as unavailable and the action is refused |
 
 What the adapter does:
 
@@ -155,7 +155,8 @@ Constraints from the verification notes (read the note for sources and the date 
 * Event Grid deliveries can additionally be pinned to the calling application: set `SPARTA_EVENT_GRID_ALLOWED_APP_IDS` to
   the application id of the `Microsoft.EventGrid` service principal in your tenant (the `appid`/`azp` claim must match).
   The `AzureEventGridSecureWebhookSubscriber` role is also granted to the subscription-writer app, so the role alone does
-  not show that Event Grid is the caller. `sparta doctor` warns while it is unset.
+  not show that Event Grid is the caller. `sparta doctor` warns while it is unset, and with `SPARTA_ENV=production` the
+  server refuses to start with `TELEPHONY_PROVIDER=azure` until it is set.
 * The ACS resource id is documented by Microsoft's own sample as the *immutable resource id* (a GUID, not the ARM path)
   and used as the audience of callback and media tokens. A live token has not been inspected: **UNVERIFIED**.
 
@@ -176,10 +177,10 @@ Settings:
 | `SPARTA_TWILIO_AUTH_TOKEN` | Auth token (secret). It signs every webhook Twilio sends, authenticates the REST API and keys the per-call stream tokens, so Sparta needs nothing else from Twilio |
 | `SPARTA_TWILIO_CALLBACK_BASE_URL` | Public `https://` origin Twilio calls and streams audio to. Signatures are checked against this configured origin, never against the `Host` header |
 | `SPARTA_TWILIO_CALLER_ID` | Optional. E.164 number shown on a takeover call; default is the Twilio number that was dialled |
-| `SPARTA_TWILIO_VERIFY_MEDIA_SIGNATURE` | Default `true`. Whether the media WebSocket upgrade must carry `X-Twilio-Signature`. The per-call token in the `start` message authenticates the socket either way |
+| `SPARTA_TWILIO_VERIFY_MEDIA_SIGNATURE` | Default `true`. Whether the media WebSocket upgrade must carry `X-Twilio-Signature`. The per-call token in the `start` message authenticates the socket either way. A debugging switch: the server refuses to start with `false` when `SPARTA_ENV=production` (reproduce a mismatch on a development tunnel) |
 | `SPARTA_STT_PROVIDER=azure`, `SPARTA_TTS_PROVIDER=azure`, `SPARTA_AZURE_SPEECH_KEY`, `SPARTA_AZURE_SPEECH_REGION` | Required in production: a silent or deaf assistant would never make the AI disclosure |
 | `SPARTA_TELEPHONY_OWNER_USER_ID`, `SPARTA_FORWARDING_NUMBER` | As in section 3 (`SPARTA_FORWARDING_NUMBER` is the Twilio number callers dial; the doctor checks it on the account) |
-| Owner preference `takeover_number` | E.164 destination of Take Over. **Without it the apps show Take Over as unavailable and the tap is refused** |
+| Owner preference `takeover_number` | Destination of Take Over, with its country code (`+91 98123 45670`: spaces and dashes are fine; a number without a country code is refused, never completed with a guess). **Without a usable one the apps show Take Over as unavailable and the tap is refused** |
 
 What the adapter does:
 
@@ -192,7 +193,9 @@ What the adapter does:
    the `wss://` and `https://` forms of the URL, with and without the default port, because which form Twilio signs is
    **UNVERIFIED**), and the `start` message must name this call's `CallSid`, carry its token and announce
    `audio/x-mulaw`, 8000 Hz, one channel. Frames before an authenticated `start` are dropped and counted; 500 malformed
-   frames close the socket. A stranger's socket can never end anyone's call.
+   frames close the socket. A stranger's socket can never end anyone's call, and a socket becomes the live stream only
+   once its `start` message has proven the token, so it cannot displace the live one either; a socket that sends no valid
+   `start` within 10 s is closed.
 3. **Caller audio.** mu-law 8 kHz, converted to PCM16 and handed to `services/audio_pipeline.py` (voice-activity detection,
    one streaming recognition per utterance). DTMF digits are received and ignored.
 4. **Assistant speech.** The TTS provider synthesises mu-law 8 kHz, sent as 80 ms `media` messages, followed by a `mark`
@@ -215,7 +218,8 @@ Constraints (sources: [research/phase2-provider-verification.md](research/phase2
   numbers with a regulatory bundle and an address outside India; eligibility and inventory for a given applicant are
   **UNVERIFIED**, and Sparta never buys or ports a number.
 * The same public URL must serve the voice webhook, the media WebSocket and (optionally) the status callback. With a dev
-  tunnel, set `SPARTA_PROVIDER_ONLY_HOSTS` to the tunnel's host name so that only the provider routes are reachable through
+  tunnel, set `SPARTA_PROVIDER_ONLY_HOSTS` to the tunnel's host name and `SPARTA_TRUSTED_HOSTS` to that host name plus
+  `localhost` (the server refuses to start with a wildcard) so that only the provider routes are reachable through
   it ([DEPLOYMENT.md](DEPLOYMENT.md)).
 * Twilio's own charges (number, per-minute, Stream) are Twilio's: Sparta's `SPARTA_ESTIMATED_*` settings only let the
   doctor print a worst-case figure from prices you enter.

@@ -243,7 +243,7 @@ Invalid Sparta configuration:
 | `telephonyProvider`, `sttProvider`, `ttsProvider`, `llmProvider` | `SPARTA_TELEPHONY_PROVIDER` (`simulator`, `azure`, `twilio`, `other`), `SPARTA_STT_PROVIDER`, `SPARTA_TTS_PROVIDER`, `SPARTA_LLM_PROVIDER` | all `simulator` / `rules` |
 | `azureOpenAiEndpoint`, `azureOpenAiDeployment` (+ key) | `SPARTA_AZURE_OPENAI_*` | empty |
 | `speechRegion` (+ key or `deploySpeech`) | `SPARTA_AZURE_SPEECH_REGION`, `SPARTA_AZURE_SPEECH_KEY` | the deployment region |
-| `acsResourceId`, `entraTenantId`, `eventGridAudience`, `eventGridAllowedAppIds`, `telephonyOwnerUserId`, `forwardingNumber` | `SPARTA_ACS_RESOURCE_ID`, `SPARTA_ENTRA_TENANT_ID`, `SPARTA_EVENT_GRID_AUDIENCE`, `SPARTA_EVENT_GRID_ALLOWED_APP_IDS`, `SPARTA_TELEPHONY_OWNER_USER_ID`, `SPARTA_FORWARDING_NUMBER` | empty |
+| `acsResourceId`, `entraTenantId`, `eventGridAudience`, `eventGridAllowedAppIds`, `telephonyOwnerUserId`, `forwardingNumber` | `SPARTA_ACS_RESOURCE_ID`, `SPARTA_ENTRA_TENANT_ID`, `SPARTA_EVENT_GRID_AUDIENCE`, `SPARTA_EVENT_GRID_ALLOWED_APP_IDS`, `SPARTA_TELEPHONY_OWNER_USER_ID`, `SPARTA_FORWARDING_NUMBER` | empty (`eventGridAllowedAppIds` is required with `telephonyProvider = 'azure'`: the API refuses to start in production without it) |
 | `twilioAccountSid`, `twilioCallerId` (+ the `SPARTA_TWILIO_AUTH_TOKEN` secret) | `SPARTA_TWILIO_ACCOUNT_SID`, `SPARTA_TWILIO_CALLER_ID`, `SPARTA_TWILIO_AUTH_TOKEN` | empty |
 | `dailyCallCap`, `maxActiveCalls` | `SPARTA_DAILY_CALL_CAP`, `SPARTA_MAX_ACTIVE_CALLS` | 200, 5 |
 | `dailyCallMinutesCap`, `perNumberDailyCallCap`, `providerFailureLimit` | `SPARTA_DAILY_CALL_MINUTES_CAP`, `SPARTA_PER_NUMBER_DAILY_CALL_CAP`, `SPARTA_PROVIDER_FAILURE_LIMIT` | 240, 10, 2 |
@@ -416,7 +416,9 @@ Read [`docs/TELEPHONY.md`](TELEPHONY.md) and [`docs/research/`](research/). The 
   to speech-to-text round trip in all three languages and one model turn. It exits 1 if anything is BLOCKED and always lists
   what only a real call can prove. It prints no secret and masks the phone number. `--json` gives machine-readable output.
 * **Local API behind a tunnel** (the cheapest way to a first call, no Azure resources): run the API with
-  `SPARTA_PROVIDER_ONLY_HOSTS=<tunnel host>` (and that host in `SPARTA_TRUSTED_HOSTS`); on that host only `/healthz`,
+  `SPARTA_PROVIDER_ONLY_HOSTS=<tunnel host>` **and** `SPARTA_TRUSTED_HOSTS=<tunnel host>,localhost` (both are required: the
+  server refuses to start with a wildcard in `SPARTA_TRUSTED_HOSTS`, because trusted hosts is what refuses every other
+  `Host` header, such as an alias of the tunnel); on the listed host only `/healthz`,
   `/readyz`, `/api/v1/webhooks/*` and `/api/v1/media/*` exist and everything else is a 404 (a WebSocket closes with 1008),
   so the tunnel exposes the provider routes and not the owner API. Production still needs OIDC, PostgreSQL and Redis; a
   development API on a tunnel is for a short, supervised test. Dev tunnels need `--allow-anonymous` for the provider's

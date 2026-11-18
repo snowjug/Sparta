@@ -216,7 +216,7 @@ param acsResourceId string = ''
 param entraTenantId string = ''
 param eventGridAudience string = ''
 
-@description('Application (client) id of the Microsoft.EventGrid service principal in your tenant, comma-separated if several. Event Grid deliveries are accepted only from it. Look it up with: az ad sp list --display-name Microsoft.EventGrid --query [].appId -o tsv')
+@description('Application (client) id of the Microsoft.EventGrid service principal in your tenant, comma-separated if several. Event Grid deliveries are accepted only from it. Required when telephonyProvider is azure: the API refuses to start in production without it. Look it up with: az ad sp list --display-name Microsoft.EventGrid --query [].appId -o tsv')
 param eventGridAllowedAppIds string = ''
 
 @description('Twilio account SID (starts with AC). Not secret; the auth token is twilioAuthToken.')

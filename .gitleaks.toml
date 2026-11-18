@@ -33,4 +33,6 @@ regexes = [
   '''sparta-ci-only''',                                    # CI service-container password
   '''ci-placeholder-0123456789''',                         # ci.yml: placeholder so main.bicepparam compiles (not a password)
   '''4633458b-17de-408a-b874-0445c86b69e6''',              # public built-in Azure role id "Key Vault Secrets User" (secretaccess.bicep)
+  '''speech-key-SENTINEL-9f3a''',                           # services/api/tests/unit/test_doctor.py: fake Speech key the leak tests assert is never printed
+  '''fedcba9876543210fedcba9876543210''',                   # services/api/tests/unit/test_doctor.py: fake Twilio auth token the leak tests assert is never printed
 ]

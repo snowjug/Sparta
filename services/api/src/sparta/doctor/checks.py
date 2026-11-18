@@ -258,7 +258,19 @@ def _http_surface(settings: Settings, production: bool, callback_url: str | None
     out: list[Check] = []
     host = callback_host(settings, callback_url)
     hosts = settings.trusted_hosts
-    if "*" in hosts:
+    if "*" in hosts and settings.provider_only_hosts:
+        out.append(
+            _check(
+                "http.trusted_hosts",
+                CORE,
+                "Trusted hosts",
+                Status.BLOCKED,
+                "SPARTA_PROVIDER_ONLY_HOSTS is set but SPARTA_TRUSTED_HOSTS is a wildcard: any other Host header (an "
+                "alias of the tunnel, say) would reach the whole owner API, so the server refuses to start.",
+                "Set SPARTA_TRUSTED_HOSTS to the tunnel host and localhost (docs/DEPLOYMENT.md, 'Local API behind a tunnel').",
+            )
+        )
+    elif "*" in hosts:
         out.append(
             _check(
                 "http.trusted_hosts",
