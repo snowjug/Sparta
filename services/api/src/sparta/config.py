@@ -3,6 +3,7 @@
 Production guards fail fast with an actionable message instead of a stack trace.
 """
 
+import importlib.util
 from enum import StrEnum
 from functools import lru_cache
 from typing import Annotated, Literal
@@ -29,6 +30,14 @@ def _split_csv(value: object) -> object:
     if isinstance(value, str):
         return [item.strip() for item in value.split(",") if item.strip()]
     return value
+
+
+def _module_available(name: str) -> bool:
+    """Whether ``name`` can be imported, without importing it (a missing parent package counts as unavailable)."""
+    try:
+        return importlib.util.find_spec(name) is not None
+    except (ImportError, ValueError):
+        return False
 
 
 class Settings(BaseSettings):
@@ -102,6 +111,12 @@ class Settings(BaseSettings):
     azure_speech_region: str | None = None
     azure_speech_endpoint: str | None = Field(
         default=None, description="Custom-domain Speech endpoint; defaults to the regional host"
+    )
+    azure_speech_streaming: Literal["auto", "on", "off"] = Field(
+        default="auto",
+        description="Live recognition through the Speech SDK (partial transcripts, lower latency): 'auto' uses it when "
+        "the SDK is installed and falls back to one REST request per utterance otherwise; 'on' requires the SDK; "
+        "'off' always uses REST.",
     )
     azure_openai_endpoint: str | None = None
     azure_openai_key: SecretStr | None = None
@@ -191,6 +206,15 @@ class Settings(BaseSettings):
             out.append("SPARTA_STT_PROVIDER=azure requires SPARTA_AZURE_SPEECH_KEY and SPARTA_AZURE_SPEECH_REGION")
         if self.tts_provider == "azure" and not (self.azure_speech_key and self.azure_speech_region):
             out.append("SPARTA_TTS_PROVIDER=azure requires SPARTA_AZURE_SPEECH_KEY and SPARTA_AZURE_SPEECH_REGION")
+        if (
+            self.stt_provider == "azure"
+            and self.azure_speech_streaming == "on"
+            and not _module_available("azure.cognitiveservices.speech")
+        ):
+            out.append(
+                "SPARTA_AZURE_SPEECH_STREAMING=on requires the azure-cognitiveservices-speech package "
+                "(pip install 'sparta-api[azure]'); use 'auto' to fall back to per-utterance recognition"
+            )
         if self.llm_provider == "azure_openai" and not (
             self.azure_openai_endpoint and self.azure_openai_key and self.azure_openai_deployment
         ):

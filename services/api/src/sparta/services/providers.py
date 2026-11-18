@@ -78,8 +78,10 @@ def build_providers(settings: Settings, *, clock: Clock, metrics: Metrics) -> Pr
     stt: SpeechToTextProvider
     if settings.stt_provider == "azure":
         from sparta.providers.stt.azure import AzureSpeechToText
+        from sparta.providers.stt.azure_sdk import build_stt
 
-        stt = register(AzureSpeechToText(settings, http=shared_http(), clock=clock, metrics=metrics))
+        rest_stt = AzureSpeechToText(settings, http=shared_http(), clock=clock, metrics=metrics)
+        stt = register(build_stt(settings, rest_stt, clock=clock, metrics=metrics))
     else:
         stt = SimulatedSpeechToText()
 
