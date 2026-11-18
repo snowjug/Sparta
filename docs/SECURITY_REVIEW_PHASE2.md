@@ -93,6 +93,17 @@ that the leak tests assert are never printed. Neither is a credential. They are 
 `.gitleaks.toml`, as that file requires for any fixture that looks like a key; a second scan found no leak. A scan of the
 working tree reports matches only inside git-ignored folders (`.venv`, `.next`).
 
+### Code scanning (CodeQL)
+
+The first GitHub run reported three high alerts, all in test code or in a test's flow into production code, and `main` had
+none. Two were `host.endswith("tts.speech.microsoft.com")` checks in `test_doctor.py` (`py/incomplete-url-substring-sanitization`),
+now exact comparisons. The third (`py/weak-sensitive-data-hashing`) was reported on the HMAC-SHA1 of Twilio's signature scheme.
+The SARIF showed the "sensitive data" source: a fake Twilio account SID in the tests that is named `ACCOUNT`, which CodeQL's
+name heuristic (`acc(ou)?nt`) classes as account data as it flows through the test fixtures into the signature function. It
+is not a secret, the scheme mandates HMAC-SHA1 and an HMAC does not rely on SHA-1's collision resistance; the constant was
+renamed and `twilio_signature` now says why it uses SHA-1. Nothing was suppressed, dismissed or excluded from the scan, and
+the next run had no open alert.
+
 ## What is still open
 
 - **`Host: localhost` through a tunnel.** After the fix every `Host` that is not listed in `SPARTA_TRUSTED_HOSTS` is

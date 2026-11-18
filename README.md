@@ -320,8 +320,9 @@ Run the commands from the directory shown. Each tool reports its own result; the
 pinned to a commit, and goes stale as the code changes.
 
 **Last verified** on branch `feat/real-world-telephony` (Phase 2) at commit `c8a56c4`, on one Windows 11 machine, with this
-repository's own tools; commits after it change documentation only. The Android rows were measured at `ccec1c8`, the last
-commit that changed Android code. Phase 1's record on `main` follows the table.
+repository's own tools. The commits after it change documentation, test names and the hash list of one lock file (below);
+GitHub re-ran the backend on them. The Android rows were measured at `ccec1c8`, the last commit that changed Android code.
+Phase 1's record on `main` follows the table.
 
 | Check | Result |
 | --- | --- |
@@ -339,6 +340,17 @@ commit that changed Android code. Phase 1's record on `main` follows the table.
 | API image and Bicep | the API image (with the Speech SDK) builds; the SDK imports and builds a streaming recogniser in the `python:3.12-slim` runtime image (loading only: nothing was recognised); Trivy 0.76.2 with CI's flags (`--severity HIGH,CRITICAL --ignore-unfixed`) reports nothing; the Bicep builds, builds its parameters and lints (Bicep 0.48.1); nothing was deployed |
 | Controlled call matrix (Phase 2) | 12 whole-call tests over a real WebSocket with scripted speech services; local processing time from the end of the caller's turn to the first audio, p50 about 92 ms and p95 about 205 ms, with zero-latency fakes: [docs/PHASE2_CONTROLLED_RESULTS.md](docs/PHASE2_CONTROLLED_RESULTS.md) |
 | `gitleaks` 8.30.1 (`gitleaks git`) on the history of the branch | no leaks; two fake test values it flagged are allowlisted by exact value ([docs/SECURITY_REVIEW_PHASE2.md](docs/SECURITY_REVIEW_PHASE2.md)) |
+
+**Phase 2 on GitHub** (pull request 11, 2026-11-18, `ubuntu-24.04` runners): the first run failed three things that did not
+show locally, all fixed in `e468311`. `requirements-dev.lock` carried five md5 hashes for the Speech SDK (the package mirror
+it was generated through publishes them), which pip's hash-checking mode refuses, so the backend and backend-security jobs
+could not install. CodeQL reported three high alerts in test code: a fake Twilio account SID named `ACCOUNT`, which its name
+heuristic classes as sensitive account data as it flows through the test fixtures into Twilio's HMAC-SHA1 signature, and two
+`endswith` host checks. The constant was renamed and the checks made exact; nothing was suppressed or excluded. On the second
+run all checks passed: the backend with PostgreSQL and Redis service containers, backend security (`pip-audit`, `bandit`, lock
+hashes), Android, infrastructure and tooling, both container images built and scanned by Trivy, `gitleaks`, CodeQL for three
+languages with no open alert, dependency review and the `ci-ok` gate. The web job and the Playwright job were skipped by the
+changed-area filter, because no web file changed.
 
 **Phase 1 on GitHub** (pull request 1, 2026-11-18, `ubuntu-24.04` runners; the workflows had never run before): all 16 checks passed
 on `99023e2`: the changed-area filter, the backend job with PostgreSQL and Redis service containers, backend security

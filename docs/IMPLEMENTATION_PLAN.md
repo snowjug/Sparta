@@ -176,7 +176,8 @@ sources are [research/phase2-provider-verification.md](research/phase2-provider-
 | P2-8 | A real call (Level B) | **Not started: blocked on external resources** | [PHASE2_REAL_WORLD_PLAN.md](PHASE2_REAL_WORLD_PLAN.md), section 6 |
 
 **Phase 2 verification** (2026-11-18; `c8a56c4` is the code of the branch, the Android rows were measured at `ccec1c8`, the last
-commit that changed Android code). `scripts\check.ps1 -Security`: all 13 steps passed (ruff and format clean, mypy on 116
+commit that changed Android code; `e468311` then changed the hash list of one lock file, test names and a docstring, and GitHub
+re-ran the backend on it). `scripts\check.ps1 -Security`: all 13 steps passed (ruff and format clean, mypy on 116
 files, `pytest` with PostgreSQL 16 and Redis 7: 2321 passed, OpenAPI contract current, dev-split evaluation unchanged (recall
 87.8%, precision 94.7%, protected 33/33, no violations), `pip-audit` no known vulnerabilities, `bandit` clean, web lockfile,
 `eslint`, `tsc`, 310 `vitest` tests, `next build`). Web `npm run e2e`: 112 of 112 (an earlier run of the same code failed one
