@@ -97,7 +97,16 @@ def build_providers(settings: Settings, *, clock: Clock, metrics: Metrics) -> Pr
     if settings.llm_provider == "azure_openai":
         from sparta.providers.llm.azure_openai import AzureOpenAIConversationModel
 
-        llm = register(AzureOpenAIConversationModel(settings, http=shared_http(), clock=clock, metrics=metrics))
+        llm = register(
+            AzureOpenAIConversationModel(
+                settings,
+                http=shared_http(),
+                clock=clock,
+                metrics=metrics,
+                temperature=0.0 if settings.azure_openai_send_temperature else None,
+                output_limit_param=settings.azure_openai_output_limit_param,
+            )
+        )
     else:
         llm = RulesConversationModel()
 

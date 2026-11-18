@@ -122,6 +122,17 @@ class Settings(BaseSettings):
     azure_openai_key: SecretStr | None = None
     azure_openai_deployment: str | None = None
     azure_openai_api_version: str = "2024-10-21"
+    azure_openai_output_limit_param: Literal["auto", "max_tokens", "max_completion_tokens"] = Field(
+        default="auto",
+        description="Name of the output-limit parameter the deployment accepts. GPT-4-class deployments take "
+        "max_tokens, reasoning-model deployments take max_completion_tokens; 'auto' starts with max_tokens and "
+        "switches (once, remembered) when the service reports it as unsupported.",
+    )
+    azure_openai_send_temperature: bool = Field(
+        default=True,
+        description="Send temperature=0. Reasoning-model deployments reject it: 'auto' handling drops it after the "
+        "first rejection, or set this to false.",
+    )
     acs_connection_string: SecretStr | None = None
     acs_callback_base_url: str | None = None
     acs_resource_id: str | None = Field(

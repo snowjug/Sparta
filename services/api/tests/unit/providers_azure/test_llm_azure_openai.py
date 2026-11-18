@@ -713,3 +713,110 @@ async def test_aclose_closes_only_a_client_it_created(make_settings, fast_clock)
     owning = AzureOpenAIConversationModel(make_settings())
     await owning.aclose()
     assert owning._http.is_closed
+
+
+# ------------------------------------------------------------------------- model families (auto adaptation)
+def unsupported(param: str, code: str = "unsupported_parameter") -> httpx.Response:
+    message = f"Unsupported parameter: '{param}' is not supported with this model. SECRET-DETAIL"
+    return httpx.Response(
+        400, json={"error": {"message": message, "type": "invalid_request_error", "param": param, "code": code}}
+    )
+
+
+async def test_auto_mode_switches_to_max_completion_tokens_once_and_remembers_it(make_settings, fast_clock):
+    llm, http = make(
+        make_settings,
+        fast_clock,
+        unsupported("max_tokens"),
+        completion(analysis_json()),
+        output_limit_param="auto",
+    )
+    await llm.evaluate_turn(turn("first"))
+    first, second = (json.loads(r.content) for r in http.requests)
+    assert "max_tokens" in first and "max_completion_tokens" not in first
+    assert "max_tokens" not in second and second["max_completion_tokens"] == first["max_tokens"]
+    await llm.evaluate_turn(turn("second"))
+    third = json.loads(http.requests[2].content)
+    assert "max_tokens" not in third and "max_completion_tokens" in third and len(http.requests) == 3
+
+
+async def test_auto_mode_drops_a_temperature_the_model_does_not_accept(make_settings, fast_clock):
+    llm, http = make(
+        make_settings,
+        fast_clock,
+        unsupported("temperature", "unsupported_value"),
+        completion(analysis_json()),
+        output_limit_param="auto",
+    )
+    await llm.evaluate_turn(turn())
+    assert "temperature" in json.loads(http.requests[0].content)
+    assert "temperature" not in json.loads(http.requests[1].content) and len(http.requests) == 2
+
+
+async def test_a_reasoning_model_that_rejects_both_parameters_is_adapted_in_two_steps(make_settings, fast_clock):
+    llm, http = make(
+        make_settings,
+        fast_clock,
+        unsupported("max_tokens"),
+        unsupported("temperature", "unsupported_value"),
+        completion(analysis_json()),
+        output_limit_param="auto",
+    )
+    result = await llm.evaluate_turn(turn())
+    final = json.loads(http.requests[-1].content)
+    assert len(http.requests) == 3 and "temperature" not in final and "max_completion_tokens" in final
+    assert result.extra_signals == []
+
+
+async def test_an_explicit_setting_is_never_overridden_by_the_service(make_settings, fast_clock):
+    llm, http = make(make_settings, fast_clock, unsupported("max_tokens"), output_limit_param="max_tokens")
+    with pytest.raises(ProviderRejected) as err:
+        await llm.evaluate_turn(turn())
+    assert len(http.requests) == 1 and "SECRET-DETAIL" not in str(err.value)
+
+
+async def test_only_the_structured_error_decides_not_words_in_the_message(make_settings, fast_clock):
+    other = httpx.Response(
+        400,
+        json={
+            "error": {
+                "message": "max_tokens temperature unsupported_parameter",
+                "param": "messages",
+                "code": "invalid_value",
+            }
+        },
+    )
+    llm, http = make(make_settings, fast_clock, other, output_limit_param="auto")
+    with pytest.raises(ProviderRejected):
+        await llm.evaluate_turn(turn())
+    assert len(http.requests) == 1
+    odd = httpx.Response(400, text="not json at all")
+    llm, http = make(make_settings, fast_clock, odd, output_limit_param="auto")
+    with pytest.raises(ProviderRejected):
+        await llm.evaluate_turn(turn())
+    assert len(http.requests) == 1
+
+
+async def test_adaptation_never_loops(make_settings, fast_clock):
+    llm, http = make(
+        make_settings, fast_clock, unsupported("max_tokens"), unsupported("max_tokens"), output_limit_param="auto"
+    )
+    with pytest.raises(ProviderRejected):
+        await llm.evaluate_turn(turn())
+    assert len(http.requests) == 2  # the second answer names a parameter that is already gone: nothing more to fix
+
+
+def test_the_settings_choose_the_family_parameters(make_settings):
+    from sparta.clock import SystemClock
+    from sparta.observability.metrics import Metrics
+    from sparta.services.providers import build_providers
+
+    settings = make_settings(
+        llm_provider="azure_openai",
+        azure_openai_output_limit_param="max_completion_tokens",
+        azure_openai_send_temperature=False,
+    )
+    llm = build_providers(settings, clock=SystemClock(), metrics=Metrics()).llm
+    assert llm._limit_param == "max_completion_tokens" and llm._temperature is None and llm._adapt is False  # type: ignore[attr-defined]
+    auto = build_providers(make_settings(llm_provider="azure_openai"), clock=SystemClock(), metrics=Metrics()).llm
+    assert auto._limit_param == "max_tokens" and auto._temperature == 0.0 and auto._adapt is True  # type: ignore[attr-defined]
