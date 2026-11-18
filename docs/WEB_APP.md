@@ -173,7 +173,8 @@ Not a defect, but good to know: an owner may have at most 5 active calls, and an
 * **Screenshots** document the layout; they are not pixel-diff baselines (timestamps and generated ids change).
 * **Docker image**: built and run on a developer machine (Docker 29, Linux/musl, through a corporate npm mirror) after the runtime stage dropped `sharp`, the npm CLI and
   corepack: non-root (uid 100), `npm`/`npx`/`corepack` absent, eight routes answer 200 with the nonce CSP, `healthy`. On GitHub the `container` workflow builds it and
-  scans it with Trivy (HIGH and CRITICAL, fixable findings only): no finding on the last run. It is not pushed anywhere yet (the publish step runs on `main` only).
+  scans it with Trivy (HIGH and CRITICAL, fixable findings only): no finding on the last run. On `main` the same workflow published it to GHCR
+  (`ghcr.io/snowjug/sparta-web`, 2026-11-18); the published image itself was not run.
 * **Hand-written enum layer**: `src/lib/api/enums.ts` mirrors the API's string enums; `src/lib/api/types.ts` has a compile-time drift guard against the generated
   OpenAPI types, so a changed enum fails `npm run typecheck`. Request/response shapes come from `src/lib/api/generated.ts` (`npm run types:api`).
 

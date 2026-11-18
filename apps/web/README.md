@@ -168,8 +168,9 @@ unused) and the npm CLI and corepack (never needed at run time: `CMD` is `node s
 the image.
 Verified on 2026-11-18 with Docker 29.9 after that change: the image builds (about 308 MB), runs as uid 100 `sparta`, `npm`, `npx` and `corepack` are gone, `/`,
 `/calls`, `/studio`, `/safety`, `/simulator`, `/live`, `/onboarding` and `/auth/callback` answer 200 with the nonce Content-Security-Policy, and the container reports
-`healthy`. On GitHub the `container` workflow builds it and scans it with Trivy (HIGH and CRITICAL, fixable findings only): no finding on the last run
-([../../docs/DEPLOYMENT.md](../../docs/DEPLOYMENT.md)); the publish step runs on `main` only and has not run.
+`healthy`. On GitHub the `container` workflow builds it, scans it with Trivy (HIGH and CRITICAL, fixable findings only: no finding on the last run)
+and, on `main`, publishes it to GHCR as `ghcr.io/snowjug/sparta-web` (published on 2026-11-18; the published image itself was not run, see
+[../../docs/DEPLOYMENT.md](../../docs/DEPLOYMENT.md)).
 
 ## Known limitations
 

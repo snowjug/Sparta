@@ -317,12 +317,18 @@ job caught (the voice stage could show "Call ended" about 10 ms before the closi
 name had four digits, a link-like word or was an e-mail address got a call that never said it was an AI**), four CodeQL
 alerts, three flaky Android unit tests (assertions that raced asynchronous state), and a dependency-review job that fails
 when the repository's dependency graph is off (it now skips with a warning, so nothing is reviewed until the graph is
-enabled). The deploy and publish steps run on `main` only and have not run.
+enabled). **After the merge, on `main` (`603bc19`)**: CI, CodeQL and the secret scan passed again, with no open code-scanning
+alert; the container workflow built and scanned both images and **published** them to GHCR (`ghcr.io/snowjug/sparta-api` and
+`ghcr.io/snowjug/sparta-web`, tags `main`, `latest` and `sha-<commit>`, with provenance and an SBOM; both can be pulled
+without credentials); the API image, pulled by its digest, answered `/readyz` and passed `scripts\journey.py` (English,
+Hinglish and Kanglish OTP scams, block, report, export, delete); and the deploy workflow started on the successful push and
+skipped itself, as designed, because the three `AZURE_*` repository variables are not set. The deploying job (Azure login,
+`what-if`, `create`, migrations) has never run.
 
 **Never verified:** anything that needs a real account, device or number: Azure Communication Services calls and media,
 Azure Speech and Azure OpenAI with credentials, Personal Voice, OIDC against a real identity provider, PSTN transfer and
 carrier call forwarding, the Android app on a physical phone (the instrumented tests compile but have never been run),
-the deploy and publish workflows, any Azure deployment, and a native-speaker review of the Hindi and Kannada packs and of
+the deploying job of the deploy workflow (the publish job has run), any Azure deployment, and a native-speaker review of the Hindi and Kannada packs and of
 the dataset. See [Limitations](#limitations).
 
 Backend, from `services/api` with the virtual environment active. Windows PowerShell:
