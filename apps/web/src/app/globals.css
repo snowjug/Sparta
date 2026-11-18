@@ -1,0 +1,410 @@
+@import "tailwindcss";
+
+/* Dark is the default. `data-theme` is set before first paint by /theme-init.js (no flash, no inline script). */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+@custom-variant light (&:where([data-theme="light"], [data-theme="light"] *));
+@custom-variant reduce-motion (&:where([data-motion="reduce"], [data-motion="reduce"] *));
+
+/* ------------------------------------------------------------------------------------------------
+   Design tokens. Every colour pair used for text is checked to WCAG AA by src/styles/tokens.test.ts.
+   Palette: deep charcoal base, warm brass accent. Green = verified/low risk only, amber = caution,
+   red = confirmed high risk only. Light theme is a designed equivalent, not an inversion.
+   ------------------------------------------------------------------------------------------------ */
+:root {
+  color-scheme: dark;
+  --bg: #0c0d0f;
+  --surface: #141518;
+  --raised: #1b1d21;
+  --sunken: #090a0b;
+  --line: #2a2d33;
+  --line-strong: #666b76;
+  --text: #f3f1ec;
+  --muted: #aaa79f;
+  --accent: #d6a65c;
+  --accent-ink: #17120a;
+  --accent-soft: color-mix(in srgb, #d6a65c 14%, transparent);
+  --success: #62cb9f;
+  --success-bg: #102a20;
+  --warning: #f2bb4d;
+  --warning-bg: #2d2209;
+  --danger: #ff8173;
+  --danger-bg: #341512;
+  --info: #82b8ea;
+  --info-bg: #102236;
+  --focus: #f0cd8f;
+  --shadow-card: 0 1px 0 rgb(255 255 255 / 0.04) inset, 0 12px 32px rgb(0 0 0 / 0.38);
+  --ambient: radial-gradient(60rem 28rem at 50% -8rem, color-mix(in srgb, #d6a65c 9%, transparent), transparent 70%);
+  --scrim: rgb(4 5 6 / 0.72);
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f4f2ed;
+  --surface: #ffffff;
+  --raised: #fbfaf7;
+  --sunken: #ebe8e1;
+  --line: #dcd7cc;
+  --line-strong: #8a857b;
+  --text: #1c1a16;
+  --muted: #5b574f;
+  --accent: #8d5b12;
+  --accent-ink: #ffffff;
+  --accent-soft: color-mix(in srgb, #8d5b12 10%, transparent);
+  --success: #13704a;
+  --success-bg: #dff3e9;
+  --warning: #8a5400;
+  --warning-bg: #fcefd0;
+  --danger: #b3281d;
+  --danger-bg: #fde5e2;
+  --info: #1f5f99;
+  --info-bg: #e1eefa;
+  --focus: #8d5b12;
+  --shadow-card: 0 1px 2px rgb(28 26 22 / 0.06), 0 10px 28px rgb(28 26 22 / 0.07);
+  --ambient: radial-gradient(60rem 26rem at 50% -8rem, color-mix(in srgb, #8d5b12 8%, transparent), transparent 70%);
+  --scrim: rgb(28 26 22 / 0.5);
+}
+
+/* Without JavaScript the OS preference still applies. */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) {
+    color-scheme: light;
+    --bg: #f4f2ed;
+    --surface: #ffffff;
+    --raised: #fbfaf7;
+    --sunken: #ebe8e1;
+    --line: #dcd7cc;
+    --line-strong: #8a857b;
+    --text: #1c1a16;
+    --muted: #5b574f;
+    --accent: #8d5b12;
+    --accent-ink: #ffffff;
+    --accent-soft: color-mix(in srgb, #8d5b12 10%, transparent);
+    --success: #13704a;
+    --success-bg: #dff3e9;
+    --warning: #8a5400;
+    --warning-bg: #fcefd0;
+    --danger: #b3281d;
+    --danger-bg: #fde5e2;
+    --info: #1f5f99;
+    --info-bg: #e1eefa;
+    --focus: #8d5b12;
+    --shadow-card: 0 1px 2px rgb(28 26 22 / 0.06), 0 10px 28px rgb(28 26 22 / 0.07);
+    --ambient: radial-gradient(60rem 26rem at 50% -8rem, color-mix(in srgb, #8d5b12 8%, transparent), transparent 70%);
+    --scrim: rgb(28 26 22 / 0.5);
+  }
+}
+
+@theme inline {
+  --color-*: initial;
+  --color-transparent: transparent;
+  --color-current: currentColor;
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-raised: var(--raised);
+  --color-sunken: var(--sunken);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-fg: var(--text);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-soft: var(--accent-soft);
+  --color-success: var(--success);
+  --color-success-bg: var(--success-bg);
+  --color-warning: var(--warning);
+  --color-warning-bg: var(--warning-bg);
+  --color-danger: var(--danger);
+  --color-danger-bg: var(--danger-bg);
+  --color-info: var(--info);
+  --color-info-bg: var(--info-bg);
+  --color-focus: var(--focus);
+  --color-scrim: var(--scrim);
+  --shadow-card: var(--shadow-card);
+  --font-sans:
+    ui-sans-serif, system-ui, -apple-system, "Segoe UI Variable Text", "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans",
+    "Noto Sans Devanagari", "Noto Sans Kannada", "Nirmala UI", "Kohinoor Devanagari", "Kannada Sangam MN", sans-serif;
+  --font-mono: ui-monospace, "Cascadia Mono", "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  --animate-fade-up: sp-fade-up 320ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  --animate-toast-in: sp-toast-in 260ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  --animate-shimmer: sp-shimmer 1.6s ease-in-out infinite;
+  --animate-breathe: sp-breathe 4.2s ease-in-out infinite;
+  --animate-attention: sp-attention 2.4s ease-in-out infinite;
+  --animate-flash: sp-flash 700ms ease-out both;
+  --animate-draw: sp-draw 700ms ease-out 120ms both;
+  --animate-live-dot: sp-live-dot 1.6s ease-in-out infinite;
+}
+
+html {
+  background: var(--bg);
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  min-height: 100dvh;
+  background: var(--bg) var(--ambient) no-repeat;
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--accent) 38%, transparent);
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* In the base layer so that colour utilities on links (a primary LinkButton's text-accent-ink, text-danger, ...) win. Unlayered CSS
+   beats every layered utility, which once made primary link buttons light-on-brass (contrast 1.96:1). */
+@layer base {
+  a {
+    color: inherit;
+  }
+}
+
+button,
+[role="button"],
+summary {
+  cursor: pointer;
+}
+
+button:disabled,
+[aria-disabled="true"] {
+  cursor: not-allowed;
+}
+
+/* Dialog: native <dialog> gives focus trapping, Escape handling and an inert background. */
+dialog.sp-dialog {
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 1.5rem;
+  box-shadow: var(--shadow-card);
+  padding: 0;
+  max-width: min(32rem, calc(100vw - 2rem));
+  width: 100%;
+  max-height: calc(100dvh - 2rem);
+  margin: auto;
+}
+
+dialog.sp-dialog::backdrop {
+  background: var(--scrim);
+}
+
+dialog.sp-dialog[open] {
+  animation: sp-fade-up 220ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+/* Scrolling regions keep their own scroll without trapping keyboard users. */
+.sp-scroll {
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+/* Offscreen turns are laid out lazily so long transcripts do not cause layout thrash. */
+.sp-lazy-turn {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 4.5rem;
+}
+
+/* The voice stage canvas must never intercept pointer events or announce itself. */
+.sp-stage-canvas {
+  pointer-events: none;
+}
+
+/* Voice stage: colours come from data attributes (no inline styles, so a strict CSP stays possible). */
+.sp-stage {
+  --risk-color: var(--muted);
+  --mode-color: var(--muted);
+}
+.sp-stage[data-risk="low"] {
+  --risk-color: var(--success);
+}
+.sp-stage[data-risk="medium"] {
+  --risk-color: var(--warning);
+}
+.sp-stage[data-risk="high"] {
+  --risk-color: var(--danger);
+}
+.sp-stage[data-mode="listening"],
+.sp-stage[data-mode="thinking"],
+.sp-stage[data-mode="assistant_speaking"] {
+  --mode-color: var(--accent);
+}
+.sp-stage[data-mode="caller_speaking"] {
+  --mode-color: var(--text);
+}
+.sp-stage[data-mode="interrupted"],
+.sp-stage[data-mode="escalated"] {
+  --mode-color: var(--warning);
+}
+.sp-stage[data-mode="taken_over"] {
+  --mode-color: var(--info);
+}
+.sp-stage[data-mode="failed"] {
+  --mode-color: var(--danger);
+}
+.sp-stage-risk-ring {
+  border-color: var(--risk-color);
+  opacity: 0.85;
+  transition: border-color 500ms ease;
+}
+.sp-stage-halo {
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--mode-color) 14%, transparent), transparent 74%);
+  transition: background 500ms ease;
+}
+.sp-stage-flash {
+  border-color: var(--warning);
+}
+
+body:has(dialog[open]) {
+  overflow: hidden;
+}
+
+/* Meters: the fill is a transform driven by a CSS variable (set through the CSSOM), so it animates on the compositor. */
+.sp-meter-fill {
+  background: var(--muted);
+  transform-origin: left center;
+  transform: scaleX(var(--fill, 0));
+  transition:
+    transform 600ms cubic-bezier(0.2, 0.7, 0.2, 1),
+    background-color 400ms ease;
+}
+.sp-meter-fill[data-risk="low"] {
+  background: var(--success);
+}
+.sp-meter-fill[data-risk="medium"] {
+  background: var(--warning);
+}
+.sp-meter-fill[data-risk="high"] {
+  background: var(--danger);
+}
+.sp-bar-fill {
+  background: var(--accent);
+  transform-origin: left center;
+  transform: scaleX(var(--fill, 0));
+  transition: transform 400ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.sp-bar-fill[data-simulated="true"] {
+  background: var(--info);
+}
+
+@keyframes sp-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes sp-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes sp-shimmer {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* Listening: a slow breath of the outer ring. */
+@keyframes sp-breathe {
+  0%,
+  100% {
+    transform: scale(0.97);
+    opacity: 0.55;
+  }
+  50% {
+    transform: scale(1.03);
+    opacity: 1;
+  }
+}
+
+/* Escalation / owner attention: calm amber pulse, never a flashing alarm. */
+@keyframes sp-attention {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  50% {
+    transform: scale(1.06);
+    opacity: 1;
+  }
+}
+
+/* Barge-in: one short flash when the caller cuts the assistant off. */
+@keyframes sp-flash {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.18);
+    opacity: 0;
+  }
+}
+
+@keyframes sp-draw {
+  from {
+    stroke-dashoffset: 48;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes sp-live-dot {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* Reduced motion: motion is replaced by static state indicators plus text (see VoiceStage). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    animation-delay: 0ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+[data-motion="reduce"] *,
+[data-motion="reduce"] *::before,
+[data-motion="reduce"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  animation-delay: 0ms !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
