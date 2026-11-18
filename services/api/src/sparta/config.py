@@ -77,6 +77,12 @@ class Settings(BaseSettings):
     )
     allowed_ws_origins: Annotated[list[str], NoDecode] = Field(default_factory=list)
     trusted_hosts: Annotated[list[str], NoDecode] = Field(default_factory=lambda: ["*"])
+    provider_only_hosts: Annotated[list[str], NoDecode] = Field(
+        default_factory=list,
+        description="Host names that may only reach the health probes and the provider callback and media routes "
+        "(a development tunnel, for instance). Every other route answers 404 on those hosts, so a public tunnel never "
+        "exposes the owner API of a development-identity server. Not a substitute for sign-in in production.",
+    )
     public_base_url: str = "http://localhost:8000"
     max_request_bytes: int = 512_000
     max_audio_bytes: int = 8_000_000
@@ -150,7 +156,9 @@ class Settings(BaseSettings):
     otel_enabled: bool = True
     otlp_endpoint: str | None = None
 
-    @field_validator("cors_origins", "allowed_ws_origins", "trusted_hosts", "oidc_algorithms", mode="before")
+    @field_validator(
+        "cors_origins", "allowed_ws_origins", "trusted_hosts", "provider_only_hosts", "oidc_algorithms", mode="before"
+    )
     @classmethod
     def _csv(cls, value: object) -> object:
         return _split_csv(value)

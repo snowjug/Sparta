@@ -1,6 +1,7 @@
 """Pure-ASGI middleware (no ``BaseHTTPMiddleware``: it breaks WebSockets, streaming and context variables).
 
-Order, outermost first: request context -> security headers -> trusted hosts -> CORS -> error guard -> body limit.
+Order, outermost first: request context -> security headers -> trusted hosts -> provider-only hosts -> CORS -> error
+guard -> body limit.
 Putting the error guard inside CORS means even unexpected 500s carry CORS headers, so a browser reports the real error
 instead of an opaque network failure.
 """
@@ -149,6 +150,42 @@ class SecurityHeadersMiddleware:
             await send(message)
 
         await self.app(scope, receive, send_secure)
+
+
+class ProviderOnlyHostsMiddleware:
+    """On the listed host names only the health probes and the provider callback and media routes exist.
+
+    A development tunnel is a public host name in front of a server that may be running the development identity (no
+    sign-in). Listing the tunnel's host here makes it serve nothing but what a telephony provider needs: every other
+    path, including the owner API and the interactive docs, answers 404 there, while the same server stays fully
+    usable through ``localhost``. Matching is on the ``Host`` header, which ``TrustedHostMiddleware`` (outside this
+    one) has already validated. This is a guard for development tunnels, not a substitute for sign-in in production.
+    """
+
+    ALLOWED_PREFIXES = ("/api/v1/webhooks/", "/api/v1/media/")
+    ALLOWED_PATHS = ("/healthz", "/readyz")
+
+    def __init__(self, app: ASGIApp, *, hosts: list[str]) -> None:
+        self.app = app
+        self.hosts = {h.strip().lower() for h in hosts if h.strip()}
+
+    def _blocked(self, scope: Scope) -> bool:
+        raw = Headers(scope=scope).get("host", "").lower()
+        host = raw.rsplit(":", maxsplit=1)[0] if raw.count(":") == 1 else raw  # an IPv6 literal keeps its colons
+        if host not in self.hosts:
+            return False
+        path = str(scope.get("path", ""))
+        return not (path in self.ALLOWED_PATHS or path.startswith(self.ALLOWED_PREFIXES))
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] not in ("http", "websocket") or not self.hosts or not self._blocked(scope):
+            await self.app(scope, receive, send)
+            return
+        if scope["type"] == "websocket":
+            await receive()  # the connect event
+            await send({"type": "websocket.close", "code": 1008})
+            return
+        await error_response(404, "not_found", "Not Found")(scope, receive, send)
 
 
 class ErrorGuardMiddleware:
