@@ -147,7 +147,7 @@ class OwnerService:
             auth_mode=self.settings.auth_mode,
             dev_banner=self.settings.auth_mode == "dev",
             telephony=TelephonyView(
-                provider=self.settings.telephony_provider,
+                provider=self.settings.telephony_kind,
                 simulated=caps.simulated,
                 live_calls_supported=caps.live_calls_supported,
                 forwarding_number=self.settings.forwarding_number,
@@ -226,7 +226,7 @@ class OwnerService:
                 status=level,
                 headline=headline,
                 detail=detail,
-                provider=self.settings.telephony_provider,
+                provider=self.settings.telephony_kind,
                 simulated=caps.simulated,
                 live_calls_supported=caps.live_calls_supported,
             ),
@@ -510,7 +510,7 @@ class OwnerService:
             trusted_contact_behavior=prefs.trusted_contact_behavior,
             strictness=prefs.strictness,
             forwarding_number=self.settings.forwarding_number,
-            provider=self.settings.telephony_provider,
+            provider=self.settings.telephony_kind,
             live_calls_supported=caps.live_calls_supported,
         )
 

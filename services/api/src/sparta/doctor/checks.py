@@ -22,6 +22,7 @@ from sparta.services.numbers import mask_number
 
 CORE = "Core"
 ACS = "Azure Communication Services (telephony)"
+TWILIO = "Twilio (telephony)"
 SPEECH = "Azure Speech"
 OPENAI = "Azure OpenAI"
 LIMITS = "Limits and estimated cost"
@@ -29,6 +30,8 @@ LIMITS = "Limits and estimated cost"
 _E164 = re.compile(r"\+[1-9][0-9]{6,14}")
 _GUID = re.compile(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")
 _ACS_HOST = re.compile(r"[a-z0-9-]+(?:\.[a-z0-9-]+)*\.communication\.azure\.com", re.IGNORECASE)
+_TWILIO_SID = re.compile(r"AC[0-9a-f]{32}")
+_TWILIO_TOKEN = re.compile(r"[0-9a-f]{32}")
 _API_VERSION = re.compile(r"\d{4}-\d{2}-\d{2}(?:-preview)?")
 
 # Assumptions behind the diagnostic cost estimate (stated in its output; it is not a bill).
@@ -42,8 +45,17 @@ def _check(id_: str, group: str, title: str, status: Status, detail: str = "", f
     return Check(id_, group, title, status, detail, fix)
 
 
+def callback_base(settings: Settings, override: str | None = None) -> str | None:
+    """The configured public origin of whichever telephony provider is selected (or the override)."""
+    if override:
+        return override
+    return (
+        settings.twilio_callback_base_url if settings.telephony_provider == "twilio" else settings.acs_callback_base_url
+    )
+
+
 def callback_host(settings: Settings, override: str | None = None) -> str | None:
-    origin = https_origin(override or settings.acs_callback_base_url)
+    origin = https_origin(callback_base(settings, override))
     return urlsplit(origin).hostname if origin else None
 
 
@@ -298,7 +310,7 @@ def _http_surface(settings: Settings, production: bool, callback_url: str | None
 
 
 # ----------------------------------------------------------------------------------------------- provider selection
-def selection_check(settings: Settings) -> Check:
+def selection_check(settings: Settings, telephony: str = "azure") -> Check:
     chosen = {
         "telephony": settings.telephony_provider,
         "speech recognition": settings.stt_provider,
@@ -312,7 +324,7 @@ def selection_check(settings: Settings) -> Check:
             "Providers selected",
             Status.BLOCKED,
             "telephony, speech recognition and speech synthesis are all the simulator: no real call can reach Sparta.",
-            "Set SPARTA_TELEPHONY_PROVIDER=azure, SPARTA_STT_PROVIDER=azure and SPARTA_TTS_PROVIDER=azure.",
+            f"Set SPARTA_TELEPHONY_PROVIDER={telephony}, SPARTA_STT_PROVIDER=azure and SPARTA_TTS_PROVIDER=azure.",
         )
     if simulated:
         return _check(
@@ -321,14 +333,24 @@ def selection_check(settings: Settings) -> Check:
             "Providers selected",
             Status.BLOCKED,
             "still the simulator: " + ", ".join(simulated) + ". A real call would be deaf or silent.",
-            "Select the azure provider for every stage a live call passes through.",
+            "Select the real provider for every stage a live call passes through.",
+        )
+    if settings.telephony_provider != telephony:
+        return _check(
+            "provider.selection",
+            CORE,
+            "Providers selected",
+            Status.BLOCKED,
+            f"SPARTA_TELEPHONY_PROVIDER is {settings.telephony_provider!r}, but this check is for {telephony!r}.",
+            f"Set SPARTA_TELEPHONY_PROVIDER={telephony}, or run `sparta doctor --provider "
+            f"{settings.telephony_provider}`.",
         )
     return _check(
         "provider.selection",
         CORE,
         "Providers selected",
         Status.PASS,
-        "telephony, speech recognition and speech synthesis are real providers.",
+        f"telephony ({telephony}), speech recognition and speech synthesis are real providers.",
     )
 
 
@@ -483,12 +505,12 @@ def limit_checks(settings: Settings) -> list[Check]:
 
 
 # ---------------------------------------------------------------------------------------------- number helpers
-def number_check(settings: Settings) -> Check:
+def number_check(settings: Settings, group: str = ACS, where: str = "the ACS resource") -> Check:
     number = settings.forwarding_number
     if not number:
         return _check(
             "telephony.inbound_number",
-            ACS,
+            group,
             "Inbound telephone number",
             Status.UNVERIFIED,
             "SPARTA_FORWARDING_NUMBER is not set: Sparta does not know which number callers dial.",
@@ -497,7 +519,7 @@ def number_check(settings: Settings) -> Check:
     if not _E164.fullmatch(number):
         return _check(
             "telephony.inbound_number",
-            ACS,
+            group,
             "Inbound telephone number",
             Status.BLOCKED,
             "SPARTA_FORWARDING_NUMBER is not an E.164 number (+, country code, digits).",
@@ -505,11 +527,11 @@ def number_check(settings: Settings) -> Check:
         )
     return _check(
         "telephony.inbound_number",
-        ACS,
+        group,
         "Inbound telephone number",
         Status.UNVERIFIED,
-        f"configured ({mask_number(number)}); format is valid but ownership by the provider resource is not proven.",
-        "Run with --online to look the number up on the ACS resource.",
+        f"configured ({mask_number(number)}); format is valid but ownership by the provider account is not proven.",
+        f"Run with --online to look the number up on {where}.",
     )
 
 
@@ -588,21 +610,40 @@ def acs_resource_id_check(settings: Settings) -> Check:
 
 
 def callback_url_check(settings: Settings, override: str | None = None) -> Check:
-    raw = override or settings.acs_callback_base_url
+    return _public_url_check(
+        override or settings.acs_callback_base_url,
+        "acs.callback_url",
+        ACS,
+        "SPARTA_ACS_CALLBACK_BASE_URL",
+        "ACS",
+    )
+
+
+def twilio_callback_url_check(settings: Settings, override: str | None = None) -> Check:
+    return _public_url_check(
+        override or settings.twilio_callback_base_url,
+        "twilio.callback_url",
+        TWILIO,
+        "SPARTA_TWILIO_CALLBACK_BASE_URL",
+        "Twilio",
+    )
+
+
+def _public_url_check(raw: str | None, id_: str, group: str, name: str, provider: str) -> Check:
     if not raw:
         return _check(
-            "acs.callback_url",
-            ACS,
+            id_,
+            group,
             "Public callback URL",
             Status.BLOCKED,
-            "SPARTA_ACS_CALLBACK_BASE_URL is missing.",
+            f"{name} is missing.",
             "Set it to the API's public https origin (a dev tunnel is fine for a first test).",
         )
     origin = https_origin(raw)
     if origin is None:
         return _check(
-            "acs.callback_url",
-            ACS,
+            id_,
+            group,
             "Public callback URL",
             Status.BLOCKED,
             "not a valid https origin (https only, no credentials, query or fragment).",
@@ -611,15 +652,118 @@ def callback_url_check(settings: Settings, override: str | None = None) -> Check
     host = urlsplit(origin).hostname
     if not is_public_host(host):
         return _check(
-            "acs.callback_url",
-            ACS,
+            id_,
+            group,
             "Public callback URL",
             Status.BLOCKED,
-            "the host is not publicly resolvable (localhost, a private address or a single-label name): ACS cannot "
-            "reach it.",
+            f"the host is not publicly resolvable (localhost, a private address or a single-label name): {provider} "
+            "cannot reach it.",
             "Expose the API through a public https host name.",
         )
-    return _check("acs.callback_url", ACS, "Public callback URL", Status.PASS, "an https URL on a public host name.")
+    return _check(id_, group, "Public callback URL", Status.PASS, "an https URL on a public host name.")
+
+
+def twilio_credentials_check(settings: Settings) -> list[Check]:
+    out: list[Check] = []
+    sid, token = settings.twilio_account_sid, settings.twilio_auth_token
+    if not sid:
+        out.append(
+            _check(
+                "twilio.account_sid",
+                TWILIO,
+                "Twilio account SID",
+                Status.BLOCKED,
+                "SPARTA_TWILIO_ACCOUNT_SID is missing.",
+                "Copy it from the Twilio Console (Account Info); it starts with AC. Use the account SID, not an API key.",
+            )
+        )
+    elif not _TWILIO_SID.fullmatch(sid):
+        out.append(
+            _check(
+                "twilio.account_sid",
+                TWILIO,
+                "Twilio account SID",
+                Status.BLOCKED,
+                "malformed: expected AC followed by 32 lower-case hexadecimal digits.",
+                "Use the account SID, not an API key (SK...) or a call SID (CA...).",
+            )
+        )
+    else:
+        out.append(
+            _check("twilio.account_sid", TWILIO, "Twilio account SID", Status.PASS, "configured and well-formed.")
+        )
+    if token is None:
+        out.append(
+            _check(
+                "twilio.auth_token",
+                TWILIO,
+                "Twilio auth token",
+                Status.BLOCKED,
+                "SPARTA_TWILIO_AUTH_TOKEN is missing.",
+                "Store the account's auth token in Key Vault; it signs every webhook, so it is the only key Twilio "
+                "requests can be verified with. An API key secret cannot be used.",
+            )
+        )
+    elif not _TWILIO_TOKEN.fullmatch(token.get_secret_value().strip()):
+        out.append(
+            _check(
+                "twilio.auth_token",
+                TWILIO,
+                "Twilio auth token",
+                Status.WARNING,
+                "configured, but it does not look like a 32-character hexadecimal auth token.",
+                "Check that it is the account's Auth Token (not an API key secret).",
+            )
+        )
+    else:
+        out.append(
+            _check(
+                "twilio.auth_token",
+                TWILIO,
+                "Twilio auth token",
+                Status.PASS,
+                "configured (the value itself is not checked until --online).",
+            )
+        )
+    return out
+
+
+def twilio_options_check(settings: Settings) -> list[Check]:
+    out: list[Check] = []
+    caller_id = settings.twilio_caller_id
+    if caller_id and not _E164.fullmatch(caller_id):
+        out.append(
+            _check(
+                "twilio.caller_id",
+                TWILIO,
+                "Caller id presented on a takeover",
+                Status.BLOCKED,
+                "SPARTA_TWILIO_CALLER_ID is not an E.164 number.",
+                "Use a number you own on Twilio or have verified there.",
+            )
+        )
+    else:
+        out.append(
+            _check(
+                "twilio.caller_id",
+                TWILIO,
+                "Caller id presented on a takeover",
+                Status.PASS,
+                "the Twilio number that was dialled is used." if not caller_id else "an explicit number is set.",
+            )
+        )
+    if not settings.twilio_verify_media_signature:
+        out.append(
+            _check(
+                "twilio.media_signature",
+                TWILIO,
+                "Media WebSocket signature",
+                Status.WARNING,
+                "SPARTA_TWILIO_VERIFY_MEDIA_SIGNATURE is off: only the per-call token authenticates the media socket.",
+                "Turn it back on unless a live call proved that Twilio's upgrade signature does not verify.",
+            )
+        )
+    return out
 
 
 def event_grid_check(settings: Settings) -> Check:
@@ -641,12 +785,35 @@ def event_grid_check(settings: Settings) -> Check:
             "the incoming-call event).",
             "Create the Entra application for the secure webhook and set the tenant id and audience (docs/TELEPHONY.md).",
         )
+    app_ids = [item.strip() for item in (settings.event_grid_allowed_app_ids or "").split(",") if item.strip()]
+    if not all(_GUID.fullmatch(app_id) for app_id in app_ids):
+        return _check(
+            "acs.event_grid_auth",
+            ACS,
+            "Event Grid delivery authentication",
+            Status.BLOCKED,
+            "SPARTA_EVENT_GRID_ALLOWED_APP_IDS must list application (client) id GUIDs, comma separated.",
+            "Use the Application ID of the Microsoft.EventGrid service principal in your tenant.",
+        )
+    if not app_ids:
+        return _check(
+            "acs.event_grid_auth",
+            ACS,
+            "Event Grid delivery authentication",
+            Status.WARNING,
+            "tenant and audience are configured, but no calling application is pinned. The "
+            "AzureEventGridSecureWebhookSubscriber role is also granted to the subscription-writer app, so the role "
+            "alone does not show that Event Grid is the caller.",
+            "Set SPARTA_EVENT_GRID_ALLOWED_APP_IDS to the Microsoft.EventGrid application id of your cloud "
+            "(Entra admin centre > Enterprise applications, or: az ad sp list --display-name Microsoft.EventGrid "
+            "--query [].appId -o tsv).",
+        )
     return _check(
         "acs.event_grid_auth",
         ACS,
         "Event Grid delivery authentication",
         Status.PASS,
-        "tenant and audience are configured.",
+        "tenant, audience and the calling application are configured.",
     )
 
 
@@ -710,8 +877,20 @@ def speech_sdk_check(settings: Settings) -> Check:
     )
 
 
-def media_format_check() -> Check:
-    """What the media socket code expects from ACS. It is a statement about this code, not about a live call."""
+def media_format_check(telephony: str = "azure") -> Check:
+    """What the media socket code expects from the provider. It is a statement about this code, not about a live call."""
+    if telephony == "twilio":
+        from sparta.telephony.twilio import FRAME_BYTES, SAMPLE_RATE
+
+        return _check(
+            "media.format",
+            TWILIO,
+            "Expected media format",
+            Status.PASS,
+            f"mono mu-law at {SAMPLE_RATE // 1000} kHz both ways ({FRAME_BYTES} bytes per 20 ms frame, base64 in JSON "
+            "messages), converted to PCM16 for recognition. Whether a live Twilio call sends exactly this is listed "
+            "under 'Not provable from here'.",
+        )
     from sparta.telephony.azure_acs import DEFAULT_SAMPLE_RATE, FRAME_MS, OUTPUT_FORMAT_BY_RATE
 
     frame = DEFAULT_SAMPLE_RATE * FRAME_MS // 1000 * 2

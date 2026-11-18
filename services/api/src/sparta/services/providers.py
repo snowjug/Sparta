@@ -115,6 +115,10 @@ def build_providers(settings: Settings, *, clock: Clock, metrics: Metrics) -> Pr
         from sparta.telephony.azure_acs import build_acs_provider
 
         telephony = register(build_acs_provider(settings, tts=tts, http=shared_http(), clock=clock, metrics=metrics))
+    elif settings.telephony_provider == "twilio":
+        from sparta.telephony.twilio import build_twilio_provider
+
+        telephony = register(build_twilio_provider(settings, tts=tts, http=shared_http(), clock=clock, metrics=metrics))
     elif settings.telephony_provider == "other":
         assert settings.telephony_plugin is not None  # enforced by Settings.problems()
         telephony = register(_load_plugin(settings.telephony_plugin)(settings, tts=tts, clock=clock, metrics=metrics))

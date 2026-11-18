@@ -188,6 +188,15 @@ async def test_the_inbound_number_is_validated_and_never_proven_offline():
     assert missing.status is Status.UNVERIFIED
 
 
+async def test_event_grid_deliveries_should_be_pinned_to_the_calling_application():
+    unpinned = by_id(await run_doctor(azure_settings()))["acs.event_grid_auth"]
+    assert unpinned.status is Status.WARNING and "subscription-writer" in unpinned.detail
+    pinned = azure_settings(event_grid_allowed_app_ids="4962773b-9cdb-44cf-a8bf-237846a00ab7")
+    assert by_id(await run_doctor(pinned))["acs.event_grid_auth"].status is Status.PASS
+    malformed = azure_settings(reporting=True, event_grid_allowed_app_ids="Microsoft.EventGrid")
+    assert by_id(await run_doctor(malformed))["acs.event_grid_auth"].status is Status.BLOCKED
+
+
 async def test_the_resource_id_must_look_like_what_acs_puts_in_its_tokens():
     guid = by_id(await run_doctor(azure_settings()))["acs.resource_id"]
     assert guid.status is Status.UNVERIFIED
@@ -241,10 +250,10 @@ def test_the_sdk_checks_report_a_missing_or_old_sdk(monkeypatch):
 
 
 def test_provider_names_are_validated():
-    assert normalise_providers(["all"]) == ("azure", "simulator")
+    assert normalise_providers(["all"]) == ("azure", "twilio", "simulator")
     assert normalise_providers(["azure", "azure"]) == ("azure",)
     with pytest.raises(ValueError, match="unknown provider"):
-        normalise_providers(["twilio"])
+        normalise_providers(["plivo"])
 
 
 async def test_the_simulator_scope_says_it_did_not_check_a_phone_line():
@@ -584,6 +593,162 @@ async def test_the_billable_probes_only_run_when_explicitly_allowed(sqlite_url):
     assert offline.online is False and offline.billable is False  # --allow-billable means nothing without --online
 
 
+# ------------------------------------------------------------------------------------------------------- Twilio
+TWILIO_SID = "AC" + "0123456789abcdef" * 2
+TWILIO_TOKEN = "fedcba9876543210fedcba9876543210"
+VOICE_URL = f"https://{HOST}/api/v1/webhooks/twilio/voice"
+TWILIO_ACCOUNT_URL = f"GET https://api.twilio.com/2010-04-01/Accounts/{TWILIO_SID}.json"
+TWILIO_NUMBERS_URL = f"GET https://api.twilio.com/2010-04-01/Accounts/{TWILIO_SID}/IncomingPhoneNumbers.json"
+NUMBER_ROW = {"phone_number": NUMBER, "voice_url": VOICE_URL, "voice_method": "POST", "voice_application_sid": None}
+ACTIVE = httpx.Response(200, json={"status": "active", "type": "Full"})
+
+
+def twilio_settings(**overrides: object) -> Settings:
+    values: dict[str, object] = {
+        "telephony_provider": "twilio",
+        "twilio_account_sid": TWILIO_SID,
+        "twilio_auth_token": TWILIO_TOKEN,
+        "twilio_callback_base_url": f"https://{HOST}",
+    }
+    values.update(overrides)
+    return azure_settings(**values)
+
+
+def twilio_handler(overrides: dict[str, httpx.Response | Exception] | None = None, seen=None):
+    table: dict[str, httpx.Response | Exception] = {
+        f"POST https://{HOST}/api/v1/webhooks/twilio/voice": httpx.Response(401),
+        f"GET https://{HOST}/api/v1/media/twilio/doctorprobe": httpx.Response(403),
+        TWILIO_ACCOUNT_URL: ACTIVE,
+        TWILIO_NUMBERS_URL: httpx.Response(200, json={"incoming_phone_numbers": [NUMBER_ROW]}),
+    }
+    table.update(overrides or {})
+    return good_handler(table, seen)
+
+
+async def twilio_report(sqlite_url, overrides=None, seen=None, **settings):
+    handler = twilio_handler(overrides, seen)
+    async with client_for(handler) as http:
+        return await run_doctor(
+            twilio_settings(database_url=sqlite_url, redis_url=None, **settings),
+            providers=("twilio",),
+            online=True,
+            http=http,
+        )
+
+
+async def test_a_complete_twilio_configuration_has_no_blocker_offline_and_says_what_is_unproven():
+    report = await run_doctor(twilio_settings(), providers=("twilio",))
+    checks = by_id(report)
+    assert not report.blocked, [(x.id, x.detail) for x in report.checks if x.status is Status.BLOCKED]
+    for ident in ("provider.selection", "twilio.account_sid", "twilio.auth_token", "twilio.callback_url"):
+        assert checks[ident].status is Status.PASS, (ident, checks[ident].detail)
+    assert checks["telephony.inbound_number"].status is Status.UNVERIFIED
+    assert checks["live.twilio_media_stream"].status is Status.UNVERIFIED
+    assert checks["live.pstn_inbound"].status is Status.UNVERIFIED and "mu-law" in checks["media.format"].detail
+    assert not any(ident.startswith("acs.") for ident in checks) and "live.event_grid_subscription" not in checks
+    assert TWILIO_TOKEN not in report.render_text() + report.render_json()
+
+
+@pytest.mark.parametrize(
+    ("overrides", "ident", "status"),
+    [
+        ({"twilio_account_sid": None}, "twilio.account_sid", Status.BLOCKED),
+        ({"twilio_account_sid": "SK" + "0" * 32}, "twilio.account_sid", Status.BLOCKED),
+        ({"twilio_account_sid": "CA" + "0" * 32}, "twilio.account_sid", Status.BLOCKED),
+        ({"twilio_auth_token": None}, "twilio.auth_token", Status.BLOCKED),
+        ({"twilio_auth_token": "not-a-twilio-token"}, "twilio.auth_token", Status.WARNING),
+        ({"twilio_callback_base_url": None}, "twilio.callback_url", Status.BLOCKED),
+        ({"twilio_callback_base_url": "http://sparta.example.com"}, "twilio.callback_url", Status.BLOCKED),
+        ({"twilio_callback_base_url": "https://localhost:8000"}, "twilio.callback_url", Status.BLOCKED),
+        ({"twilio_caller_id": "0044123"}, "twilio.caller_id", Status.BLOCKED),
+        ({"twilio_verify_media_signature": False}, "twilio.media_signature", Status.WARNING),
+        ({"telephony_provider": "azure"}, "provider.selection", Status.BLOCKED),
+        ({"stt_provider": "simulator"}, "provider.selection", Status.BLOCKED),
+    ],
+)
+async def test_twilio_configuration_problems_are_reported_with_the_right_severity(overrides, ident, status):
+    report = await run_doctor(twilio_settings(**overrides), providers=("twilio",))
+    check = by_id(report)[ident]
+    assert check.status is status, check.detail
+    assert TWILIO_TOKEN not in report.render_text()
+
+
+async def test_every_twilio_online_check_can_pass_and_credentials_go_only_to_twilio(sqlite_url):
+    seen: list[httpx.Request] = []
+    report = await twilio_report(sqlite_url, seen=seen)
+    checks = by_id(report)
+    for ident in (
+        "twilio_callback.health",
+        "twilio_callback.ready",
+        "twilio_callback.webhook_auth",
+        "twilio_callback.media_auth",
+        "twilio.account",
+        "twilio.number",
+        "speech.token",
+    ):
+        assert checks[ident].status is Status.PASS, (ident, checks[ident].detail)
+    assert checks["twilio_callback.external"].status is Status.UNVERIFIED and not report.blocked
+    basic = {r.url.host for r in seen if r.headers.get("authorization", "").startswith("Basic ")}
+    assert basic == {"api.twilio.com"}  # the account credentials are never sent to the callback host
+    assert all(r.method == "GET" or "twilio/voice" in str(r.url) or "issueToken" in str(r.url) for r in seen)
+    assert TWILIO_TOKEN not in report.render_text() + report.render_json()
+
+
+async def test_a_trial_account_is_blocked_because_twilio_strips_stream_and_dial(sqlite_url):
+    trial = httpx.Response(200, json={"status": "active", "type": "Trial"})
+    check = by_id(await twilio_report(sqlite_url, {TWILIO_ACCOUNT_URL: trial}))["twilio.account"]
+    assert check.status is Status.BLOCKED and "TRIAL" in check.detail and "<Stream>" in check.detail
+    suspended = httpx.Response(200, json={"status": "suspended", "type": "Full"})
+    assert by_id(await twilio_report(sqlite_url, {TWILIO_ACCOUNT_URL: suspended}))["twilio.account"].status is (
+        Status.BLOCKED
+    )
+
+
+async def test_rejected_credentials_stop_the_twilio_checks_there(sqlite_url):
+    seen: list[httpx.Request] = []
+    report = await twilio_report(sqlite_url, {TWILIO_ACCOUNT_URL: httpx.Response(401)}, seen)
+    checks = by_id(report)
+    assert checks["twilio.account"].status is Status.BLOCKED and "rejected" in checks["twilio.account"].detail
+    assert "twilio.number" not in checks and not any("IncomingPhoneNumbers" in str(r.url) for r in seen)
+
+
+@pytest.mark.parametrize(
+    ("row", "needle"),
+    [
+        ({"voice_url": "https://other.example.net/hook?token=SECRETVALUE"}, "other.example.net"),
+        ({"voice_url": VOICE_URL + "/extra"}, HOST),
+        ({"voice_url": "http://" + HOST + "/api/v1/webhooks/twilio/voice"}, HOST),
+        ({"voice_url": ""}, "no voice URL"),
+        ({"voice_method": "GET"}, "GET"),
+        ({"voice_application_sid": "AP" + "0" * 32}, "TwiML application"),
+    ],
+)
+async def test_a_number_that_does_not_send_calls_here_is_blocked_without_echoing_its_url(sqlite_url, row, needle):
+    numbers = httpx.Response(200, json={"incoming_phone_numbers": [{**NUMBER_ROW, **row}]})
+    report = await twilio_report(sqlite_url, {TWILIO_NUMBERS_URL: numbers})
+    check = by_id(report)["twilio.number"]
+    assert check.status is Status.BLOCKED and needle in check.detail, check.detail
+    assert "SECRETVALUE" not in report.render_text() and NUMBER not in report.render_text()
+
+
+async def test_an_account_without_the_configured_number_is_blocked(sqlite_url):
+    empty = httpx.Response(200, json={"incoming_phone_numbers": []})
+    check = by_id(await twilio_report(sqlite_url, {TWILIO_NUMBERS_URL: empty}))["twilio.number"]
+    assert check.status is Status.BLOCKED and "no matching phone number" in check.detail
+
+
+async def test_an_unsigned_twilio_request_being_accepted_is_blocked(sqlite_url):
+    voice = f"POST https://{HOST}/api/v1/webhooks/twilio/voice"
+    media = f"GET https://{HOST}/api/v1/media/twilio/doctorprobe"
+    report = await twilio_report(sqlite_url, {voice: httpx.Response(200), media: httpx.Response(101)})
+    checks = by_id(report)
+    assert checks["twilio_callback.webhook_auth"].status is Status.BLOCKED
+    assert "UNSIGNED" in checks["twilio_callback.webhook_auth"].detail
+    assert checks["twilio_callback.media_auth"].status is Status.BLOCKED
+    missing = await twilio_report(sqlite_url, {voice: httpx.Response(404)})
+    assert "SPARTA_TELEPHONY_PROVIDER" in by_id(missing)["twilio_callback.webhook_auth"].detail
+
+
 # -------------------------------------------------------------------------------------------------------- CLI
 def test_the_command_prints_json_and_exits_nonzero_when_blocked(monkeypatch, capsys):
     for name in ("SPARTA_TELEPHONY_PROVIDER", "SPARTA_STT_PROVIDER", "SPARTA_TTS_PROVIDER"):
@@ -596,7 +761,7 @@ def test_the_command_prints_json_and_exits_nonzero_when_blocked(monkeypatch, cap
 
 def test_the_command_rejects_an_unknown_provider(capsys):
     with pytest.raises(SystemExit) as caught:
-        cli.main(["doctor", "--provider", "twilio"])
+        cli.main(["doctor", "--provider", "plivo"])
     assert caught.value.code == 2
     assert "invalid choice" in capsys.readouterr().err
 

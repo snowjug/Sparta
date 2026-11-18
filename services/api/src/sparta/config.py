@@ -99,7 +99,7 @@ class Settings(BaseSettings):
     expose_metrics: bool = False
 
     # --- providers (selected by configuration) --------------------------------------
-    telephony_provider: Literal["simulator", "azure", "other"] = Field(
+    telephony_provider: Literal["simulator", "azure", "twilio", "other"] = Field(
         default="simulator",
         validation_alias=AliasChoices("TELEPHONY_PROVIDER", "SPARTA_TELEPHONY_PROVIDER"),
     )
@@ -140,6 +140,30 @@ class Settings(BaseSettings):
     )
     entra_tenant_id: str | None = Field(default=None, description="Tenant that issues Event Grid delivery tokens")
     event_grid_audience: str | None = Field(default=None, description="Audience of Event Grid secure-webhook tokens")
+    event_grid_allowed_app_ids: str | None = Field(
+        default=None,
+        description="Comma-separated application ids (the appid/azp claim) allowed to deliver Event Grid events: the "
+        "Microsoft.EventGrid application of your cloud. The role alone does not prove the caller, because the "
+        "subscription-writer app holds it too.",
+    )
+    twilio_account_sid: str | None = Field(
+        default=None, description="Twilio account SID (AC followed by 32 hex digits)"
+    )
+    twilio_auth_token: SecretStr | None = Field(
+        default=None, description="Twilio auth token: signs webhooks, authenticates the REST API, keys stream tokens"
+    )
+    twilio_callback_base_url: str | None = Field(
+        default=None, description="Public https origin Twilio calls (the voice webhook) and streams audio to"
+    )
+    twilio_caller_id: str | None = Field(
+        default=None,
+        description="E.164 Twilio number shown to the owner on a takeover; defaults to the number the caller dialled",
+    )
+    twilio_verify_media_signature: bool = Field(
+        default=True,
+        description="Require Twilio's X-Twilio-Signature on the media WebSocket upgrade (the per-call token in the "
+        "start message is always required). Switch off only to debug a signature mismatch.",
+    )
     provider_timeout_s: float = 6.0
     provider_max_retries: int = 2
     simulator_enabled: bool = True
@@ -194,6 +218,11 @@ class Settings(BaseSettings):
         return self.env is Environment.PRODUCTION
 
     @property
+    def telephony_kind(self) -> Literal["simulator", "azure", "other"]:
+        """The provider kind the API contract knows: Twilio is reported as the generic ``other`` kind."""
+        return "other" if self.telephony_provider == "twilio" else self.telephony_provider
+
+    @property
     def ws_origins(self) -> list[str]:
         return self.allowed_ws_origins or self.cors_origins
 
@@ -210,6 +239,13 @@ class Settings(BaseSettings):
         if self.telephony_provider == "azure" and not (self.acs_connection_string and self.acs_callback_base_url):
             out.append(
                 "TELEPHONY_PROVIDER=azure requires SPARTA_ACS_CONNECTION_STRING and SPARTA_ACS_CALLBACK_BASE_URL"
+            )
+        if self.telephony_provider == "twilio" and not (
+            self.twilio_account_sid and self.twilio_auth_token and self.twilio_callback_base_url
+        ):
+            out.append(
+                "TELEPHONY_PROVIDER=twilio requires SPARTA_TWILIO_ACCOUNT_SID, SPARTA_TWILIO_AUTH_TOKEN and "
+                "SPARTA_TWILIO_CALLBACK_BASE_URL"
             )
         if self.telephony_provider == "other" and not self.telephony_plugin:
             out.append("TELEPHONY_PROVIDER=other requires SPARTA_TELEPHONY_PLUGIN='package.module:factory'")
@@ -234,10 +270,15 @@ class Settings(BaseSettings):
                 "SPARTA_AZURE_OPENAI_KEY and SPARTA_AZURE_OPENAI_DEPLOYMENT"
             )
         if self.is_production:
-            if self.telephony_provider == "azure" and self.stt_provider == "simulator":
+            if self.telephony_provider in ("azure", "twilio") and self.stt_provider == "simulator":
                 out.append(
-                    "TELEPHONY_PROVIDER=azure delivers the caller's audio, which needs speech recognition: "
-                    "set SPARTA_STT_PROVIDER=azure"
+                    f"TELEPHONY_PROVIDER={self.telephony_provider} delivers the caller's audio, which needs speech "
+                    "recognition: set SPARTA_STT_PROVIDER=azure"
+                )
+            if self.telephony_provider in ("azure", "twilio") and self.tts_provider == "simulator":
+                out.append(
+                    f"TELEPHONY_PROVIDER={self.telephony_provider} speaks to the caller, which needs speech "
+                    "synthesis: set SPARTA_TTS_PROVIDER=azure"
                 )
             if self.auth_mode == "dev":
                 out.append("SPARTA_AUTH_MODE=dev is forbidden when SPARTA_ENV=production (use oidc)")

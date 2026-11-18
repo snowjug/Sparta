@@ -184,7 +184,8 @@ class CallService:
 
     # ================================================================================== helpers
     def _provider_by_name(self, name: str) -> TelephonyProvider:
-        if name == self.telephony.name:
+        # A call row stores the provider *kind* (a plugin or Twilio is stored as "other"), metrics use the name.
+        if name in (self.telephony.name, self.telephony.kind.value):
             return self.telephony
         return self.sim_telephony
 

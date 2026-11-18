@@ -723,6 +723,14 @@ class Repository:
         )
         return bool(found)
 
+    async def provider_event_call_id(self, provider: str, external_id: str) -> str | None:
+        """The Sparta call a recorded provider event created (``None`` when unknown or not linked yet)."""
+        return await self.s.scalar(
+            select(m.ProviderEventRow.call_id).where(
+                m.ProviderEventRow.provider == provider, m.ProviderEventRow.external_id == external_id[:160]
+            )
+        )
+
     async def attach_provider_event(self, provider: str, external_id: str, call_id: str) -> None:
         """Link an already recorded provider event to the call it created (so the call detail can show it)."""
         await self.s.execute(

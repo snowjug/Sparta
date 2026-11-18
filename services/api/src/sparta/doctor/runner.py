@@ -16,7 +16,7 @@ from sparta.config import Settings
 from sparta.doctor import checks as c
 from sparta.doctor.model import Check, DoctorReport, Status
 
-PROVIDERS = ("azure", "simulator")
+PROVIDERS = ("azure", "twilio", "simulator")
 
 
 class ReportingSettings(Settings):
@@ -44,27 +44,46 @@ def normalise_providers(requested: Sequence[str]) -> tuple[str, ...]:
     return tuple(names)
 
 
+def _shared_offline(settings: Settings, telephony: str) -> list[Check]:
+    """Speech, language-model and limit checks: the same whichever telephony provider carries the call."""
+    return [
+        *c.speech_checks(settings),
+        c.speech_sdk_check(settings),
+        *c.openai_checks(settings),
+        *c.limit_checks(settings),
+        c.media_format_check(telephony),
+    ]
+
+
 def azure_offline(settings: Settings, callback_url: str | None) -> list[Check]:
     return [
-        c.selection_check(settings),
+        c.selection_check(settings, "azure"),
         c.acs_sdk_check(),
         c.acs_connection_string_check(settings),
         c.acs_resource_id_check(settings),
         c.callback_url_check(settings, callback_url),
         c.event_grid_check(settings),
         c.number_check(settings),
-        *c.speech_checks(settings),
-        c.speech_sdk_check(settings),
-        *c.openai_checks(settings),
-        *c.limit_checks(settings),
-        c.media_format_check(),
+        *_shared_offline(settings, "azure"),
     ]
 
 
-def unverified_checks(settings: Settings) -> list[Check]:
+def twilio_offline(settings: Settings, callback_url: str | None) -> list[Check]:
+    return [
+        c.selection_check(settings, "twilio"),
+        *c.twilio_credentials_check(settings),
+        c.twilio_callback_url_check(settings, callback_url),
+        *c.twilio_options_check(settings),
+        c.number_check(settings, c.TWILIO, "the Twilio account"),
+        *_shared_offline(settings, "twilio"),
+    ]
+
+
+def unverified_checks(settings: Settings, *, azure: bool = True, twilio: bool = False) -> list[Check]:
     """What a configuration check cannot prove. Each line says how to prove it."""
     group = "Not provable from here"
-    return [
+    both = azure and twilio
+    out = [
         Check(
             "live.pstn_inbound",
             group,
@@ -72,21 +91,41 @@ def unverified_checks(settings: Settings) -> list[Check]:
             Status.UNVERIFIED,
             "no real inbound call has ever been completed through this project.",
             "Place a call to the provider number and follow docs/TELEPHONY.md, 'Live-test checklist'.",
-        ),
-        Check(
-            "live.event_grid_subscription",
-            group,
-            "Event Grid subscription delivering IncomingCall events",
-            Status.UNVERIFIED,
-            "it lives in Azure, not in this configuration.",
-            "`az eventgrid event-subscription show` (docs/TELEPHONY.md) and one delivered call.",
-        ),
+        )
+    ]
+    if azure:
+        out.append(
+            Check(
+                "live.event_grid_subscription",
+                group,
+                "Event Grid subscription delivering IncomingCall events",
+                Status.UNVERIFIED,
+                "it lives in Azure, not in this configuration.",
+                "`az eventgrid event-subscription show` (docs/TELEPHONY.md) and one delivered call.",
+            )
+        )
+    if twilio:
+        out.append(
+            Check(
+                "live.twilio_media_stream",
+                group,
+                "Twilio opening the media WebSocket",
+                Status.UNVERIFIED,
+                "the TwiML, the stream parameters and the signature of the WebSocket upgrade follow Twilio's "
+                "documentation but were only exercised against fakes. Both URL forms Twilio may sign (wss and "
+                "https) are accepted.",
+                "Place one call and read the 'media socket rejected' and 'webhook rejected' log lines, if any.",
+            )
+        )
+    out += [
         Check(
             "live.barge_in",
             group,
             "Interrupting the assistant on a real line",
             Status.UNVERIFIED,
-            "the StopAudio frame and the pacing of outbound audio were only exercised against a fake media socket.",
+            "the "
+            + ("StopAudio frame and the pacing of outbound audio were" if not twilio or both else "clear message was")
+            + " only exercised against a fake media socket.",
             "Interrupt a live call and read the 'interruption' latency in the call's diagnostic report.",
         ),
         Check(
@@ -102,7 +141,8 @@ def unverified_checks(settings: Settings) -> list[Check]:
             group,
             "Transferring a live call to the owner",
             Status.UNVERIFIED,
-            "transfer was only exercised against a fake client.",
+            "transfer was only exercised against a fake client."
+            + (" Twilio trial accounts cannot dial out from a call at all." if twilio else ""),
             "Test with SPARTA takeover number set to a phone you control.",
         ),
         Check(
@@ -114,6 +154,7 @@ def unverified_checks(settings: Settings) -> list[Check]:
             "Work through the legal-review checklist in docs/PRIVACY.md before any real caller is involved.",
         ),
     ]
+    return out
 
 
 async def run_doctor(
@@ -128,10 +169,12 @@ async def run_doctor(
 ) -> DoctorReport:
     names = normalise_providers(providers)
     report = DoctorReport(providers=names, online=online, billable=online and allow_billable)
-    azure = "azure" in names
+    azure, twilio = "azure" in names, "twilio" in names
     report.extend(c.core_checks(settings, callback_url=callback_url))
     if azure:
         report.extend(azure_offline(settings, callback_url))
+    if twilio:
+        report.extend(twilio_offline(settings, callback_url))
     if online:
         from sparta.doctor.online import run_online
 
@@ -139,18 +182,20 @@ async def run_doctor(
         client = http or httpx.AsyncClient(timeout=timeout_s, follow_redirects=False)
         try:
             report.extend(
-                await run_online(settings, azure=azure, callback_url=callback_url, http=client, timeout_s=timeout_s)
+                await run_online(
+                    settings, azure=azure, twilio=twilio, callback_url=callback_url, http=client, timeout_s=timeout_s
+                )
             )
-            if azure and allow_billable:
+            if (azure or twilio) and allow_billable:
                 from sparta.doctor.billable import run_billable
 
                 report.extend(await run_billable(settings, http=client, timeout_s=timeout_s))
         finally:
             if owns:
                 await client.aclose()
-    if azure:
-        report.extend(unverified_checks(settings))
-    if not azure:
+    if azure or twilio:
+        report.extend(unverified_checks(settings, azure=azure, twilio=twilio))
+    else:
         report.add(
             Check(
                 "doctor.scope",
@@ -158,7 +203,7 @@ async def run_doctor(
                 "Only the core checks ran",
                 Status.WARNING,
                 "--provider simulator checks the process and storage, not a phone line.",
-                "Use --provider azure to check the real telephony and speech path.",
+                "Use --provider azure or --provider twilio to check the real telephony and speech path.",
             )
         )
     return report

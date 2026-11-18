@@ -70,6 +70,9 @@ async def test_partials_arrive_while_audio_is_pushed_and_the_final_carries_langu
     # the hint comes first; the call's other languages stay candidates for language identification
     assert recogniser.auto_detect.languages == ["hi-IN", "en-IN", "kn-IN"]
     assert recogniser.config.properties == {fake.PropertyId.SpeechServiceConnection_LanguageIdMode: "Continuous"}
+    # continuous language identification is documented to need the v2 endpoint
+    assert recogniser.config.endpoint == "wss://centralindia.stt.speech.microsoft.com/speech/universal/v2"
+    assert recogniser.config.region is None
     assert recogniser.audio.stream.format.samples_per_second == 16000 and recogniser.audio.stream.closed
     assert b"".join(recogniser.audio.stream.chunks) == PCM * 6
 
@@ -81,6 +84,7 @@ async def test_a_single_candidate_locale_is_recognised_directly_without_language
     await stream.flush()
     recogniser = fake.SpeechRecognizer.created[0]
     assert recogniser.auto_detect is None and recogniser.config.speech_recognition_language == "hi-IN"
+    assert recogniser.config.region == "centralindia" and recogniser.config.endpoint is None
     assert fake.PropertyId.SpeechServiceConnection_LanguageIdMode not in recogniser.config.properties
     assert [e.text for e in await collect(stream)] == ["namaste"]
 

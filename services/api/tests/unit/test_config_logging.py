@@ -64,13 +64,32 @@ def test_wildcard_origins_and_raw_audio_storage_are_refused_in_production():
     assert "no '*'" in str(err.value) and "Raw audio storage" in str(err.value)
 
 
-def test_production_telephony_that_delivers_audio_needs_a_real_recogniser():
+def test_production_telephony_that_delivers_audio_needs_a_real_recogniser_and_a_real_voice():
     azure = {"telephony_provider": "azure", "acs_connection_string": "endpoint=x", "acs_callback_base_url": "https://x"}
+    speech = {"azure_speech_key": "k", "azure_speech_region": "centralindia"}
     with pytest.raises(ConfigurationError, match="SPARTA_STT_PROVIDER=azure"):
         Settings(**prod(**azure), _env_file=None)
-    Settings(
-        **prod(**azure, stt_provider="azure", azure_speech_key="k", azure_speech_region="centralindia"), _env_file=None
-    )
+    # a silent assistant would also never make the AI disclosure, so a real voice is required as well
+    with pytest.raises(ConfigurationError, match="SPARTA_TTS_PROVIDER=azure"):
+        Settings(**prod(**azure, stt_provider="azure", **speech), _env_file=None)
+    Settings(**prod(**azure, stt_provider="azure", tts_provider="azure", **speech), _env_file=None)
+    twilio = {
+        "telephony_provider": "twilio",
+        "twilio_account_sid": "AC" + "0" * 32,
+        "twilio_auth_token": "t",
+        "twilio_callback_base_url": "https://x",
+    }
+    with pytest.raises(ConfigurationError, match="SPARTA_STT_PROVIDER=azure"):
+        Settings(**prod(**twilio), _env_file=None)
+    Settings(**prod(**twilio, stt_provider="azure", tts_provider="azure", **speech), _env_file=None)
+
+
+def test_twilio_needs_its_account_token_and_callback_url_in_any_environment():
+    problems = " ".join(Settings(telephony_provider="twilio", _env_file=None).problems())
+    for name in ("TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_CALLBACK_BASE_URL"):
+        assert name in problems
+    assert Settings(telephony_provider="twilio", _env_file=None).telephony_kind == "other"
+    assert Settings(telephony_provider="azure", _env_file=None).telephony_kind == "azure"
 
 
 def test_selecting_a_real_provider_requires_its_credentials_in_any_environment():

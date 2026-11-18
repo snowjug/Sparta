@@ -220,9 +220,9 @@ def build_parser() -> argparse.ArgumentParser:
     doctor.add_argument(
         "--provider",
         action="append",
-        choices=("azure", "simulator", "all"),
+        choices=("azure", "twilio", "simulator", "all"),
         default=None,
-        help="what to check (repeatable; default: azure)",
+        help="telephony provider to check (repeatable; default: azure). Speech and the language model are Azure's either way",
     )
     doctor.add_argument("--online", action="store_true", help="also make free network requests (health, keys, voices)")
     doctor.add_argument(

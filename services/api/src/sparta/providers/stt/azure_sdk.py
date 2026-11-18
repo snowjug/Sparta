@@ -298,7 +298,15 @@ class SdkSpeechToText:
             region = valid_region(settings.azure_speech_region)
             if region is None:
                 raise ProviderUnavailable(PROVIDER, STAGE, "Azure Speech region or endpoint is not configured")
-            config = sdk.SpeechConfig(subscription=key.get_secret_value(), region=region)
+            if len(locales) > 1:
+                # Continuous language identification needs the v2 endpoint (Microsoft documents it for every SDK
+                # language). UNVERIFIED against a live call; a custom-domain endpoint is passed through unchanged.
+                config = sdk.SpeechConfig(
+                    subscription=key.get_secret_value(),
+                    endpoint=f"wss://{region}.stt.speech.microsoft.com/speech/universal/v2",
+                )
+            else:
+                config = sdk.SpeechConfig(subscription=key.get_secret_value(), region=region)
         config.output_format = sdk.OutputFormat.Detailed  # adds NBest[].Confidence to every result
         if len(locales) == 1:
             config.speech_recognition_language = locales[0]
