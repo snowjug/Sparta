@@ -319,26 +319,28 @@ python -m sparta doctor --provider twilio --online     # or --provider azure; ad
 Run the commands from the directory shown. Each tool reports its own result; the table below is the last verified run,
 pinned to a commit, and goes stale as the code changes.
 
-**Last verified 2026-11-18** on commit `99023e2`, on one Windows 11 machine, with this repository's own tools. The
-backend, web and end-to-end rows were run one commit earlier (`5f980d1`), which differs from it only in one Android test
-file; commits after `99023e2` change documentation only.
+**Last verified** on branch `feat/real-world-telephony` (Phase 2) at commit `c8a56c4`, on one Windows 11 machine, with this
+repository's own tools; commits after it change documentation only. The Android rows were measured at `ccec1c8`, the last
+commit that changed Android code. Phase 1's record on `main` follows the table.
 
 | Check | Result |
 | --- | --- |
 | `scripts\check.ps1 -Security` (what CI runs) | all 13 steps passed |
-| Backend `pytest`, with PostgreSQL 16 and Redis 7 | 2021 passed |
-| `ruff check`, `ruff format --check`, `mypy src` | clean; no issues in 107 source files |
+| Backend `pytest`, with PostgreSQL 16 and Redis 7 | 2321 passed |
+| `ruff check`, `ruff format --check`, `mypy src` | clean; no issues in 116 source files |
 | `python -m sparta openapi --check` | the contract is current |
 | `python -m sparta evaluate --split dev` | scam recall 87.8%, precision 94.7%, protected requests refused 33/33, 0 violations, 0 fallbacks, deterministic (the split the rules were tuned on: [docs/EVALUATION.md](docs/EVALUATION.md)) |
 | `bandit`, `pip-audit` on the lock | no findings; no known vulnerabilities |
 | Web: `eslint`, `tsc`, `vitest`, `next build` | 0 problems, 0 errors, 310 tests passed, build OK |
-| Web: `npm run e2e` | 112 of 112 passed against the real API and the production build (Chromium only); axe-core finds no violations on any screen in either theme |
-| Android: `testDebugUnitTest` | 632 JVM tests passed, four runs in a row under full CPU load (8 busy loops on 8 cores, to flush out flaky tests), 0 failures each |
-| Android: `lintDebug assembleDebug assembleRelease bundleRelease` | lint 0 errors and 21 warnings; debug APK 22.7 MB; unsigned R8 release APK 2.4 MiB and AAB 5.3 MiB (built at `a17b54e`; every later Android change is a test file) |
-| Docker Compose (PostgreSQL, Redis, API, web) | all four healthy; `/readyz` ok at migration `0002`; `scripts\smoke.ps1` and `scripts\journey.py` passed |
-| `gitleaks` on the tree and the 52 commits of the history | no leaks (a planted key is detected) |
+| Web: `npm run e2e` | 112 of 112 passed against the real API and the production build (Chromium only); axe-core finds no violations on any screen in either theme. An earlier run of the same code failed one test with `ECONNRESET` in the test harness's own API client (the server stayed up and every other test passed; the likely cause, not confirmed, is a pooled connection meeting the server's 5 s idle keep-alive); the rerun passed 112 of 112 |
+| Android: `testDebugUnitTest` | 634 JVM tests passed, 0 failures (one run, at `ccec1c8`) |
+| Android: `lintDebug assembleDebug` | lint 0 errors and 21 warnings; debug APK 22,481,118 bytes (at `ccec1c8`). `assembleDebugAndroidTest` fails in D8 (see Limitations) and no emulator or device was available. The release APK and bundle were not rebuilt in Phase 2 |
+| Docker Compose (PostgreSQL, Redis, API) | all three healthy (the web service was not started); `/readyz` ready; `scripts\smoke.ps1` and `scripts\journey.py` passed |
+| API image and Bicep | the API image (with the Speech SDK) builds; the SDK imports and builds a streaming recogniser in the `python:3.12-slim` runtime image (loading only: nothing was recognised); Trivy 0.76.2 with CI's flags (`--severity HIGH,CRITICAL --ignore-unfixed`) reports nothing; the Bicep builds, builds its parameters and lints (Bicep 0.48.1); nothing was deployed |
+| Controlled call matrix (Phase 2) | 12 whole-call tests over a real WebSocket with scripted speech services; local processing time from the end of the caller's turn to the first audio, p50 about 92 ms and p95 about 205 ms, with zero-latency fakes: [docs/PHASE2_CONTROLLED_RESULTS.md](docs/PHASE2_CONTROLLED_RESULTS.md) |
+| `gitleaks` 8.30.1 (`gitleaks git`) on the history of the branch | no leaks; two fake test values it flagged are allowlisted by exact value ([docs/SECURITY_REVIEW_PHASE2.md](docs/SECURITY_REVIEW_PHASE2.md)) |
 
-**On GitHub** (pull request 1, 2026-11-18, `ubuntu-24.04` runners; the workflows had never run before): all 16 checks passed
+**Phase 1 on GitHub** (pull request 1, 2026-11-18, `ubuntu-24.04` runners; the workflows had never run before): all 16 checks passed
 on `99023e2`: the changed-area filter, the backend job with PostgreSQL and Redis service containers, backend security
 (`pip-audit`, `bandit`, lock hashes), the web job, the Android job (unit tests, lint, debug APK), infrastructure and
 tooling (Compose, Bicep, workflows, scripts), both container images built and scanned by Trivy (no fixable HIGH or CRITICAL
@@ -357,11 +359,12 @@ Hinglish and Kanglish OTP scams, block, report, export, delete); and the deploy 
 skipped itself, as designed, because the three `AZURE_*` repository variables are not set. The deploying job (Azure login,
 `what-if`, `create`, migrations) has never run.
 
-**Never verified:** anything that needs a real account, device or number: Azure Communication Services calls and media,
-Azure Speech and Azure OpenAI with credentials, Personal Voice, OIDC against a real identity provider, PSTN transfer and
-carrier call forwarding, the Android app on a physical phone (the instrumented tests compile but have never been run),
-the deploying job of the deploy workflow (the publish job has run), any Azure deployment, and a native-speaker review of the Hindi and Kannada packs and of
-the dataset. See [Limitations](#limitations).
+**Never verified:** anything that needs a real account, device or number: any real call (Twilio or Azure Communication
+Services: media, signatures and tokens as the live service sends them, transfer), Azure Speech (streaming recognition and
+synthesis on telephone audio) and Azure OpenAI with credentials, Personal Voice, OIDC against a real identity provider,
+PSTN transfer and carrier call forwarding, the Android app on a physical phone or an emulator (the instrumented tests do
+not build, see [Limitations](#limitations)), the deploying job of the deploy workflow (the publish job has run), any Azure
+deployment, and a native-speaker review of the Hindi and Kannada packs and of the dataset. See [Limitations](#limitations).
 
 Backend, from `services/api` with the virtual environment active. Windows PowerShell:
 
@@ -414,7 +417,9 @@ Linux or macOS:
 ./gradlew testDebugUnitTest lintDebug assembleDebug
 ```
 
-`connectedDebugAndroidTest` needs a device or emulator. The instrumented tests compile but have never been run.
+`connectedDebugAndroidTest` needs a device or emulator, and `assembleDebugAndroidTest` currently fails (D8 refuses the
+backtick test names with spaces at `minSdk` 26; [docs/ANDROID_SETUP.md](docs/ANDROID_SETUP.md)), so the instrumented tests
+have never been run.
 
 Everything the backend and web CI would check, in one go: `scripts\check.ps1` (`-Fast` skips the slow steps) or `make check`;
 `scripts\test.ps1` or `make test` runs only the tests.
