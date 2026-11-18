@@ -18,7 +18,7 @@ from sparta.providers.base import AudioChunk, ProviderMeta, SynthesisRequest
 from sparta.telephony.twilio import STATUS_PATH, VOICE_PATH, TwilioTelephonyProvider, stream_token, twilio_signature
 
 API = "/api/v1"
-ACCOUNT = "AC" + "fedcba9876543210" * 2
+AC_SID = "AC" + "fedcba9876543210" * 2
 TOKEN = "twilio-auth-token-for-tests"
 BASE = "https://sparta.example.test"
 SID = "CA" + "0123456789abcdef" * 2
@@ -28,7 +28,7 @@ CALLER, CALLED = "+919876543210", "+14155550199"
 PHONE_OWNER = {"X-Sparta-Dev-User": "phone-owner"}
 TWILIO = {
     "telephony_provider": "twilio",
-    "twilio_account_sid": ACCOUNT,
+    "twilio_account_sid": AC_SID,
     "twilio_auth_token": TOKEN,
     "twilio_callback_base_url": BASE,
     "telephony_owner_user_id": "phone-owner",
@@ -36,7 +36,7 @@ TWILIO = {
 
 
 def fields_for(sid: str = SID, **extra: str) -> dict[str, str]:
-    return {"CallSid": sid, "From": CALLER, "To": CALLED, "AccountSid": ACCOUNT, "CallStatus": "ringing", **extra}
+    return {"CallSid": sid, "From": CALLER, "To": CALLED, "AccountSid": AC_SID, "CallStatus": "ringing", **extra}
 
 
 class FakeRest:
@@ -96,7 +96,7 @@ class Kit:
         return await self.post(VOICE_PATH, fields_for(sid, **extra))
 
     async def status(self, sid: str, status: str) -> httpx.Response:
-        return await self.post(STATUS_PATH, {"CallSid": sid, "CallStatus": status, "AccountSid": ACCOUNT})
+        return await self.post(STATUS_PATH, {"CallSid": sid, "CallStatus": status, "AccountSid": AC_SID})
 
 
 async def phone_calls(env: ApiEnv) -> list[dict]:
@@ -347,7 +347,7 @@ async def test_a_call_runs_end_to_end_over_the_media_socket_and_ends_when_twilio
                             "sequenceNumber": "1",
                             "streamSid": STREAM,
                             "start": {
-                                "accountSid": ACCOUNT,
+                                "accountSid": AC_SID,
                                 "streamSid": STREAM,
                                 "callSid": SID,
                                 "tracks": ["inbound"],

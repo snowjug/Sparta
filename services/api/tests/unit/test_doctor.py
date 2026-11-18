@@ -562,7 +562,7 @@ RECOGNISED = {
 
 async def test_the_billable_probes_exercise_the_production_adapters(monkeypatch):
     def handler(request: httpx.Request) -> httpx.Response:
-        if request.url.host.endswith("tts.speech.microsoft.com"):
+        if request.url.host == "centralindia.tts.speech.microsoft.com":
             return synthesised(request)
         if "transcriptions:transcribe" in request.url.path:
             return httpx.Response(200, json=RECOGNISED)
@@ -604,7 +604,7 @@ async def test_the_billable_probes_exercise_the_production_adapters(monkeypatch)
 
 async def test_billable_failures_are_blocked_with_a_sanitised_reason():
     def handler(request: httpx.Request) -> httpx.Response:
-        if request.url.host.endswith("tts.speech.microsoft.com"):
+        if request.url.host == "centralindia.tts.speech.microsoft.com":
             return httpx.Response(401, text="Invalid key SECRET-BODY")
         return httpx.Response(400, text="Unsupported parameter: max_tokens SECRET-BODY")
 

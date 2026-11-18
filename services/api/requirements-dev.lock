@@ -167,11 +167,6 @@ asyncpg==0.32.0 \
     --hash=sha256:fe3036fb6e7b61159f554af153824786999142b69fea081acf8cb0958603ea26
     # via sparta-api (pyproject.toml)
 azure-cognitiveservices-speech==1.53.1 \
-    --hash=md5:106af66518a22b079e3c81cddf47ac38 \
-    --hash=md5:469df98f3bd985e3e9cea0aff07d1e9a \
-    --hash=md5:46a2a8122b5d2ca08fdc60facef9b046 \
-    --hash=md5:9be1c6dac52cc5d638bad3a164dbd771 \
-    --hash=md5:b0998d0fa4b3def625ef212fd2eadd92 \
     --hash=sha256:51d437cf90f7f838e494111e391c2e6fd35b5be3d3020b13f0edf5932b617236 \
     --hash=sha256:64b6b4ea96646066dfb53b56e50ce8229ac6d22e8e188a73827ccb50136d2a78 \
     --hash=sha256:6ca1a8a0a52937776203a7b1de6acb9eee213efe7375bb91844976e4467c5481 \

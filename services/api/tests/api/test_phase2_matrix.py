@@ -22,7 +22,7 @@ from typing import Any
 import pytest
 import websockets
 from test_api_twilio import (
-    ACCOUNT,
+    AC_SID,
     API,
     PHONE_OWNER,
     SID,
@@ -140,7 +140,7 @@ class Line:
                     "sequenceNumber": "1",
                     "streamSid": STREAM,
                     "start": {
-                        "accountSid": ACCOUNT,
+                        "accountSid": AC_SID,
                         "streamSid": STREAM,
                         "callSid": sid,
                         "tracks": ["inbound"],

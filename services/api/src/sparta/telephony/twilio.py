@@ -109,7 +109,9 @@ NOTE = (
 def twilio_signature(auth_token: str, url: str, fields: Sequence[tuple[str, str]]) -> str:
     """``X-Twilio-Signature``: base64 of HMAC-SHA1 over ``url`` followed by every field name and value, sorted.
 
-    Algorithm from Twilio's "Validating requests" page; reproduces the published vector (see the tests).
+    Algorithm from Twilio's "Validating requests" page; reproduces the published vector (see the tests). Twilio signs with
+    HMAC-SHA1, so the verifier cannot choose another algorithm; an HMAC does not rely on SHA-1's collision resistance, and
+    what is signed is a public URL and the request's own form fields.
     """
     data = url + "".join(f"{name}{value}" for name, value in sorted(fields))
     digest = hmac.new(auth_token.encode("utf-8"), data.encode("utf-8"), hashlib.sha1).digest()
