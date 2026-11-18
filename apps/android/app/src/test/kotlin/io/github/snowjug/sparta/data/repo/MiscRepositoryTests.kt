@@ -21,8 +21,10 @@ import io.github.snowjug.sparta.testutil.InMemoryPreferencesDataStore
 import java.io.File
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
@@ -149,7 +151,10 @@ class SettingsRepositoryTest {
                 pendingPreferencesPatchJson = """{"strictness":"strict"}""",
             )
         }
-        scopes.forEach { it.cancel() }
+        // Cancelling is asynchronous. Wait until the first DataStore has really released the file, or the second one fails
+        // with "multiple DataStores active for the same file" (seen on a loaded CI runner).
+        scopes.forEach { it.coroutineContext[Job]?.cancelAndJoin() }
+        scopes.clear()
 
         val reopened = fileRepo(file).current()
         assertEquals("https://api.example.invalid/", reopened.backendUrl)
