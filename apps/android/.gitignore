@@ -1,0 +1,20 @@
+# Build outputs and local machine state (the repo root .gitignore also covers most of this).
+.gradle/
+.kotlin/
+build/
+/app/build/
+local.properties
+*.apk
+*.aab
+*.hprof
+captures/
+.cxx/
+.externalNativeBuild/
+.idea/
+*.iml
+.DS_Store
+
+# Release signing material: never commit.
+keystore.properties
+*.jks
+*.keystore

@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="studio_title">Assistant Studio</string>
+    <string name="studio_subtitle">How Sparta presents itself when it talks to a caller for you.</string>
+    <string name="studio_no_backend_title">Connect a backend to use the studio</string>
+    <string name="studio_no_backend_body">The assistant\'s voice and wording are produced by your Sparta backend, so there is nothing to configure on this phone alone.</string>
+
+    <string name="studio_disclosure_title">What callers hear first</string>
+    <string name="studio_disclosure_example">\u201cHello, I\'m %1$s\'s AI call assistant. May I know who is calling and what this is regarding?\u201d</string>
+    <string name="studio_default_owner">the owner</string>
+    <string name="studio_disclosure_always_on">The AI disclosure is always on and cannot be turned off. Sparta never pretends to be you.</string>
+
+    <string name="studio_profile_title">Assistant profile</string>
+    <string name="studio_name_label">Name callers hear</string>
+    <string name="studio_name_help">Up to 60 characters.</string>
+    <string name="studio_name_error">Enter a name of 1 to 60 characters.</string>
+    <string name="studio_style_title">Style</string>
+    <string name="studio_style_concise">Concise</string>
+    <string name="studio_style_warm">Warm</string>
+    <string name="studio_style_formal">Formal</string>
+    <string name="studio_rate_label">Speaking speed</string>
+    <string name="studio_rate_value">%1$sx</string>
+
+    <string name="studio_voice_title">Voice</string>
+    <string name="studio_voice_body">Sparta uses predefined natural voices. Pick one per language, or leave the default.</string>
+    <string name="studio_voice_none">No voices were listed for this language.</string>
+    <string name="studio_voice_default">Default voice</string>
+    <string name="studio_voice_unverified">%1$s (name not verified)</string>
+    <string name="studio_personal_title">Personal voice</string>
+    <string name="studio_personal_status">Status</string>
+    <string name="studio_personal_note">A personal (cloned) voice needs your recorded consent and the speech provider\'s approval, which cannot be completed on this phone. Until a voice is ready and approved, Sparta uses a predefined voice.</string>
+    <string name="voice_status_not_enrolled">Not enrolled</string>
+    <string name="voice_status_consent_recorded">Consent recorded</string>
+    <string name="voice_status_pending">Waiting for provider approval</string>
+    <string name="voice_status_ready">Ready</string>
+    <string name="voice_status_failed">Failed</string>
+    <string name="voice_status_deleted">Deleted</string>
+
+    <string name="studio_languages_title">Languages</string>
+    <string name="studio_languages_body">Sparta understands mixed speech such as Hinglish and Kanglish within these languages. More languages are planned.</string>
+    <string name="studio_language_planned">Planned, not available yet</string>
+    <string name="studio_language_primary">Primary language</string>
+    <string name="studio_primary_title">Primary language</string>
+    <string name="studio_auto_detect">Detect the caller\'s language</string>
+    <string name="studio_auto_detect_body">Follow the caller if they switch language during the call.</string>
+    <string name="studio_translate_title">Translate transcripts to</string>
+    <string name="studio_translate_none">Do not translate</string>
+    <string name="studio_translate_unavailable">Translating caller speech needs a language-model provider and is not available in this build. Assistant lines always include an English rendering.</string>
+
+    <string name="studio_preview_title">Preview</string>
+    <string name="studio_preview_body">Runs the real assistant pipeline on a sentence you type. No call is created and nothing is stored.</string>
+    <string name="studio_preview_unsaved">The preview uses your saved profile, not the changes you have not saved yet.</string>
+    <string name="studio_preview_sample_label">What a caller might say (optional)</string>
+    <string name="studio_preview_run">Preview the assistant</string>
+    <string name="studio_preview_running">Previewing</string>
+    <string name="studio_preview_disclosure">Introduction</string>
+    <string name="studio_preview_reply">Reply</string>
+    <string name="studio_preview_category">Category: %1$s</string>
+    <string name="studio_preview_language">Detected language: %1$s</string>
+    <string name="studio_discard">Discard changes</string>
+    <string name="studio_saving">Saving</string>
+    <string name="studio_saved">Saved.</string>
+
+    <string name="stepper_earlier">%1$s, 30 minutes earlier</string>
+    <string name="stepper_later">%1$s, 30 minutes later</string>
+</resources>

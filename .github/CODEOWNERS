@@ -1,0 +1,4 @@
+# The repository owner reviews every change. Add narrower owners here as the team grows
+# (a later, more specific pattern wins), for example:
+#   /apps/android/   @snowjug @android-reviewer
+* @snowjug

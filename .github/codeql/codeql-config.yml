@@ -1,0 +1,9 @@
+# CodeQL configuration (referenced by .github/workflows/codeql.yml).
+name: Sparta CodeQL configuration
+
+paths-ignore:
+  - "**/node_modules/**"
+  - "**/.next/**"
+  - "**/build/**"
+  - "docs/eval/**"
+  - "packages/evaluation/dataset/**"

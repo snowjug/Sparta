@@ -1,0 +1,8 @@
+{
+  "blocked": [
+    {"id": "blk_1", "fingerprint": "02104505014ef8e921b8225bdb991179325c1a15a591448f08f012125a98a8be", "number_display": "+91 98•••• ••21"}
+  ],
+  "trusted": [
+    {"id": "trs_1", "fingerprint": "5d1520e8d73327bd269b10828e5c681d4dc35cb56cf4e04fc51e0370f3de742f", "number_display": "+1 41•••• ••71", "label": "Dr. Rao"}
+  ]
+}

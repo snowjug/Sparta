@@ -60,17 +60,20 @@ secrets/
 *.secret
 service-account*.json
 
-# Local data
+# Local data (the API data directory holds a development encryption key: never commit it)
 *.sqlite
 *.sqlite3
 *.db
 *.db-journal
+*.db-wal
+*.db-shm
 *.log
 /data/
-/var/
+var/
 uploads/
 tmp/
 .tmp/
+.kotlin/
 
 # IDE / OS
 .idea/

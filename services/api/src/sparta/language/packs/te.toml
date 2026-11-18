@@ -1,0 +1,12 @@
+version = "1"
+
+# PLANNED: script-level recognition only (see mr.toml).
+[meta]
+code = "te-IN"
+iso = "te"
+name = "Telugu"
+native_name = "తెలుగు"
+scripts = ["Telu"]
+status = "planned"
+stt_locale = "te-IN"
+tts_locale = "te-IN"

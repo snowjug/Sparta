@@ -1,0 +1,59 @@
+{
+  "name": "@sparta/web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Sparta web app: owner console and Simulator Lab for the multilingual AI call-screening assistant.",
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "dev": "next dev -p 3000",
+    "build": "next build",
+    "build:report": "node scripts/report-bundles.mjs",
+    "licenses": "node scripts/list-licenses.mjs",
+    "start": "node scripts/serve-standalone.mjs",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "e2e": "playwright test",
+    "e2e:install": "playwright install chromium",
+    "types:api": "node scripts/generate-api-types.mjs",
+    "lock:normalize": "node scripts/normalize-lockfile.mjs",
+    "lock:check": "node scripts/normalize-lockfile.mjs --check"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.107.1",
+    "next": "16.4.6",
+    "oidc-client-ts": "^3.5.0",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
+    "@playwright/test": "1.65.0",
+    "@tailwindcss/postcss": "^4.3.5",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.9",
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^6.3.0",
+    "axe-core": "^4.14.0",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "16.4.6",
+    "jsdom": "^31.0.0",
+    "openapi-typescript": "^7.13.0",
+    "tailwindcss": "^4.3.5",
+    "typescript": "~6.0.3",
+    "vite": "^8.3.7",
+    "vitest": "^5.1.0"
+  },
+  "overrides": {
+    "openapi-typescript": {
+      "typescript": "$typescript"
+    }
+  }
+}

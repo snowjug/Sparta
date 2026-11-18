@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="forwarding_title">Set up call forwarding</string>
+    <string name="forwarding_intro">Live AI audio only happens when a call reaches Sparta\'s telephony number. Call forwarding is set up with your mobile carrier, not by this app: the button below only opens your dialer with the code filled in. You review it and press call yourself.</string>
+    <string name="forwarding_number_label">Forward to: %1$s</string>
+    <string name="forwarding_mode_label">When should calls be forwarded?</string>
+    <string name="forwarding_mode_no_answer">When I do not answer</string>
+    <string name="forwarding_mode_busy">When my line is busy</string>
+    <string name="forwarding_mode_unreachable">When my phone is off or has no signal</string>
+    <string name="forwarding_code_label">Code that will be dialled</string>
+    <string name="forwarding_open_dialer">Open dialer with this code</string>
+    <string name="forwarding_cancel_code">To turn this off later dial %1$s. To clear all forwarding dial %2$s.</string>
+    <string name="forwarding_caveats">These are standard GSM codes, but carriers differ: some ignore them, some charge for forwarded calls, and Android cannot confirm that forwarding is active. Check with your carrier. This app cannot verify the result.</string>
+    <string name="forwarding_no_number">The backend has not provided a valid forwarding number, so there is nothing to set up.</string>
+    <string name="forwarding_confirm_label">I have set up forwarding</string>
+    <string name="forwarding_close">Close</string>
+</resources>

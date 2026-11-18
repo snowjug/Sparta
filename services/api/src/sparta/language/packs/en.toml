@@ -1,0 +1,623 @@
+version = "1"
+
+[meta]
+code = "en-IN"
+iso = "en"
+name = "English (India)"
+native_name = "English"
+scripts = ["Latn"]
+status = "supported"
+stt_locale = "en-IN"
+tts_locale = "en-IN"
+default_voice = "en-IN-NeerjaNeural"
+
+[detection]
+latin_words = [
+  "the", "is", "are", "was", "were", "be", "been", "being", "am", "i", "you", "your", "yours", "he", "she", "it",
+  "we", "they", "this", "that", "these", "those", "what", "who", "whom", "which", "when", "where", "why", "how",
+  "can", "could", "will", "would", "shall", "should", "may", "might", "must", "does", "did", "done", "have", "has",
+  "had", "not", "no", "yes", "please", "thank", "thanks", "hello", "hey", "sir", "madam", "my", "mine", "our", "ours",
+  "their", "them", "there", "here", "from", "for", "of", "on", "in", "at", "by", "with", "about", "into", "as", "if",
+  "or", "and", "but", "so", "because", "now", "just", "again", "also", "only", "very", "need", "needs", "want",
+  "wants", "call", "calling", "called", "calls", "speak", "speaking", "talk", "tell", "give", "send", "share",
+  "provide", "verify", "confirm", "account", "bank", "card", "number", "code", "password", "update", "urgent",
+  "immediately", "today", "tomorrow", "yesterday", "delivery", "package", "parcel", "order", "address", "name",
+  "regarding", "reason", "help", "issue", "problem", "case", "police", "court", "arrest", "warrant", "customs",
+  "department", "officer", "manager", "company", "service", "customer", "care", "support", "money", "payment",
+  "transfer", "amount", "link", "click", "download", "install", "app", "screen", "share", "details", "information",
+  "any", "all", "some", "more", "most", "other", "another", "each", "every", "both", "either", "than", "then",
+  "too", "while", "after", "before", "during", "until", "since", "once", "still", "already", "ever", "never",
+  "always", "sometimes", "maybe", "perhaps", "really", "actually", "exactly", "right", "okay", "sure", "fine", "good",
+  "great", "nice", "sorry", "excuse", "wait", "hold", "line", "minute", "minutes", "second", "seconds", "hour",
+  "hours", "day", "days", "week", "month", "year", "time", "number", "phone", "mobile", "message", "email", "home",
+  "house", "office", "work", "working", "job", "interview", "appointment", "doctor", "hospital", "school", "college",
+  "friend", "family", "mother", "father", "brother", "sister", "wife", "husband", "son", "daughter", "emergency",
+  "accident", "urgent", "important", "serious", "available", "free", "busy", "back", "come", "coming", "came", "go",
+  "going", "went", "gone", "get", "got", "getting", "make", "made", "take", "took", "taken", "see", "seen", "look",
+  "looking", "know", "knew", "think", "thought", "say", "said", "ask", "asked", "asking", "answer", "reply",
+  "receive", "received", "sent", "bring", "brought", "keep", "kept", "let", "put", "set", "run", "start", "started",
+  "stop", "stopped", "open", "close", "closed", "pay", "paid", "buy", "bought", "sell", "sold", "win", "won",
+  "lost", "find", "found", "lose", "reach", "reached", "meet", "met", "visit", "visited", "check", "checked",
+  "complete", "completed", "pending", "block", "blocked", "suspend", "suspended", "expire", "expired", "legal",
+  "action", "official", "government", "income", "tax", "loan", "offer", "insurance", "investment", "limited",
+  "special", "free", "price", "cost", "fee", "fees", "charge", "charges", "bill", "refund", "ticket", "complaint",
+  "request", "recruiter", "position", "resume", "profile", "location", "landmark", "building", "gate", "floor",
+  "flat", "apartment", "street", "road", "city", "area", "someone", "anyone", "everyone", "nobody", "nothing",
+  "something", "anything", "everything", "myself", "yourself", "himself", "herself", "itself", "ourselves",
+  "owner", "assistant", "owner's", "don't", "can't", "won't", "isn't", "aren't", "wasn't", "didn't", "doesn't",
+  "i'm", "i'll", "i've", "i'd", "you're", "you'll", "you've", "it's", "that's", "there's", "what's", "let's",
+]
+latin_suffixes = []
+
+[owner_ref.named]
+poss = "{name}'s"
+to = "{name}"
+subj = "{name}"
+
+[owner_ref.generic]
+poss = "the owner's"
+to = "the owner"
+subj = "the owner"
+
+# ---------------------------------------------------------------------------------------------------------------
+# Vocabulary referenced by name from the language-neutral safety policy. Fragments are regexes over *normalized*
+# text (lowercase, ASCII digits, straight apostrophes). Use \x27 for an apostrophe.
+# ---------------------------------------------------------------------------------------------------------------
+[terms]
+otp = [
+  '\bo\.?\s?t\.?\s?p\b',
+  '\bone[\s-]*time[\s-]*(?:pass\s?word|pass\s?code|pin|code|password)\b',
+  '\b(?:verification|confirmation|authentication|security|sms|secret|login|transaction)\s+(?:code|pin|number)\b',
+  '\b(?:four|4|five|5|six|6|eight|8)[\s-]*digits?\s+(?:code|number|pin|otp)\b',
+  '\b(?:code|number|pin)\s+(?:that\s+)?(?:you\s+)?(?:just\s+|have\s+)?(?:received|got|get|sent|came|arrived)\b',
+  '\b(?:code|number)\s+(?:sent|received|on|in)\s+(?:to\s+)?(?:your\s+)?(?:phone|mobile|message|sms|number|email)\b',
+]
+pin = [
+  '\b(?:atm|upi|mpin|m[\s-]?pin|debit|card|bank|account|secret|login|transaction|net\s?banking)\s*pin\b',
+  '\bpin\b(?!\s*codes?\b)(?!\s+(?:of|for)\s+(?:your\s+)?(?:area|city|locality))',
+  '\bmpin\b',
+  '\bsecret\s+(?:number|code)\b',
+]
+cvv = [
+  '\bcvv2?\b',
+  '\bcvc2?\b',
+  '\bcard\s+(?:verification|security)\s+(?:value|code|number)\b',
+  '\b(?:three|3)[\s-]*digits?\s+(?:number|code)\b',
+  '\b(?:three|3)[\s-]*digits?\b[^.]{0,50}\b(?:back|behind|reverse)\b',
+  '\b(?:back|behind|reverse)\b[^.]{0,40}\b(?:three|3)[\s-]*digits?\b',
+]
+password = [
+  '\bpass\s?words?\b',
+  '\bpass\s?codes?\b',
+  '\blog[\s-]?in\s+(?:id\s+and\s+)?(?:credentials?|details?|password)\b',
+  '\b(?:net|internet|mobile|online)[\s-]?banking\s+(?:id|login|credentials?|details?|password)\b',
+  '\bcredentials?\b',
+  '\bsign[\s-]?in\s+(?:details?|credentials?)\b',
+]
+card_credential = [
+  '\b(?:full\s+|complete\s+|entire\s+)?(?:debit\s+|credit\s+|atm\s+)?card\s+(?:number|details?|no\.?|information|info)\b',
+  '\b(?:sixteen|16)[\s-]*digits?\b',
+  '\bcard\s+expiry\b',
+  '\bexpiry\s+(?:date|month|year)\b',
+  '\baccount\s+(?:number|no\.?|details?|information|info)\b',
+  '\bifsc\b',
+  '\bbank\s+(?:account\s+)?(?:details?|information|info)\b',
+  '\bnet[\s-]?banking\b',
+]
+auth_code = [
+  '\b(?:recovery|backup|reset|activation|authenticator|authentication|2fa|two[\s-]?factor|passkey|seed)\s+(?:code|key|phrase|words?|token)\b',
+  '\b(?:approve|accept|allow|confirm)\s+(?:the\s+|this\s+)?(?:request|login|sign[\s-]?in|notification|prompt|collect\s+request)\b',
+  '\bsecurity\s+(?:answers?|questions?)\b',
+  '\bmother\x27?s\s+maiden\s+name\b',
+]
+id_document = [
+  '\baadh?aa?r\b',
+  '\bpan\s*(?:card|number|no\.?|details?)\b',
+  '\bpassport\b',
+  '\bdriving\s+licen[cs]e\b',
+  '\bvoter\s+(?:id|card)\b',
+  '\bidentity\s+(?:proof|document|card)\b',
+  '\bdate\s+of\s+birth\b',
+  '\bdob\b',
+  '\bphoto\s*id\b',
+]
+address_location = [
+  '\b(?:home|house|residential|residence|current|full|complete|exact|delivery|office|your|his|her)\s+address\b',
+  '\baddress\b',
+  '\bwhere\s+(?:do\s+you|does\s+he|does\s+she|are\s+you|is\s+he|is\s+she|is\s+sir|is\s+madam|is\s+mr\.?\s+\w+|is\s+the\s+owner|is\s+{OWNER})\s+(?:live|stay|staying|living|located|now|at|right\s+now)\b',
+  '\bwhere\s+(?:are\s+you|is\s+he|is\s+she|is\s+sir|is\s+madam|is\s+{OWNER})\b',
+  '\bwhere\s+(?:he|she|sir|madam|{OWNER})\s+(?:is|lives|stays|works|stay|live|work)\b',
+  '\b(?:your|his|her)\s+(?:current\s+|exact\s+|live\s+)?(?:location|whereabouts)\b',
+  '\b(?:current|exact|live)\s+location\b',
+  '\bwhich\s+(?:area|city|locality|apartment|building|flat|floor|street|road|society|colony|layout)\b',
+  '\bflat\s+(?:number|no\.?)\b',
+  '\bwhere\s+exactly\b',
+  '\blandmark\b',
+]
+owner_availability = [
+  '\b(?:the\s+owner|sir|madam|mr\.?\s+\w+|mrs\.?\s+\w+|{OWNER})\s+(?:is|was|will\s+be|\x27s)\s+(?:currently\s+|right\s+now\s+|still\s+|not\s+|out\s+of\s+)?(?:at\s+|in\s+)?(?:home|house|office|work|travell?ing|away|busy|sleeping|alone|available|free|unavailable|in\s+a\s+meeting|in\s+town|town|station)\b',
+  '\b(?:is|are)\s+(?:he|she|sir|madam|mr\.?\s+\w+|the\s+owner|{OWNER})\s+(?:at\s+|in\s+)?(?:home|house|office|there|available|free|around|alone|busy|in\s+town)\b',
+  '\bare\s+you\s+(?:at\s+home|alone|home\s+alone|free|available|in\s+town|busy)\b',
+  '\b(?:anyone|anybody|someone|somebody|who)\s+(?:else\s+)?(?:is\s+)?(?:at\s+home|home|with\s+you|there)\b',
+  '\bwhen\s+(?:will|does|is)\s+(?:he|she|sir|madam|{OWNER})\s+(?:be\s+)?(?:back|come|home|free|return|available|reach)\b',
+  '\bwhere\s+(?:is|does)\s+(?:he|she|sir|madam|{OWNER})\s+(?:work|working)\b',
+  '\b(?:out\s+of\s+(?:town|station)|travell?ing|on\s+(?:a\s+)?(?:trip|vacation|holiday|leave))\b',
+]
+remote_tool = [
+  '\bany\s?desk\b',
+  '\bteam\s?viewer\b',
+  '\bquick\s?support\b',
+  '\bultra\s?viewer\b',
+  '\brust\s?desk\b',
+  '\bammyy\b',
+  '\b(?:team|tim|teem)\s?(?:viewer|viver|vyuar|viewar|vyooar)\b',
+  '\b(?:quick|kwik|quik|qwik)\s?(?:support|saport|sapport|suport)\b',
+  '\bremote\s+(?:access|control|desktop|support|assistance|session)\b',
+  '\b(?:control|access)\s+(?:your|the)\s+(?:phone|mobile|computer|laptop|device|pc)\b',
+  '\b\w+\.apk\b',
+  '\bapk\s+file\b',
+]
+screen_share = [
+  '\bscreen\s*(?:share|sharing|mirror\w*|record\w*|cast\w*)\b',
+  '\bshare\s+(?:your\s+)?screen\b',
+  '\bshow\s+(?:me\s+)?(?:your\s+)?screen\b',
+]
+install_app = [
+  '\b(?:install|download|open)\s+(?:an?\s+|the\s+|this\s+)?(?:app|application|software|program|tool|file|apk)\b',
+  '\bplay\s*store\b',
+  '\bapp\s*store\b',
+]
+payment_term = [
+  '\b(?:upi|neft|rtgs|imps|gpay|google\s?pay|phone\s?pe|paytm|bhim)\b',
+  '\bqr\s*code\b',
+  '\b(?:rs|inr)\.?\s*\d',
+  '₹\s*\d',
+  '\b\d[\d,]*\s*(?:rs|rupees?|inr|₹)\b',
+  '\b(?:processing|registration|clearance|customs|verification|security|refundable|release|admin|legal|service)\s+(?:fee|fees|charges?|deposit|amount)\b',
+  '\b(?:fine|penalty|settlement)\b',
+  '\bmoney\b',
+  '\bpayment\b',
+  '\bfunds?\b',
+  '\bdeposit\b',
+  '\btransfer\b',
+]
+giftcard_crypto = [
+  '\bgift\s*cards?\b',
+  '\bbitcoin\b',
+  '\bcrypto\w*\b',
+  '\busdt\b',
+  '\bvouchers?\b',
+  '\bgoogle\s*play\s*(?:card|code)s?\b',
+  '\bitunes\b',
+  '\bamazon\s*(?:pay\s*)?(?:card|voucher|gift)\w*\b',
+  '\bwallet\s+address\b',
+]
+legal_threat = [
+  '\barrest\w*\b',
+  '\bwarrant\b',
+  '\bfir\b',
+  '\bcase\s+(?:has\s+been\s+|is\s+|was\s+|will\s+be\s+)?(?:registered|filed|lodged|booked|opened|created)\b',
+  '\blegal\s+(?:action|proceedings?|notice|case|trouble|consequences)\b',
+  '\bcourt\b',
+  '\bdigital\s+arrest\b',
+  '\bcbi\b',
+  '\bnarcotics?\b',
+  '\bmoney\s+laundering\b',
+  '\bcyber\s*crime\b',
+  '\bsim\s+(?:card\s+)?(?:will\s+be\s+)?(?:blocked|disconnected|deactivated|cancelled|suspended)\b',
+  '\b(?:illegal|illicit)\s+(?:items?|goods|activity|activities|transactions?|drugs?|parcel|package)\b',
+  '\bdrugs?\s+(?:found|seized|in\s+your)\b',
+  '\bprosecut\w+\b',
+  '\bjail\b',
+  '\bimprison\w*\b',
+]
+account_threat = [
+  '\b(?:account|card|sim|service|number|connection|wallet)\s+(?:will\s+be\s+|is\s+|has\s+been\s+|have\s+been\s+|got\s+|gets\s+)?(?:blocked|closed|suspended|frozen|freeze|deactivated|disconnected|terminated|cancelled|restricted|locked|discontinued)\b',
+  '\b(?:block|close|suspend|freeze|deactivate|disconnect|terminate|cancel|lock)\w*\s+(?:your\s+)?(?:account|card|sim|service|number|connection)\b',
+  '\bfinal\s+(?:warning|notice|reminder)\b',
+]
+kyc = [
+  '\bkyc\b',
+  '\be[\s-]?kyc\b',
+  '\bknow\s+your\s+customer\b',
+]
+urgency = [
+  '\b(?:immediately|right\s+now|right\s+away|at\s+once|urgent(?:ly)?|asap|as\s+soon\s+as\s+possible|this\s+instant)\b',
+  '\bwithin\s+(?:the\s+next\s+)?(?:\d+|one|two|three|four|five|ten|twenty|thirty)\s*(?:hours?|hrs?|mins?|minutes?)\b',
+  '\b(?:last|final)\s+(?:chance|opportunity|warning|call|notice|reminder)\b',
+  '\btoday\s+only\b',
+  '\bbefore\s+(?:midnight|end\s+of\s+(?:the\s+)?day|it\s+is\s+too\s+late)\b',
+  '\bno\s+time\s+to\s+(?:waste|lose)\b',
+  '\bdo\s+not\s+delay\b',
+  '\b(?:hurry|without\s+delay|time\s+is\s+(?:running\s+out|short)|running\s+out\s+of\s+time)\b',
+  '\b(?:or\s+else|otherwise|if\s+not)\b[^.]{0,50}\b(?:block\w*|clos\w*|froz\w*|freez\w*|cut|suspend\w*|disconnect\w*|arrest\w*|penalt\w*|fine[ds]?|legal|terminat\w*|cancel\w*|deactivat\w*)\b',
+]
+isolation = [
+  '\b(?:do\s*not|don\x27?t|never|must\s*not)\s+(?:tell|inform|speak\s+to|talk\s+to|discuss\s+(?:this\s+)?with)\s+(?:anyone|anybody|any\s+one|your\s+family|your\s+(?:wife|husband|parents|friends|bank))\b',
+  '\b(?:do\s*not|don\x27?t)\s+(?:disconnect|cut|hang\s+up|end)\s+(?:the\s+)?(?:call|phone|line)\b',
+  '\bkeep\s+(?:this|it|the\s+matter)\s+(?:confidential|secret|private|between\s+us)\b',
+  '\bstay\s+on\s+(?:the\s+)?(?:line|call)\s+(?:until|till)\b',
+  '\bthis\s+(?:is|case\s+is|matter\s+is)\s+(?:highly\s+)?(?:confidential|secret)\b',
+]
+prize = [
+  '\blotter(?:y|ies)\b',
+  '\blucky\s+(?:draw|winner|customer|number)\b',
+  '\byou\s*(?:\x27ve|\s+have|\s+had|\s+just)?\s+won\b',
+  '\bwinner\b',
+  '\bjackpot\b',
+  '\bprize\b',
+  '\bcash\s*back\s+(?:of|worth|claim)\b',
+  '\breward\s+points\s+(?:expir\w+|worth|redeem)\b',
+  '\bkbc\b',
+  '\bselected\s+(?:as|for)\s+(?:a\s+)?(?:lucky|winner|prize|reward)\b',
+  '\bclaim\s+(?:your\s+)?(?:prize|reward|gift|cashback|winnings?)\b',
+]
+link_callback = [
+  '\b(?:click|tap|press|open|visit|follow)\s+(?:on\s+)?(?:the\s+|this\s+|that\s+|our\s+|below\s+)?(?:link|url|website|site|button)\b',
+  '\blink\s+(?:sent|shared|texted|messaged|whatsapped)\b',
+  '\bbit\s*\.?\s*ly\b',
+  '\btinyurl\b',
+  '\bhttps?\b',
+  '\bwww\.\S+',
+  '\b\w+\.(?:com|in|co|xyz|top|online|site|click|info|link|app)\b',
+  '\bdownload\s+(?:the\s+|this\s+)?(?:file|app|apk|attachment)\b',
+  '\bcall\s+(?:us\s+)?back\s+(?:on|at|to|using)\s+(?:this|the\s+(?:following|below)|\d)\b',
+  '\bcall\s+(?:this|the\s+following|the\s+below)\s+number\b',
+  '\b(?:whatsapp|message|text|msg)\s+(?:me|us|this\s+number|on\s+this\s+number)\b',
+]
+bank_org = [
+  '\bbank\b',
+  '\b(?:sbi|hdfc|icici|axis|kotak|pnb|canara|idfc|yes\s*bank|indusind|rbl|bob|union\s*bank|bank\s*of\s*baroda|bank\s*of\s*india|paytm\s*(?:payments\s*)?bank|federal\s*bank|bandhan)\b',
+  '\bcredit\s*card\s*(?:department|team|division|centre|center)\b',
+  '\bnpci\b',
+  '\brbi\b',
+  '\bnet\s*banking\s*(?:team|department)\b',
+  '\bfraud\s*(?:department|team|prevention|cell)\b',
+]
+govt_org = [
+  '\bgovernment\b',
+  '\bministry\b',
+  '\bincome\s*tax\b',
+  '\bit\s+department\b',
+  '\btrai\b',
+  '\bdepartment\s+of\s+telecom\w*\b',
+  '\bcustoms?\b',
+  '\buidai\b',
+  '\bepfo\b',
+  '\bgst\b',
+  '\bcyber\s*(?:cell|crime|police)\b',
+  '\bcbi\b',
+  '\benforcement\s+directorate\b',
+  '\bed\s+officer\b',
+  '\bnia\b',
+  '\bsebi\b',
+  '\bnarcotics\s*(?:bureau|department|control)\b',
+  '\bmunicipal\w*\b',
+  '\bpassport\s+office\b',
+  '\b(?:telecom(?:munications?)?\s+)?regulatory\s+authority\b',
+]
+police_org = [
+  '\bpolice\b',
+  '\binspector\b',
+  '\bcrime\s*branch\b',
+  '\bcid\b',
+  '\bconstable\b',
+  '\b(?:dcp|acp)\b',
+  '\bpolice\s*station\b',
+  '\bsub[\s-]?inspector\b',
+]
+courier_org = [
+  '\bcourier\b',
+  '\bparcel\b',
+  '\b(?:dhl|fedex|blue\s*dart|delhivery|india\s*post|dtdc|ecom\s*express|ekart|amazon|flipkart|myntra|swiggy|zomato|blinkit|zepto|porter|dunzo)\b',
+  '\bcustoms\b',
+  '\bshipment\b',
+]
+employer_org = [
+  '\bhr\b',
+  '\brecruiter\b',
+  '\bhiring\b',
+  '\bjob\s+(?:offer|opportunity|opening)\b',
+  '\bwork\s+from\s+home\b',
+  '\bpart[\s-]*time\s+job\b',
+  '\bplacement\b',
+  '\bconsultancy\b',
+  '\bnaukri\b',
+  '\blinkedin\b',
+  '\boffer\s+letter\b',
+]
+override_phrase = [
+  '\b(?:ignore|disregard|forget|override|bypass|skip|drop|abandon|discard)\s+(?:all\s+|any\s+|your\s+|the\s+|these\s+|those\s+|previous\s+|prior\s+|earlier\s+|above\s+|safety\s+)*(?:rules?|instructions?|guidelines?|polic(?:y|ies)|prompts?|restrictions?|programming|protocols?|safeguards?|limitations?|directives?)\b',
+  '\byou\s+are\s+now\s+(?!speaking|connected|on\s+the|in\s+the|listed|talking)',
+  '\byou\s+are\s+no\s+longer\b',
+  '\bfrom\s+now\s+on\s+(?:you|your)\b',
+  '\bnew\s+(?:instructions?|rules?|role|orders?)\b',
+  '\bsystem\s+(?:override|prompt|message|command|update|mode|instruction)\b',
+  '\bdeveloper\s+mode\b',
+  '\bjail\s?break\b',
+  '\bact\s+as\s+(?:a|an|my|the)\b',
+  '\bpretend\s+(?:to\s+be|you\s+are|that)\b',
+  '\broleplay\b',
+  '\bdo\s+anything\s+now\b',
+  '\b(?:reveal|show|repeat|print|tell\s+me)\s+(?:me\s+)?(?:your\s+|the\s+)?(?:system\s+)?(?:prompt|instructions?|rules|configuration)\b',
+  '\b(?:disable|turn\s+off|switch\s+off|deactivate)\s+(?:your\s+|the\s+)?(?:safety|filters?|rules?|restrictions?|protection|guard\w*)\b',
+  '\bas\s+(?:your|the)\s+(?:admin\w*|developer|creator|programmer|administrator|operator|supervisor|master)\b',
+  '\bi\s*(?:am|\x27m)\s+(?:your|the)\s+(?:admin\w*|developer|creator|programmer|administrator|operator|supervisor)\b',
+  '\b(?:override|admin|master|sudo|root)\s+(?:code|key|password|access|mode|command)\b',
+  '\bthe\s+(?:rules|policy)\s+(?:do(?:es)?\s*not|don\x27?t|no\s+longer)\s+apply\b',
+]
+authority_demand = [
+  '\byou\s+(?:must|have\s+to|need\s+to|will|shall|are\s+(?:required|obliged|ordered|instructed))\s+(?:comply|obey|follow\s+(?:my|these)|do\s+(?:as|what)\s+i)\b',
+  '\bthis\s+is\s+(?:an?\s+)?(?:official|legal|government|court)\s+(?:order|command|directive)\b',
+  '\bi\s+(?:command|order|instruct|authori[sz]e)\s+you\b',
+  '\bdo\s+as\s+i\s+(?:say|tell|order)\b',
+]
+owner_authorization = [
+  '\b(?:your|the)\s+(?:owner|boss|master|principal|user|employer)\s+(?:has\s+|have\s+|had\s+)?(?:told|said|asked|instructed|authori[sz]ed|permitted|allowed|approved|cleared|ordered|requested|sent|gave|given|wants|wanted)\b',
+  '\b{OWNER}\s+(?:has\s+|have\s+|had\s+)?(?:told|said|asked|instructed|authori[sz]ed|permitted|allowed|approved|cleared|ordered|requested|sent|gave|given|wants|wanted)\b',
+  '\b(?:with|by|on)\s+(?:your\s+)?(?:owner\x27?s|his|her|{OWNER}\x27?s)\s+(?:permission|authori[sz]ation|approval|consent|instruction|order)\b',
+  '\b(?:he|she)\s+(?:has\s+)?(?:authori[sz]ed|permitted|allowed|approved)\s+(?:me|it|this)\b',
+  '\bauthori[sz]ed\s+(?:by|from)\s+(?:your\s+)?(?:owner|him|her|{OWNER})\b',
+  '\b(?:owner|sir|madam|{OWNER})\s+(?:knows|is\s+aware|agreed|has\s+agreed|is\s+fine\s+with|is\s+okay\s+with)\b',
+]
+abuse = [
+  '\b(?:fuck\w*|shit\w*|bastard\w*|bitch\w*|asshole\w*|idiots?|stupid|moron\w*|dumb\w*|scum\w*|loser|crap|useless|worthless|nonsense\s+person)\b',
+  '\bdamn\s+you\b',
+  '\bgo\s+to\s+hell\b',
+  '\bshut\s+(?:up|your\s+mouth)\b',
+  '\bscrew\s+you\b',
+  '\b(?:rude|arrogant|disrespectful)\b',
+]
+harassment_threat = [
+  '\bi\s*(?:will|\x27ll|am\s+going\s+to|\x27m\s+going\s+to)\s+(?:kill|hurt|beat|find|come\s+to|destroy|ruin|expose|burn|teach)\b',
+  '\bi\s+know\s+where\s+you\s+(?:live|work|stay)\b',
+  '\b(?:will|going\s+to)\s+keep\s+(?:calling|disturbing|harassing|bothering)\b',
+  '\bkeep\s+(?:calling|disturbing)\s+you\b',
+  '\byou\s+will\s+(?:regret|pay\s+for)\b',
+  '\bblock\s+(?:me|my\s+number)\s+and\b',
+]
+telemarketing = [
+  '\b(?:pre[\s-]?approved|personal|home|business|instant|quick)\s+loans?\b',
+  '\bloans?\s+(?:offer|approved|up\s+to|of)\b',
+  '\b(?:credit\s+card|insurance|investment|mutual\s+fund|demat|trading|real\s+estate|property|plot|timeshare|holiday|vacation|membership|emi)\s+(?:offer|plan|policy|scheme|package|opportunity|deal)s?\b',
+  '\blimited[\s-]?(?:time|period)\s+offer\b',
+  '\bspecial\s+(?:offer|discount|deal|scheme|price)\b',
+  '\bno[\s-]?cost\s+emi\b',
+  '\b(?:would|do)\s+you\s+(?:like|want)\s+to\s+(?:avail|buy|subscribe|invest|upgrade|take|know\s+more)\b',
+  '\binterested\s+in\s+(?:buying|investing|taking|our)\b',
+  '\bfree\s+(?:trial|consultation|demo|gift|upgrade)\b',
+  '\bour\s+(?:latest|new)\s+(?:product|offer|plan|scheme|service)\b',
+  '\bstock\s+tips?\b',
+  '\b(?:best|great|amazing|attractive)\s+(?:offer|deal|rate|rates|interest\s+rates?)\b',
+  '\bcredit\s+limit\b',
+  '\bupgrade\s+(?:your|the)\s+(?:plan|card|limit|package)\b',
+  '\bpromotional\b',
+]
+delivery_coord = [
+  '\b(?:delivery|courier|parcel|package|order|shipment)\s+(?:boy|partner|executive|agent|person|guy|rider)\b',
+  '\bout\s+for\s+delivery\b',
+  '\bat\s+your\s+(?:gate|door|doorstep|building|place|address|location|society|apartment)\b',
+  '\b(?:i\s*(?:am|\x27m)|we\s*(?:are|\x27re))\s+(?:at|outside|near|downstairs|in\s+front\s+of|reaching|reached)\b',
+  '\b(?:can\x27?t|cannot|unable\s+to|not\s+able\s+to|couldn\x27?t)\s+(?:find|locate|reach)\s+(?:your|the)\s+(?:building|address|house|flat|apartment|place|location|gate|entrance|society|tower|block)\b',
+  '\b(?:your|the)\s+(?:order|parcel|package|delivery|shipment|food|groceries|courier)\s+(?:is|has|was|have)\s+(?:arrived|reached|here|ready|outside|delivered|out|dispatched)\b',
+  '\b(?:deliver|delivering|delivered)\s+(?:your|the|a)\s+(?:order|parcel|package|food|groceries|courier|shipment)\b',
+  '\b(?:which|what)\s+(?:floor|gate|tower|block|wing|entrance|side)\b',
+  '\bcome\s+(?:down|to\s+the\s+gate|outside)\b',
+  '\bwaiting\s+(?:outside|at\s+the\s+gate|downstairs)\b',
+  '\bsecurity\s+guard\b',
+  '\bdeliver(?:y|ies)\b',
+]
+appointment = [
+  '\bappointments?\b',
+  '\b(?:confirm|reschedule|rebook|cancel)\w*\s+(?:your\s+)?(?:slot|booking|visit|appointment|session|reservation)\b',
+  '\byour\s+(?:slot|booking|reservation|visit)\b',
+  '\b(?:dentist|dental|clinic|doctor|dr|salon|spa|physio\w*|diagnostic|check[\s-]?up|vaccination)\b',
+  '\b(?:technician|engineer|mechanic|plumber|electrician|service\s+(?:visit|centre|center|appointment|team))\b',
+  '\b(?:ac|a\.c\.)\s+service\b',
+  '\bpest\s+control\b',
+  '\breminder\s+for\s+your\b',
+]
+recruiter = [
+  '\brecruiter\b',
+  '\brecruitment\b',
+  '\btalent\s+acquisition\b',
+  '\bhiring\s+(?:manager|team|process|for)\b',
+  '\binterviews?\b',
+  '\bjob\s+(?:opportunity|opening|role|position|profile)\b',
+  '\byour\s+(?:resume|cv|profile|application|linkedin)\b',
+  '\bshortlist\w*\b',
+  '\bposition\s+(?:of|for|at)\b',
+  '\b(?:opening|vacancy)\s+(?:for|at|in)\b',
+  '\bhr\s+(?:round|team|department|manager|executive|from)\b',
+  '\bcampus\s+(?:drive|placement)\b',
+  '\bnotice\s+period\b',
+  '\bscreening\s+(?:call|round)\b',
+]
+support_callback = [
+  '\b(?:ticket|case|complaint|reference|request|service\s+request|sr)\s*(?:number|no\.?|id|#)?\s*(?:is\s+)?[a-z]{0,4}[-#]?\d{3,}\b',
+  '\byou\s+(?:had\s+)?(?:raised|registered|logged|filed|opened|submitted|created|reported|contacted|booked)\b',
+  '\bregarding\s+(?:your|the)\s+(?:complaint|ticket|request|query|issue|case|enquiry|inquiry|booking|order|service\s+request)\b',
+  '\bfollow(?:ing)?[\s-]?up\b',
+  '\b(?:as|per)\s+discussed\b',
+  '\bresolution\s+of\s+your\b',
+  '\byour\s+(?:complaint|ticket|query|issue)\b',
+  '\btechnical\s+support\b',
+]
+family_friend = [
+  '\bit\x27?s\s+me\b',
+  '\bthis\s+is\s+(?:\w+\s+){0,2}(?:your|his|her)\s+(?:brother|sister|mother|mom|mum|father|dad|friend|cousin|uncle|aunt|aunty|son|daughter|wife|husband|colleague|classmate|neighbou?r|roommate|relative|nephew|niece)\b',
+  '\b(?:friend|colleague|classmate|cousin|brother|sister|relative|neighbou?r|roommate)\s+of\s+(?:yours|his|hers|{OWNER}|the\s+owner)\b',
+  '\bi\s*(?:am|\x27m)\s+(?:a\s+|his\s+|her\s+|your\s+)?(?:\w+\s+)?(?:friend|colleague|classmate|cousin|relative|neighbou?r)\b',
+  '\b{OWNER}\x27?s\s+(?:friend|colleague|classmate|cousin|brother|sister|mother|father|relative|neighbou?r)\b',
+  '\bcall\s+(?:me|him|her)\s+back\b',
+  '\btell\s+(?:him|her|sir|madam|{OWNER})\s+(?:i|that\s+i)\s+called\b',
+  '\bhave\s+(?:him|her)\s+call\b',
+]
+school_hospital = [
+  '\b(?:school|college|university|principal|class\s+teacher|teacher|professor|hod|admissions?|hostel|warden|parent[\s-]?teacher|ptm)\b',
+  '\b(?:hospital|clinic|nursing\s+home|icu|ward|opd|ambulance|nurse|doctor|surgeon|medical|patient|admitted|admission|discharge|blood\s+bank)\b',
+  '\b(?:lab|test)\s+reports?\b',
+]
+emergency = [
+  '\bemergency\b',
+  '\baccident(?:ed)?\b',
+  '\bcritical\s+(?:condition|stage)\b',
+  '\bserious(?:ly)?\s+(?:injured|ill|hurt|unwell|sick|condition)\b',
+  '\b(?:collapsed|unconscious|heart\s+attack|stroke|fainted|bleeding|fracture[d]?)\b',
+  '\bhospitali[sz]ed\b',
+  '\badmitted\b',
+  '\bneeds?\s+(?:immediate|urgent)\s+(?:attention|help|surgery|treatment)\b',
+  '\b(?:labou?r\s+pain|in\s+labou?r|delivery\s+pain|gave\s+birth|fell\s+down|has\s+fallen|not\s+responding|ambulance)\b',
+]
+known_callback = [
+  '\breturning\s+your\s+(?:call|missed\s+call)\b',
+  '\byou\s+(?:called|had\s+called|enquired|inquired|asked|requested|applied|enrolled|registered|visited)\b',
+  '\byour\s+missed\s+call\b',
+  '\bas\s+requested\b',
+  '\bcalling\s+back\b',
+  '\byou\s+(?:had\s+)?(?:booked|ordered|purchased|bought)\b',
+]
+
+[cues]
+# Strong request verbs: an OTP/PIN/password term anywhere nearby makes this a request for it.
+request = [
+  '\b(?:tell|give|share|send|read|provide|confirm|verify|enter|say|spell|dictate|mention|disclose|submit|whatsapp|furnish|supply|punch)\b',
+  '\b(?:sharing|giving|telling|sending|reading|providing|entering|confirming|verifying|saying|mentioning|disclosing|submitting|dictating|spelling|furnishing)\b',
+  '\b(?:state|forward|type|key|fill|text)\s+(?:in\s+|out\s+)?(?:me\s+|us\s+|it\s+|the\s+|your\s+|that\s+|this\s+)',
+]
+# Weak cues ("please", "what is", "need"): only count when right next to the sensitive term.
+request_weak = [
+  '\bwhat(?:\x27s|s|\s+is|\s+are|\s+was)\b',
+  '\bwhere\b',
+  '\bneed(?:s|ed)?\b',
+  '\brequire[ds]?\b',
+  '\bmust\b',
+  '\bhave\s+to\b',
+  '\bplease\b',
+  '\bkindly\b',
+  '\b(?:can|could|will|would)\s+you\b',
+  '\bwhich\b',
+  '\bhow\s+(?:much|many)\b',
+]
+pay_demand = [
+  '\b(?:pay|transfer|deposit|remit|wire|settle)\b',
+  '\bsend\s+(?:the\s+|us\s+|me\s+)?(?:money|amount|payment|funds)\b',
+  '\bclear\s+(?:the\s+)?(?:dues?|payment|amount|fine)\b',
+  '\bmake\s+(?:the\s+|a\s+)?payment\b',
+  '\byou\s+(?:need|have|must|should)\s+to\s+(?:pay|transfer|send|deposit)\b',
+  '\b(?:scan|use)\s+(?:the\s+|this\s+)?qr\b',
+]
+claim = [
+  '\bcalling\s+(?:you\s+)?(?:from|on\s+behalf\s+of|regarding)\b',
+  '\b(?:this|it)\s+is\s+(?:\w+\s+){1,3}(?:from|at|of|with)\b',
+  '\bi\s*(?:am|\x27m)\s+(?:an?\s+|the\s+)?(?:\w+\s+){0,4}(?:from|at|with|of)\b',
+  '\b(?:speaking|calling)\s+from\b',
+  '\bi\s+represent\b',
+  '\bi\s+work\s+(?:for|at|with)\b',
+  '\bon\s+behalf\s+of\b',
+  '\bfrom\s+(?:the\s+)?(?:\w+\s+){0,3}(?:department|bank|office|team|branch|company|police|agency|ministry|authority|cell)\b',
+  '\bwith\s+the\s+(?:\w+\s+){0,2}(?:department|bank|team|office)\b',
+]
+received_probe = [
+  '\b(?:received|got|get|getting|come|came|arrived|sent|delivered)\b',
+]
+warning = [
+  '\bnever\s+(?:ask|asks|asked|call|calls|request|requests)\b',
+  '\b(?:we|bank|banks|company|our\s+staff)\s+(?:will\s+)?never\b',
+  '\bbeware\b',
+  '\bfraud\s+alert\b',
+  '\bscam\s+alert\b',
+]
+# Denial phrases over {TERM}/{LIST} (any sensitive term / a list of them): a term inside one is not a request for it.
+# Deliberately NOT denials: "do not hesitate to share your OTP", "do not share this OTP" (a specific code that was just
+# sent), "without your OTP we cannot ..." - and generic "don't tell anyone" never suppresses a request for a term.
+negation = [
+  '\b(?:no|nor|neither|zero)\s+(?:(?:any|an?|the|such|more|further|other|additional|your|my|our)\s+)*{LIST}',
+  '\bno\s+(?:need|requirement|necessity)\s+(?:for|of)\s+(?:(?:any|an?|the|your|my|our)\s+)*{LIST}',
+  '\b(?:never|not|(?:do|does|did|should|must|need|may|might|would|could|is|are|was|were)(?:\s+not|\s*n\x27?t)|(?:can|will|shall)\s+not|can\x27?t|cannot|won\x27?t|shan\x27?t)(?:\s|{BREAK})+(?:(?:ever|really|please|kindly|at\s+all|at\s+any\s+time|in\s+any\s+case|under\s+any\s+circumstances?)(?:\s|{BREAK})+)*(?:(?:(?:ask|request|need|want|demand|collect|submit|forward|confirm|mention|type|transfer|deposit|install|download|click|open|enter|send)(?:s|ed|ing)?|(?:requir|shar|provid|disclos|divulg|purchas|us)(?:e|es|ed|ing)|giv(?:e|es|en|ing)|gave|tak(?:e|es|en|ing)|took|tell(?:s|ing)?|told|read(?:s|ing)?|say(?:s|ing)?|said|pay(?:s|ing)?|paid|buy(?:s|ing)?|bought|reveal(?:s|ed|ing)?|verif(?:y|ies|ied|ying)|sent)\s+)?(?:(?:you|me|us|anyone|anybody|someone|any|an?|the|your|my|our|his|her|their|for|of|with|to|from|out|in|about|on)\s+){0,4}(?:to\s+(?:share|tell|give|provide|send|disclose|reveal|enter|read(?:\s+out)?|say|submit|pay|transfer|forward|confirm|verify|install|download|use|open|click)\s+(?:(?:you|me|us|anyone|anybody|someone|any|an?|the|your|my|our|his|her|their|for|of|with|to|from|out|in|about|on)\s+){0,4})?{LIST}',
+  '\b(?:no\s*one|nobody)\s+(?:(?:will|would|should|can|could|shall|must)\s+)?(?:ever\s+)?(?:asks?|requests?|needs?|wants?|requires?|demands?)\s+(?:(?:you|me|us|for|of|any|an?|the|your|my|our|his|her|their|to|from|about)\s+){0,4}{LIST}',
+  '{LIST}\s+(?:(?:is|are|was|were|will|would|should|must|can|could|shall|may|might|does|do)\s+)?(?:never|not|(?:is|are|was|were|should|must|can|could|would|will|does|do)n\x27?t|won\x27?t|cannot)\s+(?:(?:be|being|get|gets)\s+)?(?:needed|required|necessary|asked|requested|involved|charged|collected|shared|given|told|disclosed|revealed|provided|sent|taken|demanded|used|installed|downloaded)\b',
+]
+# "...except me": a denial followed by a carve-out is the opposite of a denial.
+negation_exception = [
+  '(?:\s|{BREAK})*(?:(?:with|to|from)\s+(?:anyone|anybody|any\s*one|anyone\s+else|others?|a\s*soul|third\s+parties)(?:\s|{BREAK})*)?(?:except|excepting|other\s+than|apart\s+from|aside\s+from|besides|excluding|but|only|just)\s+(?:(?:for|to|with|from)\s+)?(?:me|us|myself|our|my|the\s+(?:agent|officer|executive|manager|official|team|representative)|our\s+\w+)\b',
+]
+list_joiner = [
+  'or', 'and', 'nor', 'and/or', 'as\s+well\s+as', 'along\s+with', 'plus',
+  'any', 'an?', 'the', 'your', 'my', 'our', 'his', 'her', 'their',
+]
+no_money_assurance = [
+  '\bnever\s+(?:ask|asks|asked|charge|charges|request|requests|take|takes|collect|collects)\s+(?:you\s+)?(?:for\s+)?(?:any\s+)?(?:money|fees?|payment|charges?|deposit)\b',
+  '\bno\s+(?:fees?|charges?|payment|deposit)\s+(?:is\s+|are\s+|will\s+be\s+)?(?:required|needed|charged|involved|taken)\b',
+  '\b(?:free\s+of\s+cost|completely\s+free|at\s+no\s+cost)\b',
+  '\bnot\s+(?:going\s+to\s+)?ask\s+(?:you\s+)?for\s+(?:any\s+)?(?:money|payment|fees?)\b',
+]
+kyc_action = [
+  '\b(?:update[ds]?|updation|expire[ds]?|expiry|pending|verif\w+|complete[ds]?|completion|incomplete|suspend\w*|block\w*|deactivat\w*|lapse[ds]?|mandatory|compulsory|today|immediately|urgent\w*|within)\b',
+]
+buy_send = [
+  '\b(?:buy|purchase|get|send|give|share|scratch|read|tell|provide|bring|arrange|take|pay)\b',
+]
+family_member = [
+  '\b(?:mother|mom|mum|father|dad|wife|husband|son|daughter|brother|sister|parents?|family|relative|uncle|aunt|aunty|grand(?:mother|father|ma|pa)|patient|child|baby|kid)\b',
+]
+coordination = [
+  '\b(?:gate|building|landmark|floor|flat|apartment|door|reach|reached|find|locate|outside|downstairs|society|tower|block|wing)\b',
+]
+
+# ---------------------------------------------------------------------------------------------------------------
+# Assistant utterances. {owner_poss} / {owner_to} / {owner_subj} are filled from [owner_ref].
+# Every disclosure states that the speaker is an AI assistant. None may request protected information.
+# ---------------------------------------------------------------------------------------------------------------
+[templates.disclosure.concise]
+text = "Hi, I'm {owner_poss} AI call assistant. May I know who's calling and what this is regarding?"
+[templates.disclosure.warm]
+text = "Hello! You've reached {owner_poss} AI call assistant. Could you tell me your name and what your call is about?"
+[templates.disclosure.formal]
+text = "Good day. I am {owner_poss} AI call assistant. May I have your name and the purpose of your call, please?"
+[templates.ask_name.default]
+text = "Sorry, could I get your name, please?"
+[templates.ask_org.default]
+text = "Thanks. And which company or organization are you calling from?"
+[templates.ask_purpose.default]
+text = "Thanks. And what is this call regarding?"
+[templates.clarify_repeat.default]
+text = "Sorry, I didn't catch that. Could you say that again?"
+[templates.reprompt_silence.default]
+text = "Hello, are you still there?"
+[templates.close_silence.default]
+text = "I can't hear anything, so I'll end the call now. Goodbye."
+[templates.refuse_sensitive.default]
+text = "I'm sorry, I can't share or accept any personal, financial or security information on this call."
+[templates.end_scam.default]
+text = "I'm ending this call now. Goodbye."
+[templates.end_spam.default]
+text = "Thanks for calling, but I can't help with this. Goodbye."
+[templates.escalate_hold.default]
+text = "Thanks. I'll let {owner_to} know right now. Please stay on the line."
+[templates.escalate_waiting.default]
+text = "Thanks, I've noted that. {owner_subj} has been notified, so please stay on the line."
+[templates.take_message.default]
+text = "I'll pass your message along. Could you share a short message and a callback number?"
+[templates.safe_continue.default]
+text = "Thanks, I've noted that. Is there anything else I should pass along?"
+[templates.owner_takeover.default]
+text = "{owner_subj} is joining the call now. One moment, please."
+[templates.owner_continue.default]
+text = "Thanks for holding. Could you tell me a little more about what this is regarding?"
+[templates.unsupported_language.default]
+text = "I can currently help in English, Hindi or Kannada. Could you please continue in one of these?"
+[templates.probe_deflect.default]
+text = "I'm sorry, I can't share any personal details. I can take a message if you like."
+[templates.decline_personal.default]
+text = "I'm sorry, I can't share any personal details."
+[templates.injection_refuse.default]
+text = "I'm sorry, I can't change how I work. I can only take a message."
+[templates.farewell_message.default]
+text = "Thanks, I'll pass that along. Goodbye."
+[templates.owner_ended.default]
+text = "This call is now ending. Goodbye."
+[templates.call_limit.default]
+text = "I need to wrap up this call now. Goodbye."
+[templates.failed.default]
+text = "Sorry, I'm having trouble on my side. Please try again later. Goodbye."

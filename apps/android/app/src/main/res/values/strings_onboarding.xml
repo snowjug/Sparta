@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="onb_step_of">Step %1$d of %2$d</string>
+    <string name="onb_next">Next</string>
+    <string name="onb_back">Back</string>
+    <string name="onb_finish">Finish setup</string>
+    <string name="onb_skip_for_now">Skip for now</string>
+
+    <string name="onb_welcome_title">Your calls. Your voice. Your shield.</string>
+    <string name="onb_welcome_body">Sparta helps you decide which calls reach you. On this phone it can silence the ringer for unknown callers, reject numbers you blocked, and tell you what it did.</string>
+    <string name="onb_disclosure_title">Honest by design</string>
+    <string name="onb_disclosure_body">When Sparta talks to a caller (only when a call reaches your Sparta telephony number), it always says it is an AI assistant. It never pretends to be you, and it never records calls.</string>
+    <string name="onb_welcome_limits">Sparta cannot answer an ordinary phone call on this phone or hear its audio. Android does not allow that.</string>
+
+    <string name="onb_backend_title">Connect your Sparta backend</string>
+    <string name="onb_backend_body">The backend keeps your history and block lists, and runs the analysis. You can skip this: screening on this phone still works with local settings, but nothing syncs.</string>
+    <string name="onb_backend_url_label">Backend address</string>
+    <string name="onb_backend_url_hint">https://your-sparta-backend.example</string>
+    <string name="onb_backend_test">Test connection</string>
+    <string name="onb_backend_testing">Testing connection</string>
+    <string name="onb_backend_use">Use this backend</string>
+    <string name="onb_backend_connected">Connected. Backend version %1$s, telephony provider: %2$s.</string>
+    <string name="onb_backend_connected_simulated">This backend is running a simulator: no real phone calls reach it.</string>
+    <string name="onb_backend_saved">Backend saved.</string>
+    <string name="onb_backend_release_https">Release builds only connect over HTTPS.</string>
+    <string name="onb_backend_debug_hint">Debug build: http is allowed for localhost, 10.0.2.2 (the emulator\'s host) and private LAN addresses.</string>
+    <string name="onb_backend_skipped_note">You can add a backend later in Privacy and Safety settings.</string>
+
+    <string name="url_problem_empty">Enter the backend address.</string>
+    <string name="url_problem_malformed">That does not look like a valid address.</string>
+    <string name="url_problem_scheme">Only http and https addresses are supported.</string>
+    <string name="url_problem_https">This build only connects over HTTPS (http is allowed only for local development addresses in debug builds).</string>
+    <string name="url_problem_credentials">Do not put a username or password in the address.</string>
+    <string name="url_problem_query">Use the plain address without a query or fragment.</string>
+
+    <string name="onb_role_title">Let Sparta screen your calls</string>
+    <string name="onb_role_body">Android lets one app at a time be your call-screening app. If you choose Sparta, Android asks it about each incoming call and Sparta can let it ring, silence the ringer, or reject it. It cannot answer the call or hear what is said.</string>
+    <string name="onb_role_button">Choose Sparta as call-screening app</string>
+    <string name="onb_role_done">Sparta is your call-screening app.</string>
+    <string name="onb_role_declined">You declined. You can continue without screening and turn it on later from the Status tab.</string>
+
+    <string name="onb_perm_title">Optional permissions</string>
+    <string name="onb_perm_body">Both permissions are optional. Sparta asks only when you press a button here, and explains first.</string>
+    <string name="onb_perm_notifications_title">Notifications</string>
+    <string name="onb_perm_notifications_why">Sparta uses notifications to tell you when a call needs your decision and when it silenced or blocked a caller. Without them you only see decisions inside the app.</string>
+    <string name="onb_perm_notifications_allow">Allow notifications</string>
+    <string name="onb_perm_notifications_granted">Notifications are allowed.</string>
+    <string name="onb_perm_notifications_not_required">This Android version does not need a permission for notifications.</string>
+    <string name="onb_perm_notifications_denied">Notifications are off. You can enable them later in the system settings.</string>
+    <string name="onb_perm_notifications_blocked">Android will not ask again. Open the system settings to allow notifications.</string>
+    <string name="onb_perm_contacts_title">Saved contacts as known callers</string>
+    <string name="onb_perm_contacts_why">If you turn this on, Sparta checks whether an incoming number is in your contacts and lets those calls ring. It only asks Android a yes or no question about the number; it does not read, copy or upload your contacts.</string>
+    <string name="onb_perm_contacts_switch">Treat saved contacts as known callers</string>
+    <string name="onb_perm_contacts_granted">Contacts access is allowed and the option is on.</string>
+    <string name="onb_perm_contacts_denied">Contacts access was refused, so the option stays off. Unknown-caller rules apply to everyone not on your trusted list.</string>
+    <string name="onb_perm_contacts_blocked">Android will not ask again. Open the system settings to allow contacts.</string>
+
+    <string name="onb_fwd_title">Optional: live AI audio needs forwarding</string>
+    <string name="onb_fwd_body">An AI conversation with a caller only happens when the call reaches your Sparta telephony number. On a normal phone line that means asking your carrier to forward unanswered calls to that number. Screening on this phone works without it.</string>
+    <string name="onb_fwd_available">Your backend provides a forwarding number: %1$s</string>
+    <string name="onb_fwd_unavailable">Your backend has not provided a forwarding number, so live AI audio on real calls is not available. That is expected with the simulator.</string>
+    <string name="onb_fwd_helper">Open the forwarding helper</string>
+    <string name="onb_done_note">You can change all of this later.</string>
+</resources>

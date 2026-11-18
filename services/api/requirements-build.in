@@ -1,0 +1,6 @@
+# Build toolchain of the container image (services/api/Dockerfile), hash-pinned in requirements-build.lock:
+#   uv        installs the runtime lock and builds the wheel
+#   hatchling the build backend named in pyproject.toml ([build-system] requires)
+# Regenerate the lock with scripts/lock.ps1 (Windows) or scripts/lock.sh (Linux/macOS), see CONTRIBUTING.md.
+uv==0.13.7
+hatchling

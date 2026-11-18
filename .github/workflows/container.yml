@@ -1,0 +1,174 @@
+# Builds the API and web container images, scans them with Trivy, and publishes them to GHCR.
+#
+# * Pull requests and forks: build and scan only (nothing is pushed, no secret is used).
+# * Pushes to main and version tags (v*.*.*), and manual runs on those refs: build, scan, then push to
+#   ghcr.io/<repository owner>/sparta-api and sparta-web with the GITHUB_TOKEN. Tags: sha-<full commit>, the branch,
+#   the semantic version, and "latest" on main.
+# * A scan finding with a published fix at HIGH or CRITICAL severity fails the job BEFORE anything is pushed.
+# * The pushed image is a SECOND build that reuses the cached layers of the scanned one (so that the push can carry
+#   provenance and SBOM attestations): it is expected to be, but not guaranteed to be, the byte-identical artifact that was
+#   scanned (docs/DEPLOYMENT.md, "The container images"). Every v*.*.* tag publishes: protect the v* tags (a tag ruleset).
+# * NEXT_PUBLIC_* values are baked into the web image when it is built: set the repository variables
+#   NEXT_PUBLIC_API_BASE_URL, NEXT_PUBLIC_AUTH_MODE (and the OIDC ones) to your deployment's public values before tagging
+#   a release (see docs/DEPLOYMENT.md).
+# * The API image installs only from the hash-pinned services/api/requirements*.lock files (--require-hashes).
+#
+# First run on GitHub: pull request 1, 2026-11-18 (build and scan only; the publish steps have NOT run).
+name: Container images
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*.*.*"]
+  pull_request:
+    paths:
+      - "services/api/**"
+      - "apps/web/**"
+      - ".github/workflows/container.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: container-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  TRIVY_VERSION: "0.76.2"
+  TRIVY_SHA256: bc0fc726e017b8927a62b2d3531d7a84ee01769daf5c99ed866dced54089fdbf
+
+jobs:
+  image:
+    name: ${{ matrix.name }} image
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: api
+            context: services/api
+            image: sparta-api
+            build_args: |
+              SPARTA_EXTRAS=azure,otlp
+              VCS_REF=${{ github.sha }}
+          - name: web
+            context: apps/web
+            image: sparta-web
+            build_args: |
+              NEXT_PUBLIC_API_BASE_URL=${{ vars.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000' }}
+              NEXT_PUBLIC_AUTH_MODE=${{ vars.NEXT_PUBLIC_AUTH_MODE || 'dev' }}
+              NEXT_PUBLIC_OIDC_AUTHORITY=${{ vars.NEXT_PUBLIC_OIDC_AUTHORITY }}
+              NEXT_PUBLIC_OIDC_CLIENT_ID=${{ vars.NEXT_PUBLIC_OIDC_CLIENT_ID }}
+              NEXT_PUBLIC_OIDC_SCOPE=${{ vars.NEXT_PUBLIC_OIDC_SCOPE }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Decide whether to publish
+        id: gate
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF: ${{ github.ref }}
+          OWNER: ${{ github.repository_owner }}
+        run: |
+          set -euo pipefail
+          publish=false
+          if [ "$EVENT_NAME" = "push" ] || [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            case "$REF" in
+              refs/heads/main | refs/tags/v*) publish=true ;;
+            esac
+          fi
+          echo "publish=${publish}" >> "$GITHUB_OUTPUT"
+          echo "owner=${OWNER,,}" >> "$GITHUB_OUTPUT"
+          echo "Publishing to GHCR: ${publish}"
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Image metadata
+        id: meta
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
+        with:
+          images: ghcr.io/${{ steps.gate.outputs.owner }}/${{ matrix.image }}
+          tags: |
+            type=sha,format=long
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build (loaded into the local daemon for scanning)
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: ${{ matrix.context }}
+          load: true
+          push: false
+          tags: scan-target/${{ matrix.image }}:ci
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: ${{ matrix.build_args }}
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+
+      - name: Install Trivy (pinned release, checksum verified)
+        run: |
+          set -euo pipefail
+          archive="${RUNNER_TEMP}/trivy.tar.gz"
+          curl -fsSL -o "$archive" "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"
+          echo "${TRIVY_SHA256}  ${archive}" | sha256sum --check --strict
+          tar -xzf "$archive" -C "$RUNNER_TEMP" trivy
+
+      - name: Scan the image (HIGH and CRITICAL findings that have a fix fail the job)
+        env:
+          IMAGE: scan-target/${{ matrix.image }}:ci
+          # Two mirrors of the vulnerability database: the registry rate-limits anonymous pulls from shared runners.
+          TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db:2,ghcr.io/aquasecurity/trivy-db:2
+        run: '"${RUNNER_TEMP}/trivy" image --exit-code 1 --severity HIGH,CRITICAL --ignore-unfixed --no-progress "$IMAGE"'
+
+      - name: Log in to GHCR
+        if: steps.gate.outputs.publish == 'true'
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push (a second build from the cached layers of the scanned one, with attestations)
+        id: push
+        if: steps.gate.outputs.publish == 'true'
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: ${{ matrix.context }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: ${{ matrix.build_args }}
+          cache-from: type=gha,scope=${{ matrix.image }}
+          provenance: mode=max
+          sbom: true
+
+      - name: Summary
+        if: always()
+        env:
+          PUBLISH: ${{ steps.gate.outputs.publish }}
+          DIGEST: ${{ steps.push.outputs.digest }}
+          TAGS: ${{ steps.meta.outputs.tags }}
+          NAME: ${{ matrix.name }}
+        run: |
+          {
+            echo "### ${NAME} image"
+            if [ "$PUBLISH" = "true" ]; then
+              echo "Published. Digest: \`${DIGEST}\`"
+              echo
+              echo '```'
+              echo "$TAGS"
+              echo '```'
+            else
+              echo "Built and scanned; not published (only main and version tags publish)."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

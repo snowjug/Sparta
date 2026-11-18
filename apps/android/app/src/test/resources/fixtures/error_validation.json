@@ -1,0 +1,1 @@
+{"error": {"code": "validation_error", "message": "Request validation failed", "trace_id": "trace-422", "details": [{"field": "strictness", "message": "Input should be 'relaxed', 'balanced' or 'strict'"}]}}

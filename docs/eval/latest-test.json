@@ -1,0 +1,4664 @@
+{
+  "report_version": 1,
+  "generated_at": "2026-11-17T19:56:24+00:00",
+  "sparta_version": "0.1.0",
+  "policy_version": "2026.11.2",
+  "language_pack_version": "bn:1,en:1,hi:1,kn:1,ml:1,mr:1,ta:1,te:1",
+  "dataset": {
+    "version": "v1",
+    "files": [
+      {
+        "file": "test.jsonl",
+        "scenarios": 70,
+        "bytes": 151762,
+        "sha256": "51b96f447da209c5fd12983786e76f81858985c00427a74b1ab6da40de2894e2"
+      }
+    ]
+  },
+  "split": "test",
+  "headline": {
+    "scenarios": 70,
+    "scam_recall": 0.7561,
+    "scam_precision": 0.9118,
+    "legitimate_calls_ended": {
+      "k": 1,
+      "n": 21,
+      "rate": 0.0476,
+      "ci95": [
+        0.0085,
+        0.2267
+      ]
+    },
+    "protected_request_refused": {
+      "k": 35,
+      "n": 35,
+      "rate": 1.0,
+      "ci95": [
+        0.9011,
+        1.0
+      ]
+    },
+    "prohibited_behavior_violations": 0,
+    "all_checks": {
+      "k": 9,
+      "n": 70,
+      "rate": 0.1286,
+      "ci95": [
+        0.0691,
+        0.2266
+      ]
+    }
+  },
+  "safety": {
+    "scam_detection": {
+      "tp": 31,
+      "fp": 3,
+      "fn": 10,
+      "precision": 0.9118,
+      "recall": 0.7561,
+      "f1": 0.8267,
+      "definition": "flagged = final risk 'high' or primary action refuse_and_end/block/report"
+    },
+    "scam_calls_ended": {
+      "k": 32,
+      "n": 39,
+      "rate": 0.8205,
+      "ci95": [
+        0.6733,
+        0.9102
+      ]
+    },
+    "legitimate_calls_ended": {
+      "k": 1,
+      "n": 21,
+      "rate": 0.0476,
+      "ci95": [
+        0.0085,
+        0.2267
+      ]
+    },
+    "legitimate_calls_rated_high": {
+      "k": 3,
+      "n": 21,
+      "rate": 0.1429,
+      "ci95": [
+        0.0498,
+        0.3464
+      ]
+    },
+    "unwanted_calls_ended": {
+      "k": 3,
+      "n": 5,
+      "rate": 0.6,
+      "ci95": [
+        0.2307,
+        0.8824
+      ]
+    },
+    "protected_request_refused": {
+      "k": 35,
+      "n": 35,
+      "rate": 1.0,
+      "ci95": [
+        0.9011,
+        1.0
+      ]
+    },
+    "prompt_injection_resisted": {
+      "k": 6,
+      "n": 8,
+      "rate": 0.75,
+      "ci95": [
+        0.4093,
+        0.9285
+      ]
+    },
+    "escalation": {
+      "tp": 18,
+      "fp": 9,
+      "fn": 3,
+      "precision": 0.6667,
+      "recall": 0.8571,
+      "f1": 0.75
+    },
+    "prohibited_behavior_violations": 0,
+    "validator_fallbacks": 0
+  },
+  "checks": {
+    "risk_level": {
+      "k": 59,
+      "n": 70,
+      "rate": 0.8429,
+      "ci95": [
+        0.7401,
+        0.9099
+      ]
+    },
+    "category": {
+      "k": 49,
+      "n": 70,
+      "rate": 0.7,
+      "ci95": [
+        0.5846,
+        0.7946
+      ]
+    },
+    "action": {
+      "k": 58,
+      "n": 70,
+      "rate": 0.8286,
+      "ci95": [
+        0.7238,
+        0.8991
+      ]
+    },
+    "required_signals": {
+      "k": 33,
+      "n": 70,
+      "rate": 0.4714,
+      "ci95": [
+        0.359,
+        0.5868
+      ]
+    },
+    "forbidden_signals": {
+      "k": 67,
+      "n": 70,
+      "rate": 0.9571,
+      "ci95": [
+        0.8814,
+        0.9853
+      ]
+    },
+    "ended": {
+      "k": 61,
+      "n": 70,
+      "rate": 0.8714,
+      "ci95": [
+        0.7734,
+        0.9309
+      ]
+    },
+    "not_ended": {
+      "k": 69,
+      "n": 70,
+      "rate": 0.9857,
+      "ci95": [
+        0.9234,
+        0.9975
+      ]
+    },
+    "escalation": {
+      "k": 58,
+      "n": 70,
+      "rate": 0.8286,
+      "ci95": [
+        0.7238,
+        0.8991
+      ]
+    },
+    "behaviors": {
+      "k": 70,
+      "n": 70,
+      "rate": 1.0,
+      "ci95": [
+        0.948,
+        1.0
+      ]
+    },
+    "summary": {
+      "k": 28,
+      "n": 70,
+      "rate": 0.4,
+      "ci95": [
+        0.2933,
+        0.5171
+      ]
+    },
+    "all_checks": {
+      "k": 9,
+      "n": 70,
+      "rate": 0.1286,
+      "ci95": [
+        0.0691,
+        0.2266
+      ]
+    },
+    "required_signal_recall": {
+      "k": 89,
+      "n": 131,
+      "rate": 0.6794,
+      "ci95": [
+        0.5953,
+        0.7532
+      ]
+    },
+    "required_signal_recall_live": {
+      "k": 73,
+      "n": 131,
+      "rate": 0.5573,
+      "ci95": [
+        0.4718,
+        0.6395
+      ]
+    },
+    "forbidden_signal_false_alarms": {
+      "k": 5,
+      "n": 87,
+      "rate": 0.0575,
+      "ci95": [
+        0.0248,
+        0.1276
+      ]
+    }
+  },
+  "language": {
+    "turn_accuracy": {
+      "k": 165,
+      "n": 170,
+      "rate": 0.9706,
+      "ci95": [
+        0.933,
+        0.9874
+      ]
+    },
+    "turn_confusion": {
+      "en-IN": {
+        "en-IN": 43,
+        "hi-IN": 0,
+        "kn-IN": 0,
+        "other": 0
+      },
+      "hi-IN": {
+        "en-IN": 0,
+        "hi-IN": 62,
+        "kn-IN": 0,
+        "other": 0
+      },
+      "kn-IN": {
+        "en-IN": 2,
+        "hi-IN": 0,
+        "kn-IN": 54,
+        "other": 0
+      },
+      "other": {
+        "en-IN": 3,
+        "hi-IN": 0,
+        "kn-IN": 0,
+        "other": 6
+      }
+    },
+    "per_language": {
+      "en-IN": {
+        "tp": 43,
+        "fp": 5,
+        "fn": 0,
+        "precision": 0.8958,
+        "recall": 1.0,
+        "f1": 0.9451
+      },
+      "hi-IN": {
+        "tp": 62,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "kn-IN": {
+        "tp": 54,
+        "fp": 0,
+        "fn": 2,
+        "precision": 1.0,
+        "recall": 0.9643,
+        "f1": 0.9818
+      },
+      "other": {
+        "tp": 6,
+        "fp": 0,
+        "fn": 3,
+        "precision": 1.0,
+        "recall": 0.6667,
+        "f1": 0.8
+      }
+    },
+    "call_profile_accuracy": {
+      "k": 67,
+      "n": 70,
+      "rate": 0.9571,
+      "ci95": [
+        0.8814,
+        0.9853
+      ]
+    },
+    "call_profile_confusion": {
+      "english": {
+        "english": 14,
+        "None": 1
+      },
+      "hindi": {
+        "hindi": 9
+      },
+      "hinglish": {
+        "hinglish": 15
+      },
+      "kannada": {
+        "kannada": 9
+      },
+      "kanglish": {
+        "kanglish": 14,
+        "mixed": 1
+      },
+      "mixed": {
+        "mixed": 4
+      },
+      "unsupported": {
+        "unsupported": 2,
+        "hinglish": 1
+      }
+    },
+    "code_switch_profile_accuracy": {
+      "k": 33,
+      "n": 34,
+      "rate": 0.9706,
+      "ci95": [
+        0.8508,
+        0.9948
+      ]
+    }
+  },
+  "slices": {
+    "profile:english": {
+      "n": 15,
+      "all_checks": {
+        "k": 4,
+        "n": 15,
+        "rate": 0.2667,
+        "ci95": [
+          0.109,
+          0.5195
+        ]
+      },
+      "scam_flagged": {
+        "k": 6,
+        "n": 8,
+        "rate": 0.75,
+        "ci95": [
+          0.4093,
+          0.9285
+        ]
+      },
+      "legitimate_ended": {
+        "k": 0,
+        "n": 5,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.4345
+        ]
+      }
+    },
+    "profile:hindi": {
+      "n": 9,
+      "all_checks": {
+        "k": 0,
+        "n": 9,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.2992
+        ]
+      },
+      "scam_flagged": {
+        "k": 4,
+        "n": 5,
+        "rate": 0.8,
+        "ci95": [
+          0.3755,
+          0.9638
+        ]
+      },
+      "legitimate_ended": {
+        "k": 1,
+        "n": 3,
+        "rate": 0.3333,
+        "ci95": [
+          0.0615,
+          0.7923
+        ]
+      }
+    },
+    "profile:hinglish": {
+      "n": 15,
+      "all_checks": {
+        "k": 1,
+        "n": 15,
+        "rate": 0.0667,
+        "ci95": [
+          0.0119,
+          0.2982
+        ]
+      },
+      "scam_flagged": {
+        "k": 9,
+        "n": 9,
+        "rate": 1.0,
+        "ci95": [
+          0.7008,
+          1.0
+        ]
+      },
+      "legitimate_ended": {
+        "k": 0,
+        "n": 5,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.4345
+        ]
+      }
+    },
+    "profile:kanglish": {
+      "n": 15,
+      "all_checks": {
+        "k": 1,
+        "n": 15,
+        "rate": 0.0667,
+        "ci95": [
+          0.0119,
+          0.2982
+        ]
+      },
+      "scam_flagged": {
+        "k": 8,
+        "n": 10,
+        "rate": 0.8,
+        "ci95": [
+          0.4902,
+          0.9433
+        ]
+      },
+      "legitimate_ended": {
+        "k": 0,
+        "n": 4,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.4899
+        ]
+      }
+    },
+    "profile:kannada": {
+      "n": 9,
+      "all_checks": {
+        "k": 1,
+        "n": 9,
+        "rate": 0.1111,
+        "ci95": [
+          0.0199,
+          0.435
+        ]
+      },
+      "scam_flagged": {
+        "k": 3,
+        "n": 5,
+        "rate": 0.6,
+        "ci95": [
+          0.2307,
+          0.8824
+        ]
+      },
+      "legitimate_ended": {
+        "k": 0,
+        "n": 2,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.6576
+        ]
+      }
+    },
+    "profile:mixed": {
+      "n": 4,
+      "all_checks": {
+        "k": 0,
+        "n": 4,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.4899
+        ]
+      },
+      "scam_flagged": {
+        "k": 1,
+        "n": 3,
+        "rate": 0.3333,
+        "ci95": [
+          0.0615,
+          0.7923
+        ]
+      },
+      "legitimate_ended": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      }
+    },
+    "profile:unsupported": {
+      "n": 3,
+      "all_checks": {
+        "k": 2,
+        "n": 3,
+        "rate": 0.6667,
+        "ci95": [
+          0.2077,
+          0.9385
+        ]
+      },
+      "scam_flagged": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "legitimate_ended": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      }
+    },
+    "tag:abuse": {
+      "n": 2,
+      "all_checks": {
+        "k": 1,
+        "n": 2,
+        "rate": 0.5,
+        "ci95": [
+          0.0945,
+          0.9055
+        ]
+      },
+      "scam_flagged": null,
+      "legitimate_ended": null
+    },
+    "tag:accident": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": null,
+      "legitimate_ended": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      }
+    },
+    "tag:accident_pretext": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:account_closure": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:address": {
+      "n": 2,
+      "all_checks": {
+        "k": 0,
+        "n": 2,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.6576
+        ]
+      },
+      "scam_flagged": {
+        "k": 1,
+        "n": 2,
+        "rate": 0.5,
+        "ci95": [
+          0.0945,
+          0.9055
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:administration": {
+      "n": 2,
+      "all_checks": {
+        "k": 0,
+        "n": 2,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.6576
+        ]
+      },
+      "scam_flagged": null,
+      "legitimate_ended": {
+        "k": 0,
+        "n": 2,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.6576
+        ]
+      }
+    },
+    "tag:airline_job": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:alone_at_home": {
+      "n": 2,
+      "all_checks": {
+        "k": 0,
+        "n": 2,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.6576
+        ]
+      },
+      "scam_flagged": {
+        "k": 1,
+        "n": 2,
+        "rate": 0.5,
+        "ci95": [
+          0.0945,
+          0.9055
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:alumni_pretext": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:ambiguous": {
+      "n": 1,
+      "all_checks": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "scam_flagged": null,
+      "legitimate_ended": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      }
+    },
+    "tag:anydesk": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:apk_install": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:appointment": {
+      "n": 3,
+      "all_checks": {
+        "k": 2,
+        "n": 3,
+        "rate": 0.6667,
+        "ci95": [
+          0.2077,
+          0.9385
+        ]
+      },
+      "scam_flagged": null,
+      "legitimate_ended": {
+        "k": 0,
+        "n": 3,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.5615
+        ]
+      }
+    },
+    "tag:appointment_lookalike": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:arbitrage_scam": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:auth_code": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:badge_collection": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": null,
+      "legitimate_ended": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      }
+    },
+    "tag:bank_card": {
+      "n": 2,
+      "all_checks": {
+        "k": 0,
+        "n": 2,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.6576
+        ]
+      },
+      "scam_flagged": {
+        "k": 2,
+        "n": 2,
+        "rate": 1.0,
+        "ci95": [
+          0.3424,
+          1.0
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:bank_otp": {
+      "n": 7,
+      "all_checks": {
+        "k": 0,
+        "n": 7,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.3543
+        ]
+      },
+      "scam_flagged": {
+        "k": 6,
+        "n": 7,
+        "rate": 0.8571,
+        "ci95": [
+          0.4869,
+          0.9743
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:bank_pin": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:blame_shifting": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:bystander": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": null,
+      "legitimate_ended": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      }
+    },
+    "tag:callback": {
+      "n": 2,
+      "all_checks": {
+        "k": 0,
+        "n": 2,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.6576
+        ]
+      },
+      "scam_flagged": {
+        "k": 1,
+        "n": 2,
+        "rate": 0.5,
+        "ci95": [
+          0.0945,
+          0.9055
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:callback_request": {
+      "n": 2,
+      "all_checks": {
+        "k": 0,
+        "n": 2,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.6576
+        ]
+      },
+      "scam_flagged": null,
+      "legitimate_ended": {
+        "k": 0,
+        "n": 2,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.6576
+        ]
+      }
+    },
+    "tag:caregiver": {
+      "n": 1,
+      "all_checks": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "scam_flagged": null,
+      "legitimate_ended": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      }
+    },
+    "tag:cashback_lure": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:claim_to_be_owner": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:clinic": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": null,
+      "legitimate_ended": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      }
+    },
+    "tag:code_switch": {
+      "n": 4,
+      "all_checks": {
+        "k": 0,
+        "n": 4,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.4899
+        ]
+      },
+      "scam_flagged": {
+        "k": 1,
+        "n": 3,
+        "rate": 0.3333,
+        "ci95": [
+          0.0615,
+          0.7923
+        ]
+      },
+      "legitimate_ended": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      }
+    },
+    "tag:code_word": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:collect_request": {
+      "n": 2,
+      "all_checks": {
+        "k": 0,
+        "n": 2,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.6576
+        ]
+      },
+      "scam_flagged": {
+        "k": 1,
+        "n": 2,
+        "rate": 0.5,
+        "ci95": [
+          0.0945,
+          0.9055
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:college": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": null,
+      "legitimate_ended": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      }
+    },
+    "tag:complaint": {
+      "n": 2,
+      "all_checks": {
+        "k": 0,
+        "n": 2,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.6576
+        ]
+      },
+      "scam_flagged": null,
+      "legitimate_ended": {
+        "k": 0,
+        "n": 2,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.6576
+        ]
+      }
+    },
+    "tag:confirmation": {
+      "n": 1,
+      "all_checks": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "scam_flagged": null,
+      "legitimate_ended": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      }
+    },
+    "tag:courier": {
+      "n": 3,
+      "all_checks": {
+        "k": 0,
+        "n": 3,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.5615
+        ]
+      },
+      "scam_flagged": {
+        "k": 2,
+        "n": 3,
+        "rate": 0.6667,
+        "ci95": [
+          0.2077,
+          0.9385
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:cousin": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": null,
+      "legitimate_ended": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      }
+    },
+    "tag:crypto": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:customs_charges": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:cvv": {
+      "n": 2,
+      "all_checks": {
+        "k": 0,
+        "n": 2,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.6576
+        ]
+      },
+      "scam_flagged": {
+        "k": 2,
+        "n": 2,
+        "rate": 1.0,
+        "ci95": [
+          0.3424,
+          1.0
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:debt_dispute": {
+      "n": 1,
+      "all_checks": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "scam_flagged": null,
+      "legitimate_ended": null
+    },
+    "tag:delivery": {
+      "n": 4,
+      "all_checks": {
+        "k": 2,
+        "n": 4,
+        "rate": 0.5,
+        "ci95": [
+          0.15,
+          0.85
+        ]
+      },
+      "scam_flagged": null,
+      "legitimate_ended": {
+        "k": 0,
+        "n": 4,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.4899
+        ]
+      }
+    },
+    "tag:delivery_otp": {
+      "n": 1,
+      "all_checks": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "scam_flagged": null,
+      "legitimate_ended": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      }
+    },
+    "tag:developer_pretext": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:digital_arrest": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:directions_only": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": null,
+      "legitimate_ended": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      }
+    },
+    "tag:doctor": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": null,
+      "legitimate_ended": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      }
+    },
+    "tag:dormant_account": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:e_challan": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:e_sign": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:electricity": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": null,
+      "legitimate_ended": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      }
+    },
+    "tag:embedded_instruction": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:emergency": {
+      "n": 3,
+      "all_checks": {
+        "k": 1,
+        "n": 3,
+        "rate": 0.3333,
+        "ci95": [
+          0.0615,
+          0.7923
+        ]
+      },
+      "scam_flagged": null,
+      "legitimate_ended": {
+        "k": 0,
+        "n": 3,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.5615
+        ]
+      }
+    },
+    "tag:emergency_pretext": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:emotional_pressure": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:employer_impersonation": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:employer_probe": {
+      "n": 2,
+      "all_checks": {
+        "k": 0,
+        "n": 2,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.6576
+        ]
+      },
+      "scam_flagged": {
+        "k": 0,
+        "n": 2,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.6576
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:escalate": {
+      "n": 19,
+      "all_checks": {
+        "k": 5,
+        "n": 19,
+        "rate": 0.2632,
+        "ci95": [
+          0.1181,
+          0.4879
+        ]
+      },
+      "scam_flagged": null,
+      "legitimate_ended": {
+        "k": 1,
+        "n": 19,
+        "rate": 0.0526,
+        "ci95": [
+          0.0094,
+          0.2464
+        ]
+      }
+    },
+    "tag:estimate_approval": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": null,
+      "legitimate_ended": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      }
+    },
+    "tag:exam_cell": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": null,
+      "legitimate_ended": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      }
+    },
+    "tag:face_to_face": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": null,
+      "legitimate_ended": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      }
+    },
+    "tag:fake_authority": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:fake_job": {
+      "n": 2,
+      "all_checks": {
+        "k": 0,
+        "n": 2,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.6576
+        ]
+      },
+      "scam_flagged": {
+        "k": 2,
+        "n": 2,
+        "rate": 1.0,
+        "ci95": [
+          0.3424,
+          1.0
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:fake_kyc": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:false_owner_authorization": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:family": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": null,
+      "legitimate_ended": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      }
+    },
+    "tag:family_probe": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:festival_offer": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:foreign_gift_parcel": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:former_roommate": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": null,
+      "legitimate_ended": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      }
+    },
+    "tag:free_upgrade_lure": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:friend": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": null,
+      "legitimate_ended": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      }
+    },
+    "tag:friend_impersonation": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:gate": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": null,
+      "legitimate_ended": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      }
+    },
+    "tag:gift_card": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:gold_loan": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": null,
+      "legitimate_ended": null
+    },
+    "tag:government_caller": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": null,
+      "legitimate_ended": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      }
+    },
+    "tag:gst_charges": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:guilt_pressure": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": null,
+      "legitimate_ended": null
+    },
+    "tag:harassment": {
+      "n": 2,
+      "all_checks": {
+        "k": 1,
+        "n": 2,
+        "rate": 0.5,
+        "ci95": [
+          0.0945,
+          0.9055
+        ]
+      },
+      "scam_flagged": null,
+      "legitimate_ended": null
+    },
+    "tag:hard_negative": {
+      "n": 7,
+      "all_checks": {
+        "k": 0,
+        "n": 7,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.3543
+        ]
+      },
+      "scam_flagged": null,
+      "legitimate_ended": {
+        "k": 1,
+        "n": 7,
+        "rate": 0.1429,
+        "ci95": [
+          0.0257,
+          0.5131
+        ]
+      }
+    },
+    "tag:health_insurance": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": null,
+      "legitimate_ended": null
+    },
+    "tag:ignore_instructions": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:immediate_ask": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:income_tax": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:indirect_coercion": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:installer_pretext": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:insurance": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": null,
+      "legitimate_ended": null
+    },
+    "tag:insurance_claim": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:interview_scheduling": {
+      "n": 2,
+      "all_checks": {
+        "k": 0,
+        "n": 2,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.6576
+        ]
+      },
+      "scam_flagged": null,
+      "legitimate_ended": {
+        "k": 0,
+        "n": 2,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.6576
+        ]
+      }
+    },
+    "tag:investment": {
+      "n": 1,
+      "all_checks": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "scam_flagged": null,
+      "legitimate_ended": null
+    },
+    "tag:joining_fee": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:laptop_repair": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": null,
+      "legitimate_ended": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      }
+    },
+    "tag:legal_threat": {
+      "n": 5,
+      "all_checks": {
+        "k": 0,
+        "n": 5,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.4345
+        ]
+      },
+      "scam_flagged": {
+        "k": 4,
+        "n": 5,
+        "rate": 0.8,
+        "ci95": [
+          0.3755,
+          0.9638
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:legitimate": {
+      "n": 17,
+      "all_checks": {
+        "k": 3,
+        "n": 17,
+        "rate": 0.1765,
+        "ci95": [
+          0.0619,
+          0.4103
+        ]
+      },
+      "scam_flagged": null,
+      "legitimate_ended": {
+        "k": 1,
+        "n": 17,
+        "rate": 0.0588,
+        "ci95": [
+          0.0105,
+          0.2698
+        ]
+      }
+    },
+    "tag:limit_upgrade": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:loan": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": null,
+      "legitimate_ended": null
+    },
+    "tag:loan_offer": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:location_request": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:low_confidence_language": {
+      "n": 4,
+      "all_checks": {
+        "k": 0,
+        "n": 4,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.4899
+        ]
+      },
+      "scam_flagged": {
+        "k": 2,
+        "n": 2,
+        "rate": 1.0,
+        "ci95": [
+          0.3424,
+          1.0
+        ]
+      },
+      "legitimate_ended": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      }
+    },
+    "tag:lpg": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:lucky_draw": {
+      "n": 2,
+      "all_checks": {
+        "k": 0,
+        "n": 2,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.6576
+        ]
+      },
+      "scam_flagged": {
+        "k": 2,
+        "n": 2,
+        "rate": 1.0,
+        "ci95": [
+          0.3424,
+          1.0
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:maintenance_pretext": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:malicious_link": {
+      "n": 2,
+      "all_checks": {
+        "k": 0,
+        "n": 2,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.6576
+        ]
+      },
+      "scam_flagged": {
+        "k": 1,
+        "n": 2,
+        "rate": 0.5,
+        "ci95": [
+          0.0945,
+          0.9055
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:matrimony_pretext": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:medical": {
+      "n": 2,
+      "all_checks": {
+        "k": 1,
+        "n": 2,
+        "rate": 0.5,
+        "ci95": [
+          0.0945,
+          0.9055
+        ]
+      },
+      "scam_flagged": null,
+      "legitimate_ended": {
+        "k": 0,
+        "n": 2,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.6576
+        ]
+      }
+    },
+    "tag:messaging_group": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:negated_otp": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": null,
+      "legitimate_ended": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      }
+    },
+    "tag:net_banking": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:never_ask_money": {
+      "n": 2,
+      "all_checks": {
+        "k": 0,
+        "n": 2,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.6576
+        ]
+      },
+      "scam_flagged": null,
+      "legitimate_ended": {
+        "k": 1,
+        "n": 2,
+        "rate": 0.5,
+        "ci95": [
+          0.0945,
+          0.9055
+        ]
+      }
+    },
+    "tag:new_device_alert": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:new_number": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": null,
+      "legitimate_ended": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      }
+    },
+    "tag:no_speech": {
+      "n": 1,
+      "all_checks": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "scam_flagged": null,
+      "legitimate_ended": null
+    },
+    "tag:noisy_transcript": {
+      "n": 18,
+      "all_checks": {
+        "k": 1,
+        "n": 18,
+        "rate": 0.0556,
+        "ci95": [
+          0.0099,
+          0.2576
+        ]
+      },
+      "scam_flagged": {
+        "k": 9,
+        "n": 11,
+        "rate": 0.8182,
+        "ci95": [
+          0.523,
+          0.9486
+        ]
+      },
+      "legitimate_ended": {
+        "k": 0,
+        "n": 5,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.4345
+        ]
+      }
+    },
+    "tag:office": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": null,
+      "legitimate_ended": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      }
+    },
+    "tag:os_licence": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:otp_trap": {
+      "n": 2,
+      "all_checks": {
+        "k": 0,
+        "n": 2,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.6576
+        ]
+      },
+      "scam_flagged": {
+        "k": 2,
+        "n": 2,
+        "rate": 1.0,
+        "ci95": [
+          0.3424,
+          1.0
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:owner_probe": {
+      "n": 8,
+      "all_checks": {
+        "k": 0,
+        "n": 8,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.3244
+        ]
+      },
+      "scam_flagged": {
+        "k": 3,
+        "n": 8,
+        "rate": 0.375,
+        "ci95": [
+          0.1368,
+          0.6943
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:pan_update": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:parcel_compensation": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:passport": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": null,
+      "legitimate_ended": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      }
+    },
+    "tag:password": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:persistent": {
+      "n": 3,
+      "all_checks": {
+        "k": 0,
+        "n": 3,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.5615
+        ]
+      },
+      "scam_flagged": null,
+      "legitimate_ended": null
+    },
+    "tag:police_caller": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": null,
+      "legitimate_ended": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      }
+    },
+    "tag:police_impersonation": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:police_pretext": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:police_verification": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": null,
+      "legitimate_ended": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      }
+    },
+    "tag:prize": {
+      "n": 2,
+      "all_checks": {
+        "k": 0,
+        "n": 2,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.6576
+        ]
+      },
+      "scam_flagged": {
+        "k": 2,
+        "n": 2,
+        "rate": 1.0,
+        "ci95": [
+          0.3424,
+          1.0
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:prompt_injection": {
+      "n": 8,
+      "all_checks": {
+        "k": 0,
+        "n": 8,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.3244
+        ]
+      },
+      "scam_flagged": {
+        "k": 6,
+        "n": 8,
+        "rate": 0.75,
+        "ci95": [
+          0.4093,
+          0.9285
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:prompt_leak": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:quick_profit": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:real_estate": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": null,
+      "legitimate_ended": null
+    },
+    "tag:recovery_code": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:recruiter": {
+      "n": 3,
+      "all_checks": {
+        "k": 0,
+        "n": 3,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.5615
+        ]
+      },
+      "scam_flagged": null,
+      "legitimate_ended": {
+        "k": 0,
+        "n": 3,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.5615
+        ]
+      }
+    },
+    "tag:redelivery_fee": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:registration_fee": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:relative_in_custody": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:remote_access": {
+      "n": 3,
+      "all_checks": {
+        "k": 0,
+        "n": 3,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.5615
+        ]
+      },
+      "scam_flagged": {
+        "k": 2,
+        "n": 3,
+        "rate": 0.6667,
+        "ci95": [
+          0.2077,
+          0.9385
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:repeated_calls": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": null,
+      "legitimate_ended": null
+    },
+    "tag:reschedule": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": null,
+      "legitimate_ended": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      }
+    },
+    "tag:return_pickup": {
+      "n": 1,
+      "all_checks": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "scam_flagged": null,
+      "legitimate_ended": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      }
+    },
+    "tag:rewards_points": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:role_play": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:role_reassignment": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:salary": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:salon": {
+      "n": 1,
+      "all_checks": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "scam_flagged": null,
+      "legitimate_ended": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      }
+    },
+    "tag:schedule": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:screen_sharing": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:secrecy": {
+      "n": 2,
+      "all_checks": {
+        "k": 0,
+        "n": 2,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.6576
+        ]
+      },
+      "scam_flagged": {
+        "k": 2,
+        "n": 2,
+        "rate": 1.0,
+        "ci95": [
+          0.3424,
+          1.0
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:security_guard": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": null,
+      "legitimate_ended": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      }
+    },
+    "tag:service_visit": {
+      "n": 1,
+      "all_checks": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "scam_flagged": null,
+      "legitimate_ended": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      }
+    },
+    "tag:settlement_payment": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:silent": {
+      "n": 2,
+      "all_checks": {
+        "k": 2,
+        "n": 2,
+        "rate": 1.0,
+        "ci95": [
+          0.3424,
+          1.0
+        ]
+      },
+      "scam_flagged": null,
+      "legitimate_ended": null
+    },
+    "tag:sim_misuse": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:sim_upgrade": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:single_hello": {
+      "n": 1,
+      "all_checks": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "scam_flagged": null,
+      "legitimate_ended": null
+    },
+    "tag:slow_build": {
+      "n": 5,
+      "all_checks": {
+        "k": 0,
+        "n": 5,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.4345
+        ]
+      },
+      "scam_flagged": {
+        "k": 4,
+        "n": 5,
+        "rate": 0.8,
+        "ci95": [
+          0.3755,
+          0.9638
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:stranded_abroad": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:support_callback": {
+      "n": 3,
+      "all_checks": {
+        "k": 0,
+        "n": 3,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.5615
+        ]
+      },
+      "scam_flagged": null,
+      "legitimate_ended": {
+        "k": 0,
+        "n": 3,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.5615
+        ]
+      }
+    },
+    "tag:system_override": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:tamil": {
+      "n": 1,
+      "all_checks": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "scam_flagged": null,
+      "legitimate_ended": null
+    },
+    "tag:task_scam": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:tax_refund": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:tech_support": {
+      "n": 2,
+      "all_checks": {
+        "k": 0,
+        "n": 2,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.6576
+        ]
+      },
+      "scam_flagged": {
+        "k": 1,
+        "n": 2,
+        "rate": 0.5,
+        "ci95": [
+          0.0945,
+          0.9055
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:telemarketing": {
+      "n": 4,
+      "all_checks": {
+        "k": 1,
+        "n": 4,
+        "rate": 0.25,
+        "ci95": [
+          0.0456,
+          0.6994
+        ]
+      },
+      "scam_flagged": null,
+      "legitimate_ended": null
+    },
+    "tag:telugu": {
+      "n": 2,
+      "all_checks": {
+        "k": 1,
+        "n": 2,
+        "rate": 0.5,
+        "ci95": [
+          0.0945,
+          0.9055
+        ]
+      },
+      "scam_flagged": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "legitimate_ended": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      }
+    },
+    "tag:ticket": {
+      "n": 3,
+      "all_checks": {
+        "k": 0,
+        "n": 3,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.5615
+        ]
+      },
+      "scam_flagged": null,
+      "legitimate_ended": {
+        "k": 0,
+        "n": 3,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.5615
+        ]
+      }
+    },
+    "tag:traffic_police": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:travel_schedule": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:trusted_contact": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:unsupported_language": {
+      "n": 3,
+      "all_checks": {
+        "k": 2,
+        "n": 3,
+        "rate": 0.6667,
+        "ci95": [
+          0.2077,
+          0.9385
+        ]
+      },
+      "scam_flagged": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "legitimate_ended": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      }
+    },
+    "tag:upi_failure": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:upi_payment": {
+      "n": 9,
+      "all_checks": {
+        "k": 0,
+        "n": 9,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.2992
+        ]
+      },
+      "scam_flagged": {
+        "k": 7,
+        "n": 9,
+        "rate": 0.7778,
+        "ci95": [
+          0.4526,
+          0.9368
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:upi_pin": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:upi_refund": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:urgency": {
+      "n": 8,
+      "all_checks": {
+        "k": 0,
+        "n": 8,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.3244
+        ]
+      },
+      "scam_flagged": {
+        "k": 7,
+        "n": 8,
+        "rate": 0.875,
+        "ci95": [
+          0.5291,
+          0.9776
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:usdt": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:utility_disconnection": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:vehicle_service": {
+      "n": 1,
+      "all_checks": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "scam_flagged": null,
+      "legitimate_ended": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      }
+    },
+    "tag:veiled_threat": {
+      "n": 1,
+      "all_checks": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "scam_flagged": null,
+      "legitimate_ended": null
+    },
+    "tag:walk_in_drive": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": null,
+      "legitimate_ended": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      }
+    },
+    "tag:water_purifier": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": null,
+      "legitimate_ended": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      }
+    },
+    "tag:workplace": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:wrong_number_insistence": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": null,
+      "legitimate_ended": null
+    },
+    "tag:wrong_number_pretext": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "legitimate_ended": null
+    },
+    "tag:wrong_transfer": {
+      "n": 1,
+      "all_checks": {
+        "k": 0,
+        "n": 1,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.7935
+        ]
+      },
+      "scam_flagged": {
+        "k": 1,
+        "n": 1,
+        "rate": 1.0,
+        "ci95": [
+          0.2065,
+          1.0
+        ]
+      },
+      "legitimate_ended": null
+    }
+  },
+  "latency_ms": {
+    "unit": "ms per engine step (language detection, signals, risk, decision, reply); excludes STT, TTS and network",
+    "steps": 174,
+    "p50": 82.123,
+    "p95": 146.943,
+    "max": 182.666
+  },
+  "determinism": {
+    "scenarios_checked": 70,
+    "mismatches": []
+  },
+  "noise_robustness": [
+    {
+      "noise_level": 0.1,
+      "scam_recall": 0.6829,
+      "scam_precision": 0.875,
+      "legitimate_calls_ended": {
+        "k": 3,
+        "n": 21,
+        "rate": 0.1429,
+        "ci95": [
+          0.0498,
+          0.3464
+        ]
+      },
+      "protected_request_refused": {
+        "k": 33,
+        "n": 34,
+        "rate": 0.9706,
+        "ci95": [
+          0.8508,
+          0.9948
+        ]
+      },
+      "prohibited_behavior_violations": 0,
+      "all_checks": {
+        "k": 9,
+        "n": 70,
+        "rate": 0.1286,
+        "ci95": [
+          0.0691,
+          0.2266
+        ]
+      }
+    },
+    {
+      "noise_level": 0.2,
+      "scam_recall": 0.6585,
+      "scam_precision": 0.931,
+      "legitimate_calls_ended": {
+        "k": 2,
+        "n": 21,
+        "rate": 0.0952,
+        "ci95": [
+          0.0265,
+          0.2891
+        ]
+      },
+      "protected_request_refused": {
+        "k": 32,
+        "n": 33,
+        "rate": 0.9697,
+        "ci95": [
+          0.8468,
+          0.9946
+        ]
+      },
+      "prohibited_behavior_violations": 0,
+      "all_checks": {
+        "k": 8,
+        "n": 70,
+        "rate": 0.1143,
+        "ci95": [
+          0.0591,
+          0.2096
+        ]
+      }
+    },
+    {
+      "noise_level": 0.3,
+      "scam_recall": 0.5854,
+      "scam_precision": 0.8889,
+      "legitimate_calls_ended": {
+        "k": 2,
+        "n": 21,
+        "rate": 0.0952,
+        "ci95": [
+          0.0265,
+          0.2891
+        ]
+      },
+      "protected_request_refused": {
+        "k": 28,
+        "n": 29,
+        "rate": 0.9655,
+        "ci95": [
+          0.8282,
+          0.9939
+        ]
+      },
+      "prohibited_behavior_violations": 0,
+      "all_checks": {
+        "k": 9,
+        "n": 70,
+        "rate": 0.1286,
+        "ci95": [
+          0.0691,
+          0.2266
+        ]
+      }
+    }
+  ],
+  "failures": {
+    "count": 61,
+    "details": "withheld: this split is held out and must not be used to tune the rules"
+  },
+  "limitations": [
+    "The dataset is synthetic and written by the project (LLM-authored, not reviewed by native speakers); it cannot represent the diversity of real calls or adversaries who read the rules.",
+    "Transcripts are scripted text. Real speech-recognition errors differ from the synthetic noise used here.",
+    "Labels are one author's judgement; no inter-annotator agreement was measured.",
+    "Small samples: individual language profiles have 3-15 scenarios, so intervals are wide.",
+    "Latency covers the decision logic only; it excludes speech recognition, synthesis and network.",
+    "The language detector is a script and lexicon heuristic, not a trained model."
+  ]
+}

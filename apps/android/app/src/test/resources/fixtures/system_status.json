@@ -1,0 +1,28 @@
+{
+  "version": "0.1.0",
+  "env": "development",
+  "auth_mode": "dev",
+  "dev_banner": true,
+  "telephony": {
+    "provider": "simulator",
+    "simulated": true,
+    "live_calls_supported": false,
+    "forwarding_number": null,
+    "note": "Simulator only: no phone number is attached."
+  },
+  "stt_provider": "simulator",
+  "tts_provider": "simulator",
+  "llm_provider": "rules",
+  "llm_model": null,
+  "features": {"simulator": true, "personal_voice": false, "llm_summaries": false, "translation": false, "raw_audio_storage": false},
+  "policy_version": "default-v1",
+  "language_pack_version": "2026.11",
+  "languages": [
+    {"code": "en-IN", "name": "English (India)", "native_name": "English", "status": "supported"},
+    {"code": "hi-IN", "name": "Hindi", "native_name": "हिन्दी", "status": "supported"},
+    {"code": "kn-IN", "name": "Kannada", "native_name": "ಕನ್ನಡ", "status": "supported"},
+    {"code": "ta-IN", "name": "Tamil", "native_name": "தமிழ்", "status": "planned"}
+  ],
+  "limits": {"max_call_duration_s": 900, "max_audio_bytes": 5242880, "max_audio_seconds": 30, "daily_call_cap": 200},
+  "brand_new_top_level_field": 42
+}

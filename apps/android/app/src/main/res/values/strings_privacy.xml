@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="common_confirm">Confirm</string>
+
+    <string name="privacy_title">Privacy and safety</string>
+    <string name="privacy_subtitle">What Sparta does on this phone, what it keeps, and what it asks for.</string>
+    <string name="privacy_saved">Saved.</string>
+    <string name="privacy_saved_local">Saved on this phone. Connect a backend to sync it.</string>
+
+    <string name="privacy_screening_title">Screening behaviour</string>
+    <string name="privacy_screening_body">These rules apply on this phone, even with no connection. A screened call is silenced and you are told: Sparta does not answer calls on this phone.</string>
+    <string name="privacy_unknown_title">Unknown callers</string>
+    <string name="privacy_unknown_screen">Silence and tell me</string>
+    <string name="privacy_unknown_screen_d">The ringer is silenced and you get a notification.</string>
+    <string name="privacy_unknown_silence">Silence quietly</string>
+    <string name="privacy_unknown_silence_d">The ringer is silenced with no notification.</string>
+    <string name="privacy_unknown_allow">Let them ring</string>
+    <string name="privacy_unknown_allow_d">No screening for unknown numbers. Hidden numbers are still screened in strict mode.</string>
+    <string name="privacy_trusted_title">Trusted numbers</string>
+    <string name="privacy_trusted_allow">Let them ring</string>
+    <string name="privacy_trusted_screen">Screen them like everyone else</string>
+    <string name="privacy_strictness_title">Strictness</string>
+    <string name="privacy_strict_relaxed">Relaxed</string>
+    <string name="privacy_strict_relaxed_d">Calls whose caller ID fails verification are treated as unknown.</string>
+    <string name="privacy_strict_balanced">Balanced</string>
+    <string name="privacy_strict_balanced_d">Calls whose caller ID fails verification are silenced.</string>
+    <string name="privacy_strict_strict">Strict</string>
+    <string name="privacy_strict_strict_d">Calls whose caller ID fails verification are rejected, and hidden numbers are always screened.</string>
+    <string name="privacy_local_only_note">No backend is connected, so these settings are only stored on this phone.</string>
+
+    <string name="privacy_contacts_title">Saved contacts</string>
+
+    <string name="privacy_lists_title">Blocked and trusted numbers</string>
+    <string name="privacy_lists_body">Numbers are stored on this phone only as a keyed fingerprint and a masked display. Entries from your backend are removed through the backend.</string>
+    <string name="privacy_blocked_header">Blocked (%1$d)</string>
+    <string name="privacy_trusted_header">Trusted (%1$d)</string>
+    <string name="privacy_entry_device">added on this phone</string>
+    <string name="privacy_entry_backend">from your backend</string>
+    <string name="privacy_entry_removed">Removed.</string>
+
+    <string name="privacy_notifications_title">Notifications</string>
+    <string name="privacy_notifications_on">Android allows Sparta to show notifications.</string>
+    <string name="privacy_notify_escalations">Calls that need me</string>
+    <string name="privacy_notify_escalations_d">Alert when a caller looks legitimate and Sparta wants your decision.</string>
+    <string name="privacy_notify_screening">Screening decisions</string>
+    <string name="privacy_notify_screening_d">A quiet note when Sparta silences or blocks a call on this phone.</string>
+    <string name="privacy_notify_high_risk">High-risk calls</string>
+    <string name="privacy_notify_high_risk_d">Also alert when Sparta ends a call as high risk.</string>
+    <string name="privacy_include_lines">Show what the caller said</string>
+    <string name="privacy_include_lines_d">Include short quotes of what the caller said when you open the notification. Turn off to keep their words out of notifications entirely. The lock screen only ever shows a generic title.</string>
+    <string name="privacy_quiet_hours">Quiet hours</string>
+    <string name="privacy_quiet_hours_d">Notifications arrive without sound or vibration during this window.</string>
+    <string name="privacy_quiet_from">Quiet from</string>
+    <string name="privacy_quiet_to">Quiet until</string>
+    <string name="privacy_notifications_backend_note">Connect a backend to set high-risk alerts, notification content and quiet hours.</string>
+    <string name="privacy_notifications_limit">Alerts about a live call arrive instantly only while Sparta is open. When it is closed they come from a periodic check that runs about every 30 minutes, so they can be late. Instant push alerts are not set up.</string>
+
+    <string name="privacy_data_title">Your data</string>
+    <string name="privacy_never_record">Sparta has no call recording at all, and it never stores raw call audio.</string>
+    <string name="privacy_store_transcripts">Keep transcripts</string>
+    <string name="privacy_store_transcripts_d">When off, the backend keeps the summary and the risk result but not the words.</string>
+    <string name="privacy_retention_title">Delete transcripts after</string>
+    <plurals name="privacy_retention_days">
+        <item quantity="one">%d day</item>
+        <item quantity="other">%d days</item>
+    </plurals>
+    <string name="privacy_store_number">Keep full caller numbers</string>
+    <string name="privacy_store_number_d">Encrypted on the backend. This phone never sends a full number: it sends only a masked display and a keyed fingerprint.</string>
+    <string name="privacy_delete_local">Delete history on this phone</string>
+    <string name="privacy_delete_all">Delete all call data</string>
+    <string name="privacy_delete_all_title">Delete all call data?</string>
+    <string name="privacy_delete_all_body">Every call, transcript and summary is removed from your backend and from this phone. Block and trust lists stay. This cannot be undone.</string>
+    <string name="privacy_delete_local_title">Delete history on this phone?</string>
+    <string name="privacy_delete_local_body">Screening decisions recorded on this phone are removed. Copies already uploaded to the backend stay there.</string>
+    <string name="privacy_deleted_all">All call data was deleted.</string>
+    <string name="privacy_deleted_local">History on this phone was deleted.</string>
+
+    <string name="privacy_appearance_title">Appearance and battery</string>
+    <string name="theme_dark">Dark</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_system">Follow the system</string>
+    <string name="privacy_motion_title">Motion</string>
+    <string name="motion_system">Follow the system setting</string>
+    <string name="motion_reduce">Reduce motion</string>
+    <string name="motion_full">Allow motion</string>
+    <string name="privacy_background_sync">Sync in the background</string>
+    <string name="privacy_background_sync_d">Refreshes your block lists and checks for calls that need you about every 30 minutes, only with a network and a battery that is not low. No foreground service and no wake lock.</string>
+
+    <string name="privacy_backend_title">Backend</string>
+    <string name="privacy_backend_address">Address</string>
+    <string name="privacy_disconnect">Disconnect this backend</string>
+    <string name="privacy_disconnect_title">Disconnect the backend?</string>
+    <string name="privacy_disconnect_body">Sparta forgets the address and stops syncing. Screening keeps working on this phone with the lists and rules it already has.</string>
+    <string name="privacy_backend_saved">Backend saved.</string>
+    <string name="privacy_backend_disconnected">Backend disconnected.</string>
+
+    <string name="privacy_safety_title">Safety policy</string>
+    <string name="privacy_safety_body">When Sparta talks to a caller it never gives out, and never accepts requests to reveal, any of the following. A caller asking for them is treated as a warning sign.</string>
+    <string name="privacy_safety_protected">Protected information</string>
+    <string name="privacy_safety_policy_version">Policy version %1$s</string>
+    <string name="privacy_safety_needs_backend">Connect a backend to see the full list of protected information.</string>
+
+    <string name="privacy_permissions_title">Permissions and why</string>
+    <string name="privacy_permissions_body">Sparta asks for as little as it can, and only after explaining.</string>
+    <string name="perm_role">Call-screening role</string>
+    <string name="perm_role_why">Lets Android ask Sparta about each incoming call so it can let it ring, silence it or reject it. You choose it in a system dialog and can withdraw it in Android settings.</string>
+    <string name="perm_notifications">Notifications (optional)</string>
+    <string name="perm_notifications_why">To tell you when a call needs you or when Sparta silenced or blocked a caller.</string>
+    <string name="perm_contacts">Contacts (optional, off by default)</string>
+    <string name="perm_contacts_why">Only to ask Android whether a number is one of your contacts. Names and numbers are not read, copied or uploaded.</string>
+    <string name="perm_internet">Internet</string>
+    <string name="perm_internet_why">To talk to your Sparta backend.</string>
+    <string name="perm_never">Sparta never asks for the microphone, the phone state, the call log or storage, and it never records calls.</string>
+</resources>

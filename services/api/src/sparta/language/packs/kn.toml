@@ -1,0 +1,841 @@
+version = "1"
+
+[meta]
+code = "kn-IN"
+iso = "kn"
+name = "Kannada"
+native_name = "ಕನ್ನಡ"
+scripts = ["Knda", "Latn"]
+status = "supported"
+stt_locale = "kn-IN"
+tts_locale = "kn-IN"
+default_voice = "kn-IN-SapnaNeural"
+
+[detection]
+# Romanized Kannada ("Kanglish"). Spelling variants are collapsed by canon_latin (aa→a, ee→i, oo→u, w→v …).
+latin_words = [
+  "naanu", "nanu", "naavu", "navu", "neevu", "nivu", "nimma", "nimage", "nimmannu", "nimmalli", "nanna", "nanage",
+  "nannannu", "avaru", "avara", "avarige", "avanu", "avalu", "avanige", "adu", "idu", "ade", "ide", "iddhe", "idhe",
+  "ittu", "illa", "alla", "allade", "alli", "illi", "elli", "yelli", "yaaru", "yaar", "yaava", "yaavudu", "yenu", "enu",
+  "yaake", "yake", "hege", "hegide", "yavaga", "eshtu", "beku", "beda", "bedi", "bekaagide", "bekagide", "bekittu",
+  "aagide", "aagiddhe", "aagbeku", "aagi", "aagutte", "aaguttade", "aagilla", "aaytu", "aayitu", "maadi", "maadiri",
+  "maadbeku", "madi", "madbeku", "maadidira", "maadtira", "maadtini", "maaduttene", "maadu", "heli", "helri",
+  "helbeku", "helidre", "helbahudu", "helabahudu", "helutta", "helthira", "helthini", "kodi", "kodri", "kodbeku",
+  "kodabahudu", "koduttira", "kodtira", "bandide", "banni", "baanni", "baa", "baro", "baruttare", "barthaare",
+  "barthini", "hogi", "hogbeku", "hoguttene", "hogtini", "tilisi", "tilisabahuda", "tilisabahudu", "tilisiri",
+  "nodi", "nodri", "nodbeku", "sari", "saaku", "saaguttilla", "dayavittu", "dayamaadi", "dhanyavaadagalu",
+  "dhanyavada", "namaskara", "namaskaara", "hesaru", "mattu", "matthu", "mathu", "athava", "aadare", "adre",
+  "mele", "inda", "ge", "annu", "ige", "tumba", "thumba", "swalpa", "svalpa", "yaarigu", "yaarigoo", "maneyalli",
+  "mane", "ooru", "kelsa", "kare", "karedu", "houdu", "haudu", "gottilla", "gottu", "ondu", "eradu", "mooru",
+  "naalku", "aidu", "aaru", "elu", "entu", "ombattu", "hattu", "nooru", "saavira", "ivattu", "naale", "ninne",
+  "eega", "eegale", "bega", "takshana", "sullu", "satya", "yaarige", "yaarannu", "nodidre", "madtidini",
+  "madtidiri", "maadtidini", "baruttidini", "hodaga", "bandaga", "aagutthe", "aaguthe", "agutte", "aytu", "ayitu",
+  "iddira", "iddiri", "iddeera", "iddaare", "iddaru", "iddare", "ideera", "iddeeri", "idira", "irtira", "irthira",
+  "irtheera", "iruttira", "iruttene", "irutte", "irtini", "irtheeni", "hattira", "hatra", "hora", "horage", "olage",
+  "olagade", "mundhe", "munde", "hinde", "hindhe", "meele", "kelage", "keli", "kelisi", "kelisalilla", "keluttide",
+  "kelthide", "sigtilla", "sigalilla", "sigutte", "sigtide", "siguttilla", "sikkilla", "sikkide", "sikkitu",
+  "kalisi", "kaluhisi", "kalsi", "kalsidi", "banditu", "bantu", "bartha", "barthide", "bartini", "bartiya", "saar",
+  "swami", "avare", "ellaru", "ellarigu", "yaaradru", "yaaradaru", "yaavaglu", "yavaglu", "eneno", "enu", "enaadru",
+  "enadru", "bere", "beere", "innu", "innomme", "mathomme", "matte", "doora", "hattirada", "sahaya", "samasye",
+  "maahiti", "vishaya", "sandesha", "kaarana", "uddesha", "bhadratha", "vaiyaktika", "aarthika", "khate", "khathe",
+  "hana", "duddu", "dudu", "rupayi", "hegiddiri", "chennagide", "chennagiddira", "sariyagi", "sariyaagi",
+]
+latin_suffixes = [
+  '(?:aagide|aaguttade|aagutte|aagbeku|maadbeku|madbeku|maadiri|madiri|maadthira|maadtira|maaduttene|maadidira|helbeku|helri|kodbeku|kodri|nodri|bandide|tilisi|tilisabahuda|tilisabahude|hogbeku|beku|beda|bedi|illa|alla|alli|inda|annu|ige|ttiddini|tidini|tiddini|iddira|iddiri|iddeera|iddaare)$',
+]
+
+[owner_ref.named]
+poss = "{name} ಅವರ"
+poss_translit = "{name} avara"
+to = "{name} ಅವರಿಗೆ"
+to_translit = "{name} avarige"
+subj = "{name} ಅವರು"
+subj_translit = "{name} avaru"
+
+[owner_ref.generic]
+poss = "ಈ ನಂಬರಿನ ಮಾಲೀಕರ"
+poss_translit = "ee numberina maalikara"
+to = "ಈ ನಂಬರಿನ ಮಾಲೀಕರಿಗೆ"
+to_translit = "ee numberina maalikarige"
+subj = "ಈ ನಂಬರಿನ ಮಾಲೀಕರು"
+subj_translit = "ee numberina maalikaru"
+
+[terms]
+otp = [
+  'ಒ\s?ಟಿ\s?ಪಿ',
+  'ಓ\s?ಟಿ\s?ಪಿ',
+  'ವನ್\s?ಟೈಮ್\s?(?:ಪಾಸ್ವರ್ಡ್|ಪಾಸ್\u200cವರ್ಡ್|ಪಿನ್|ಕೋಡ್)',
+  '(?:ವೆರಿಫಿಕೇಶನ್|ಸೆಕ್ಯುರಿಟಿ|ಕನ್ಫರ್ಮೇಶನ್|ಎಸ್ಎಂಎಸ್)\s*ಕೋಡ್',
+  'ಬಂದಿರುವ\s*(?:ಕೋಡ್|ನಂಬರ್)',
+  'ಮೆಸೇಜ್\s*(?:ಗೆ|ನಲ್ಲಿ|ಲ್ಲಿ)\s*ಬಂದ\s*(?:ಕೋಡ್|ನಂಬರ್)',
+  '(?:೬|6|೪|4|೫|5)\s*ಅಂಕಿ(?:ಯ)?\s*(?:ಕೋಡ್|ಸಂಖ್ಯೆ|ನಂಬರ್|ಪಿನ್)',
+  '\b(?:6|aaru|4|naalku|5|aidu)\s*(?:digit|ankiya|anka)\s*(?:code|number|pin|otp)\b',
+  '\bcode\s*(?:bandide|bandiruva|bandha|baruttade|banditu|kalisidde|kaluhisidde)\b',
+  '\bmessage\s*(?:alli|ge)\s*(?:bandiruva|bandide|bandha)\s*(?:code|number)\b',
+  '\bbandiruva\s*(?:code|number)\b',
+]
+pin = [
+  'ಪಿನ್(?!\s*ಕೋಡ್)',
+  'ಯುಪಿಐ\s*ಪಿನ್',
+  'ಎಟಿಎಂ\s*ಪಿನ್',
+  '\bpin\s*(?:number|no|heli|kodi)\b',
+]
+cvv = [
+  'ಸಿವಿವಿ',
+  'ಸಿ\s*ವಿ\s*ವಿ',
+  'ಕಾರ್ಡ್[^.]{0,20}ಹಿಂದ[^.]{0,30}(?:ಮೂರು|3)\s*ಅಂಕಿ',
+  '\bcard\s*(?:hinde|hindina|hindhe)\b[^.]{0,40}\b(?:3|moru)\s*(?:digit|ankiya|anka)\b',
+  '\b(?:3|moru)\s*digit\s*(?:number|code)\b',
+]
+password = [
+  'ಪಾಸ್\u200c?ವರ್ಡ್',
+  'ಪಾಸ್\s*ವರ್ಡ್',
+  'ಪಾಸ್\u200c?ಕೋಡ್',
+  'ಲಾಗಿನ್\s*(?:ಐಡಿ|ವಿವರ|ಪಾಸ್ವರ್ಡ್)',
+  'ನೆಟ್\s*ಬ್ಯಾಂಕಿಂಗ್\s*(?:ಪಾಸ್ವರ್ಡ್|ಐಡಿ|ವಿವರ)',
+  '\bpass\s*word\b',
+]
+card_credential = [
+  'ಕಾರ್ಡ್\s*(?:ನಂಬರ್|ಸಂಖ್ಯೆ|ವಿವರ|ಡೀಟೇಲ್ಸ್)',
+  'ಡೆಬಿಟ್\s*ಕಾರ್ಡ್',
+  'ಕ್ರೆಡಿಟ್\s*ಕಾರ್ಡ್',
+  '(?:ಖಾತೆ|ಅಕೌಂಟ್)\s*(?:ನಂಬರ್|ಸಂಖ್ಯೆ|ವಿವರ|ಡೀಟೇಲ್ಸ್)',
+  'ಎಕ್ಸ್\u200c?ಪೈರಿ\s*(?:ಡೇಟ್|ದಿನಾಂಕ)',
+  'ಐಎಫ್ಎಸ್ಸಿ',
+  '\bcard\s*(?:number|no|details?|vivara)\b',
+  '\b(?:account|khate|khathe|khaate)\s*(?:number|no|details?|vivara|sankhye)\b',
+  '\bexpiry\s*(?:date|dinanka)\b',
+]
+auth_code = [
+  'ರಿಕವರಿ\s*ಕೋಡ್',
+  'ಬ್ಯಾಕಪ್\s*ಕೋಡ್',
+  'ಅಪ್ರೂವ್\s*ಮಾಡಿ',
+  '\bapprove\s*maadi\b',
+]
+id_document = [
+  'ಆಧಾರ್',
+  'ಪ್ಯಾನ್\s*(?:ಕಾರ್ಡ್|ನಂಬರ್)',
+  'ಪಾಸ್\u200c?ಪೋರ್ಟ್',
+  'ಡ್ರೈವಿಂಗ್\s*ಲೈಸೆನ್ಸ್',
+  'ಜನ್ಮ\s*ದಿನಾಂಕ',
+  '\bjanma\s*dinanka\b',
+]
+address_location = [
+  'ವಿಳಾಸ',
+  'ಅಡ್ರೆಸ್',
+  'ಲೊಕೇಶನ್',
+  'ಲೋಕೇಶನ್',
+  'ಎಲ್ಲಿ\s*(?:ಇದ್ದೀರಿ|ಇದ್ದಾರೆ|ಇರುತ್ತೀರಿ|ವಾಸ|ಇದ್ದೀರ|ಇದೀರಾ|ಇದ್ದಾರೆ|ಇದ್ದಾರಾ)',
+  'ಯಾವ\s*(?:ಏರಿಯಾ|ಊರು|ಬಡಾವಣೆ|ಬಿಲ್ಡಿಂಗ್|ಸ್ಥಳ|ಜಾಗ|ರಸ್ತೆ|ಫ್ಲೋರ್)',
+  'ಲ್ಯಾಂಡ್\u200c?ಮಾರ್ಕ್',
+  'ಫ್ಲ್ಯಾಟ್\s*(?:ನಂಬರ್|ನಂ)',
+  '\b(?:vilasa|vilaasa|adres)\b',
+  '\b(?:yelli|elli)\s*(?:iddira|iddeera|iddeeri|iddaare|idira|ideera|irtira|irtheera|vaasa|vasa|iddare)\b',
+  '\bmane\s*(?:address|vilasa)\b',
+  '\byava\s*(?:area|ooru|badavane|building|sthala|jaaga|raste|floor)\b',
+  '\bflat\s*(?:number|no)\b',
+]
+owner_availability = [
+  'ಮನೆಯಲ್ಲಿ\s*(?:ಇದ್ದಾರೆ|ಇದ್ದಾರಾ|ಇದ್ದಾರೇನು|ಇದೀರಾ|ಇದ್ದೀರಾ|ಯಾರಾದರೂ|ಇದ್ದಾರಲ್ವಾ)',
+  'ಮನೆಯಲ್ಲಿ\s*(?:ದ್ದಾರೆ|ದ್ದಾರಾ|ದ್ದೀರಾ|ದ್ದೀರ|ದ್ದಾರೇನು|ದೀರಾ)',
+  'ಮನೆಯಲ್ಲಿ\s*(?:ಇನ್ನು\s*)?ಯಾರಾದ್ರೂ',
+  'ಒಬ್ಬರೇ\s*(?:ಇದ್ದೀರಾ|ಇದ್ದಾರಾ|ದ್ದೀರಾ|ದ್ದಾರಾ)',
+  'ಆಫೀಸ್\s*(?:ನಲ್ಲಿ|ಲ್ಲಿ)\s*(?:ಇದ್ದಾರೆ|ಇದ್ದಾರಾ|ಇದ್ದೀರಾ)',
+  'ಯಾವಾಗ\s*(?:ಬರುತ್ತಾರೆ|ಬರ್ತಾರೆ|ಸಿಗುತ್ತಾರೆ|ಸಿಗ್ತಾರೆ|ವಾಪಸ್)',
+  'ಊರಲ್ಲಿ\s*(?:ಇದ್ದಾರಾ|ಇದ್ದಾರೆ)',
+  '\bmaneyalli\s*(?:iddara|iddaare|iddira|iddeera|yaaradaru|yarigaadru|iddare)\b',
+  '\bmaneyalli\s*(?:ddara|ddaare|ddira|ddeera|ddare|yaaradru)\b',
+  '\bmane\s*alli\s*(?:iddara|iddaare|iddira|iddeera|yaaradaru|iddare)\b',
+  '\bobbare\s*(?:iddira|iddeera|iddara|iddiri|iddeeri)\b',
+  '\boffice\s*alli\s*(?:iddara|iddaare|iddare)\b',
+  '\b(?:avaru|sir|madam|saar)\s*(?:maneyalli|mane\s*alli|office\s*alli)\b',
+  '\bavaru\s*(?:yavaga|eega)\s*(?:barthaare|baruttaare|sigtaare|free)\b',
+  '\byavaga\s*(?:barthaare|baruttaare|sigtaare|sigtare|bartare)\b',
+  '\booralli\s*(?:iddara|iddaare)\b',
+  '\b{OWNER}\s*(?:avaru|sir|saar)?\s*(?:maneyalli|mane\s*alli|office\s*alli)\b',
+]
+remote_tool = [
+  'ಎನಿ\s*ಡೆಸ್ಕ್',
+  'ಟೀಮ್\s*ವ್ಯೂವರ್',
+  'ಕ್ವಿಕ್\s*ಸಪೋರ್ಟ್',
+  'ರಿಮೋಟ್\s*(?:ಆಕ್ಸೆಸ್|ಕಂಟ್ರೋಲ್|ಡೆಸ್ಕ್ಟಾಪ್)',
+  'ಎಪಿಕೆ',
+  '\b(?:phone|mobile|computer|laptop)\s*(?:na|annu)\s*(?:access|control)\b',
+]
+screen_share = [
+  'ಸ್ಕ್ರೀನ್\s*(?:ಶೇರ್|ಶೇರಿಂಗ್|ತೋರಿಸಿ|ಮಿರರ್)',
+  '\bscreen\s*(?:share|sharing|torisi|toris|mirror)\b',
+  '\bscreen\s*(?:annu\s*)?share\s*maad\w*\b',
+]
+install_app = [
+  '(?:ಆಪ್|ಆ್ಯಪ್|ಅಪ್ಲಿಕೇಶನ್)\s*(?:ಅನ್ನು\s*)?(?:ಡೌನ್\u200c?ಲೋಡ್|ಇನ್\u200c?ಸ್ಟಾಲ್)',
+  '(?:ಡೌನ್\u200c?ಲೋಡ್|ಇನ್\u200c?ಸ್ಟಾಲ್)\s*ಮಾಡಿ',
+  'ಪ್ಲೇ\s*ಸ್ಟೋರ್',
+  '\b(?:app|application|apk)\s*(?:annu\s*)?(?:download|install)\b',
+  '\b(?:download|install)\s*(?:maadi|madi|maadiri|madiri|maadbeku)\b',
+]
+payment_term = [
+  'ಹಣ',
+  'ದುಡ್ಡು',
+  'ರೂಪಾಯಿ',
+  'ರೂ\.?\s*\d',
+  'ಮೊತ್ತ',
+  'ಪಾವತಿ',
+  'ಟ್ರಾನ್ಸ್\u200c?ಫರ್',
+  'ಜಮಾ',
+  'ಶುಲ್ಕ',
+  'ದಂಡ',
+  'ಯುಪಿಐ',
+  'ಪೇಮೆಂಟ್',
+  'ಫೀಸ್',
+  '\b(?:hana|duddu|dudu)\b',
+  '\brupayi\w*\b',
+  '\bmottha\b',
+  '\bdanda\b',
+  '\bshulka\b',
+  '\bpavathi\b',
+  '\bjama\b',
+]
+giftcard_crypto = [
+  'ಗಿಫ್ಟ್\s*ಕಾರ್ಡ್',
+  'ಬಿಟ್\u200c?ಕಾಯಿನ್',
+  'ಕ್ರಿಪ್ಟೋ',
+  'ವೋಚರ್',
+  'ಗೂಗಲ್\s*ಪ್ಲೇ\s*(?:ಕಾರ್ಡ್|ಕೋಡ್)',
+]
+legal_threat = [
+  'ಬಂಧ(?:ನ|ಿಸ)\w*',
+  'ಅರೆಸ್ಟ್',
+  'ವಾರೆಂಟ್',
+  'ಎಫ್\u200c?ಐ\u200c?ಆರ್',
+  'ಪ್ರಕರಣ\s*ದಾಖಲ\w*',
+  'ಕೇಸ್\s*(?:ದಾಖಲ\w*|ಹಾಕ\w*|ಆಗಿದೆ)',
+  'ಕಾನೂನು\s*ಕ್ರಮ',
+  'ಕಾನೂನು\s*ಕ್ರಮಗಳು',
+  'ಕೋರ್ಟ್',
+  'ನ್ಯಾಯಾಲಯ',
+  'ಡಿಜಿಟಲ್\s*ಅರೆಸ್ಟ್',
+  'ಸಿಬಿಐ',
+  'ನಾರ್ಕೋಟಿಕ್ಸ್',
+  'ಸೈಬರ್\s*ಕ್ರೈಂ',
+  'ಸಿಮ್\s*(?:ಬಂದ್|ಬ್ಲಾಕ್)',
+  'ಜೈಲು',
+  'ಅಕ್ರಮ\s*(?:ವಸ್ತು|ಡ್ರಗ್ಸ್|ಪಾರ್ಸೆಲ್|ಚಟುವಟಿಕೆ)',
+  'ಡ್ರಗ್ಸ್',
+  '\b(?:bandhan\w*|bandhisu\w*)\b',
+  '\bcase\s*(?:file|dakhalu|dakhal|haakid\w*|aagide|aagutte)\b',
+  '\bprakarana\s*dakhal\w*\b',
+  '\bkanoonu\s*krama\b',
+  '\bsim\s*(?:band|block|bandh)\w*\b',
+  '\bjailu\b',
+  '\bakrama\s*(?:vastu|drugs|parcel|chatuvatike)\b',
+]
+account_threat = [
+  'ಖಾತೆ\s*(?:ಬ್ಲಾಕ್|ಮುಚ್ಚ\w*|ಸ್ಥಗಿತ\w*|ಬಂದ್|ಫ್ರೀಜ್|ಸಸ್ಪೆಂಡ್)',
+  'ಅಕೌಂಟ್\s*(?:ಬ್ಲಾಕ್|ಕ್ಲೋಸ್|ಬಂದ್|ಫ್ರೀಜ್|ಸಸ್ಪೆಂಡ್|ಡೀಆಕ್ಟಿವೇಟ್)',
+  'ಕಾರ್ಡ್\s*(?:ಬ್ಲಾಕ್|ಬಂದ್)',
+  'ಸಿಮ್\s*(?:ಬ್ಲಾಕ್|ಬಂದ್)',
+  '(?:ಬ್ಲಾಕ್|ಬಂದ್|ಕ್ಲೋಸ್|ಸಸ್ಪೆಂಡ್)\s*(?:ಆಗಿದೆ|ಆಗುತ್ತದೆ|ಆಗುತ್ತೆ|ಆಗಲಿದೆ|ಆಗಿದೆ|ಆಗ್ತಿದೆ|ಆಗುತ್ತಿದೆ|ಮಾಡಲಾಗುತ್ತದೆ|ಮಾಡಲಾಗಿದೆ)',
+  '\b(?:account|khate|khathe|card|sim|service)\s*(?:block\w*|close\w*|band\w*|freeze|frozen|suspend\w*|deactivate\w*)\b',
+  '\b(?:block|band|bandh|close|suspend)\s*(?:aagide|aagutte|aaguttade|aaguthe|aagbittide|aagbidutte|aagutthe|aaguttide|aagtide|aagtidhe|maadtheevi|maaduttene|madtivi|maadlaagide|maadlagide)\b',
+]
+kyc = [
+  'ಕೆವೈಸಿ',
+  'ಕೆ\s*ವೈ\s*ಸಿ',
+]
+urgency = [
+  'ತಕ್ಷಣ',
+  'ಈಗಲೇ',
+  'ಈಗಿಂದೀಗ',
+  'ಅರ್ಜೆಂಟ್',
+  'ಕೊನೆಯ\s*(?:ಅವಕಾಶ|ಎಚ್ಚರಿಕೆ|ನೋಟಿಸ್)',
+  '(?:\d+|ಒಂದು|ಎರಡು|ಮೂರು|ನಾಲ್ಕು|ಐದು|ಹತ್ತು)\s*(?:ಗಂಟೆ|ನಿಮಿಷ)\w*\s*(?:ಒಳಗೆ|ಒಳಗಡೆ)',
+  'ಇಂದೇ',
+  '\b(?:takshana|takshan|eegale|eegane|konege|indhe)\b',
+  '\bkoneya\s*(?:avakasha|echcharike|notice)\b',
+  '\b\d+\s*(?:gante|ganteya|nimisha)\w*\s*(?:olage|olagade)\b',
+  'ಬೇಗ\s*(?:ಹೇಳಿ|ಮಾಡಿ|ಕೊಡಿ|ಕಳಿಸಿ|ಕಳುಹಿಸಿ)',
+  '(?:ಇಲ್ಲದಿದ್ದರೆ|ಇಲ್ಲಾಂದ್ರೆ|ಇಲ್ಲಂದ್ರೆ|ಇಲ್ಲದಿದ್ರೆ)',
+  'ಇವತ್ತೇ',
+  'ಇಂದು\s*ರಾತ್ರಿ',
+  'ತಡ\s*ಮಾಡ\w*',
+  '\bbega\s*(?:heli|helri|maadi|madi|kodi|kalisi)\b',
+  '\b(?:illandre|illaandre|illa\s*andre|illadiddare|illadidre)\b',
+  '\bivatte\b',
+  '\bindu\s*raatri\b',
+  '\btada\s*maad\w*\b',
+]
+isolation = [
+  'ಈ\s*(?:ಕರೆ|ವಿಷಯ|ಕೇಸ್)\s*(?:ಬಗ್ಗೆ)?\s*ಯಾರಿಗೂ',
+  'ಕರೆ\s*ಕಟ್\s*ಮಾಡ\w*\s*(?:ಬೇಡಿ|ಬೇಡ)',
+  'ಗೌಪ್ಯ',
+  '\bee\s*(?:kare|vishaya|case)\s*(?:bagge\s*)?yaarigu\b',
+  '\bcall\s*cut\s*maad\w*\s*(?:beda|bedi)\b',
+  '\bgoupya\b|\bgaupya\b',
+]
+prize = [
+  'ಬಹುಮಾನ',
+  'ಲಾಟರಿ',
+  'ಗೆದ್ದಿದ್ದೀರ(?:ಿ|ಾ)?',
+  'ಲಕ್ಕಿ\s*ಡ್ರಾ',
+  'ಕ್ಯಾಶ್\s*ಬ್ಯಾಕ್',
+  '\bbahumana\b',
+  '\b(?:neevu|nivu)\s*gedd\w*\b',
+  '\bgedd(?:i|u)?ddira\b',
+]
+link_callback = [
+  'ಲಿಂಕ್\s*(?:ಅನ್ನು\s*)?(?:ಕ್ಲಿಕ್|ತೆರೆ|ಓಪನ್)\w*',
+  'ಕ್ಲಿಕ್\s*ಮಾಡಿ',
+  'ಈ\s*ನಂಬರ್\s*(?:ಗೆ|ಕ್ಕೆ)\s*(?:ಕರೆ|ಕಾಲ್|ಮೆಸೇಜ್|ವಾಟ್ಸಾಪ್)',
+  'ವಾಟ್ಸ್?ಆ್?ಯ?ಪ್\s*(?:ಗೆ|ಅಲ್ಲಿ|ಮಾಡಿ)?',
+  'ವಾಪಸ್\s*ಕರೆ\s*ಮಾಡಿ',
+  '\blink\s*(?:click|open|tap)\s*(?:maadi|madi)?\b',
+  '\bclick\s*maadi\b',
+  '\bee\s*number\s*(?:ge|ge\s*call|ge\s*message|ge\s*whatsapp)\b',
+  '\bwhatsapp\s*(?:ge|alli|maadi)\b',
+  '\bvaapas\s*call\s*maadi\b',
+]
+bank_org = [
+  'ಬ್ಯಾಂಕ\w*',
+  'ಎಸ್ಬಿಐ',
+  'ಎಚ್ಡಿಎಫ್ಸಿ',
+  'ಐಸಿಐಸಿಐ',
+  'ಆರ್ಬಿಐ',
+  '\bbyank\b',
+]
+govt_org = [
+  'ಸರ್ಕಾರ',
+  'ಸರ್ಕಾರಿ',
+  'ಆದಾಯ\s*ತೆರಿಗೆ',
+  'ಇನ್ಕಮ್\s*ಟ್ಯಾಕ್ಸ್',
+  'ಟ್ರಾಯ್',
+  'ಕಸ್ಟಮ್ಸ್',
+  'ಸೈಬರ್\s*(?:ಸೆಲ್|ಕ್ರೈಂ|ಪೊಲೀಸ್)',
+  'ಸಿಬಿಐ',
+  '\b(?:sarkara|sarkaari)\b',
+]
+police_org = [
+  'ಪೊಲೀಸ\w*',
+  'ಇನ್ಸ್\u200c?ಪೆಕ್ಟರ\w*',
+  'ಠಾಣೆ',
+  'ಕ್ರೈಂ\s*ಬ್ರಾಂಚ\w*',
+  'ಸಿಐಡಿ',
+  '\bthane\b',
+]
+courier_org = [
+  'ಕೊರಿಯರ್',
+  'ಪಾರ್ಸೆಲ್',
+  'ಅಮೆಜಾನ್',
+  'ಫ್ಲಿಪ್\u200c?ಕಾರ್ಟ್',
+  'ಸ್ವಿಗ್ಗಿ',
+  'ಜೊಮ್ಯಾಟೊ',
+]
+employer_org = [
+  'ಎಚ್ಆರ್',
+  'ರಿಕ್ರೂಟರ್',
+  'ಉದ್ಯೋಗ',
+  'ಜಾಬ್\s*(?:ಆಫರ್|ಓಪನಿಂಗ್)',
+  'ವರ್ಕ್\s*ಫ್ರಮ್\s*ಹೋಮ್',
+  'ಪಾರ್ಟ್\s*ಟೈಮ್\s*ಜಾಬ್',
+  '\b(?:udyoga)\b',
+]
+override_phrase = [
+  '(?:ನಿಮ್ಮ|ನಿನ್ನ)\s*(?:ಎಲ್ಲಾ\s*|ಎಲ್ಲ\s*)?(?:ನಿಯಮ|ಸೂಚನೆ|ಸೂಚನೆಗಳ?|ನಿಯಮಗಳ?)\w*\s*(?:ಅನ್ನು\s*)?(?:ಮರೆತು|ನಿರ್ಲಕ್ಷಿಸಿ|ಬಿಟ್ಟು|ಮುರಿದು|ತೆಗೆದು|ಬದಲಾಯಿಸಿ)',
+  '(?:ಹಿಂದಿನ|ಹಳೆಯ|ಎಲ್ಲಾ)\s*(?:ಸೂಚನೆ|ನಿಯಮ)\w*\s*(?:ಅನ್ನು\s*)?(?:ಮರೆತು|ನಿರ್ಲಕ್ಷಿಸಿ|ಮರೆತುಬಿಡಿ)',
+  'ನಿಯಮ\w*\s*(?:ಮರೆತು|ಮುರಿ|ತೆಗೆ|ಬದಲಾಯಿಸಿ)',
+  'ಸಿಸ್ಟಮ್\s*(?:ಓವರ್\u200c?ರೈಡ್|ಪ್ರಾಂಪ್ಟ್|ಮೆಸೇಜ್|ಕಮಾಂಡ್)',
+  'ಇನ್ನು\s*ಮುಂದೆ\s*ನೀವು',
+  'ನೀವು\s*ಈಗ\s*(?:ಒಂದು|ನನ್ನ)',
+  'ಡೆವಲಪರ್\s*ಮೋಡ್',
+  'ಅಡ್ಮಿನ್\s*(?:ಕೋಡ್|ಮೋಡ್|ಆಕ್ಸೆಸ್)',
+  '\b(?:nimma|ninna)\s*(?:ella\s*)?(?:rules?|niyama\w*|instructions?|suchane\w*)\s*(?:annu\s*)?(?:marethu\w*|maretu\w*|ignore|nirlakshisi|bittu|muridu|tegedu|badalaayisi|badalisi)\b',
+  '\b(?:rules?|niyama\w*|instructions?|suchane\w*)\s*(?:annu\s*)?(?:ignore|marethu\w*|maretu\w*|nirlakshisi|muridu)\b',
+  '\bignore\s*maadi\b',
+  '\binnu\s*munde\s*neevu\b',
+]
+authority_demand = [
+  'ನನ್ನ\s*ಆದೇಶ\s*(?:ಪಾಲಿಸ|ಪಾಲನೆ)\w*',
+  'ನೀವು\s*(?:ಪಾಲಿಸ|ಒಪ್ಪ)\w*\s*ಬೇಕು',
+  '\bnanna\s*(?:order|aadesha)\s*(?:palisi|follow|palane)\w*\b',
+  '\bneevu\s*(?:palisa|oppa)\w*\s*beku\b',
+]
+owner_authorization = [
+  '(?:ನಿಮ್ಮ)\s*(?:ಮಾಲೀಕ|ಮಾಲೀಕರು|ಬಾಸ್|ಸಾಹೇಬರು|ಸರ್)\s*(?:ಅವರು\s*)?(?:ಹೇಳಿದ್ದಾರೆ|ಹೇಳಿದ್ರು|ಹೇಳಿದರು|ಒಪ್ಪಿಗೆ|ಅನುಮತಿ|ಆದೇಶ|ಹೇಳಿದ್ದಾರೆ)',
+  '(?:ಮಾಲೀಕರು|ಬಾಸ್|ಸಾಹೇಬರು|ಸರ್)\s*(?:ಅವರು\s*)?(?:ಹೇಳಿದ್ದಾರೆ|ಹೇಳಿದ್ರು|ಹೇಳಿದರು|ಒಪ್ಪಿಗೆ|ಅನುಮತಿ)',
+  '{OWNER}\s*(?:ಅವರು|ಸರ್)?\s*(?:ಹೇಳಿದ್ದಾರೆ|ಹೇಳಿದ್ರು|ಹೇಳಿದರು|ಒಪ್ಪಿಗೆ|ಅನುಮತಿ|ಅನುಮತಿ\s*ಕೊಟ್ಟಿದ್ದಾರೆ)',
+  '\b(?:nimma|ninna)\s*(?:malik|maalik|maalika|maalikaru|boss|saheb|sir|saar)\s*(?:avaru\s*)?(?:heliddaare|heliddare|helidru|helidaru|helidhare|permission|anumathi|anumati|order|aadesha|oppige|oppigi)\b',
+  '\b(?:malik|maalik|maalikaru|boss|saheb|sir|saar|madam)\s*(?:avaru\s*)?(?:heliddaare|heliddare|helidru|helidaru|permission|anumathi|anumati|oppige|oppigi)\b',
+  '\b{OWNER}\s*(?:avaru|sir|saar)?\s*(?:heliddaare|heliddare|helidru|helidaru|permission|anumathi|anumati|oppige|oppigi)\b',
+  '\b(?:avaru|avrige)\s*(?:permission|anumathi|anumati|oppige|oppigi)\s*(?:kottiddaare|kottidaare|kottiddare|ide|ittu|kodtidaare)\b',
+]
+abuse = [
+  'ಮೂರ್ಖ',
+  'ಹುಚ್ಚ',
+  'ನಾಯಿ',
+  'ಸೂಳೆ\s*ಮಗ\w*',
+  'ಬೋಳಿ\s*ಮಗ\w*',
+  'ತಿಕ್ಲ',
+  'ಕತ್ತೆ',
+  'ಬಾಯಿ\s*ಮುಚ್ಚ\w*',
+  '\b(?:sule\s*maga|sule\s*magane|boli\s*maga|boli\s*magane|thika|tikla|hucha|huccha|murkha|nayi|katte)\b',
+  '\bbaayi\s*muchch\w*\b|\bbayi\s*mucc\w*\b',
+]
+harassment_threat = [
+  'ನೋಡ್ಕೊಳ್ತೀನಿ',
+  'ನೋಡ್ಕೋತೀನಿ',
+  'ಕೊಲ್ತೀನಿ',
+  'ಕೊಲ್ಲುತ್ತೇನೆ',
+  'ನಿನ್ನ\s*ಮನೆಗೆ\s*ಬರ್ತೀನಿ',
+  'ನಿನ್ನ\s*ಮನೆಗೆ\s*ಬರುತ್ತೇನೆ',
+  'ಮತ್ತೆ\s*ಮತ್ತೆ\s*(?:ಕರೆ|ಫೋನ್)\s*ಮಾಡ್ತಾ\s*ಇರ್ತೀನಿ',
+  '\b(?:nodkolteeni|nodkotini|nodkolthini|nodkoteeni)\b',
+  '\b(?:kolteeni|kolthini|kolluttene)\b',
+  '\bninna\s*manege\s*(?:bartini|barteeni|baruttene)\b',
+  '\bmatte\s*matte\s*(?:call|phone)\s*maadta\s*irtini\b',
+]
+telemarketing = [
+  'ಸಾಲ',
+  'ಲೋನ್',
+  'ಆಫರ್',
+  'ವಿಮೆ',
+  'ಇನ್ಶೂರೆನ್ಸ್',
+  'ಹೂಡಿಕೆ',
+  'ಇನ್ವೆಸ್ಟ್\u200c?ಮೆಂಟ್',
+  'ಮ್ಯೂಚುವಲ್\s*ಫಂಡ್',
+  'ಸ್ಕೀಮ್',
+  'ಪ್ರಾಪರ್ಟಿ',
+  'ಸೈಟ್',
+  'ಫ್ರೀ\s*(?:ಟ್ರಯಲ್|ಡೆಮೋ|ಕನ್ಸಲ್ಟೇಶನ್)',
+  'ವಿಶೇಷ\s*(?:ಆಫರ್|ರಿಯಾಯಿತಿ)',
+  'ಡಿಸ್ಕೌಂಟ್',
+  '\b(?:saala|sala)\b',
+  '\bloan\s*(?:beka|beku|bekaa)\b',
+  '\boffer\s*(?:ide|ideyaa|idhe)\b',
+  '\bvime\b',
+  '\bhoodike\b',
+  '\bscheme\s*(?:ide|idhe)\b',
+  '\bsite\s*(?:beka|beku|ide)\b',
+]
+delivery_coord = [
+  'ಡೆಲಿವರಿ',
+  'ಡೆಲಿವರಿ\s*(?:ಬಾಯ್|ಪಾರ್ಟ್ನರ್|ಏಜೆಂಟ್)',
+  'ಗೇಟ್\s*(?:ಹತ್ತಿರ|ಬಳಿ|ಹತ್ರ)',
+  'ಬಿಲ್ಡಿಂಗ್\s*(?:ಸಿಗ್ತಿಲ್ಲ|ಸಿಗುತ್ತಿಲ್ಲ|ಸಿಗ್ತಾ\s*ಇಲ್ಲ|ಸಿಕ್ತಿಲ್ಲ)',
+  'ವಿಳಾಸ\s*(?:ಸಿಗ್ತಿಲ್ಲ|ಸಿಗುತ್ತಿಲ್ಲ|ಸಿಗ್ತಾ\s*ಇಲ್ಲ|ಸಿಕ್ತಿಲ್ಲ)',
+  'ಪಾರ್ಸೆಲ್\s*(?:ಬಂದಿದೆ|ಬಂದಿದೆ|ತಂದಿದ್ದೀನಿ|ತಂದಿದ್ದೇನೆ)',
+  'ಆರ್ಡರ್\s*(?:ಬಂದಿದೆ|ಬಂದಿದೆ|ತಂದಿದ್ದೀನಿ|ತಂದಿದ್ದೇನೆ)',
+  'ಹೊರಗೆ\s*(?:ನಿಂತಿದ್ದೀನಿ|ನಿಂತಿದ್ದೇನೆ|ಕಾಯ್ತಿದ್ದೀನಿ|ಕಾಯುತ್ತಿದ್ದೇನೆ)',
+  'ಕೆಳಗೆ\s*(?:ಬನ್ನಿ|ನಿಂತಿದ್ದೀನಿ|ನಿಂತಿದ್ದೇನೆ)',
+  'ಫ್ಲೋರ್',
+  '\bdelivery\b',
+  '\b(?:delivery|courier)\s*(?:boy|partner|agent|executive)\b',
+  '\bgate\s*(?:hattira|hatra|hattir|balli|bali)\b',
+  '\bbuilding\s*(?:sigtilla|sigtila|sigtillaa|siguttilla|sigalilla|sikkilla|sikkthilla)\b',
+  '\b(?:address|vilasa)\s*(?:sigtilla|sigtila|siguttilla|sigalilla|sikkilla)\b',
+  '\b(?:parcel|order)\s*(?:bandide|bandidhe|tandiddini|tandiddene|tandidini)\b',
+  '\bhora?ge\s*(?:nintidini|nintiddini|nintiddene|kaaytidini|kaaytiddini)\b',
+  '\bkelage\s*(?:banni|baanni|nintidini|nintiddini)\b',
+  '\bhorage\s*(?:nintidini|nintiddini|kaaytidini)\b',
+  '\bgate\s*(?:ge\s*)?(?:banni|baanni)\b',
+]
+appointment = [
+  'ಅಪಾಯಿಂಟ್\u200c?ಮೆಂಟ್',
+  'ಬುಕ್ಕಿಂಗ್',
+  'ಸ್ಲಾಟ್',
+  'ಡಾಕ್ಟರ್',
+  'ವೈದ್ಯರ',
+  'ಕ್ಲಿನಿಕ್',
+  'ಡೆಂಟಿಸ್ಟ್',
+  'ಸಲೂನ್',
+  'ಟೆಕ್ನೀಷಿಯನ್',
+  'ಸರ್ವಿಸ್\s*(?:ವಿಸಿಟ್|ಸೆಂಟರ್|ಅಪಾಯಿಂಟ್\u200c?ಮೆಂಟ್)',
+  'ರಿಮೈಂಡರ್',
+  'ನಾಳೆ\s*(?:ಗೆ|ಕ್ಕೆ)',
+  '\bservice\s*(?:visit|center|centre|appointment)\b',
+  '\bnaale\s*(?:ge|ke|kke)\b',
+]
+recruiter = [
+  'ಇಂಟರ್ವ್ಯೂ',
+  'ಸಂದರ್ಶನ',
+  'ರೆಸ್ಯೂಮ್',
+  'ಸಿವಿ',
+  'ಶಾರ್ಟ್\u200c?ಲಿಸ್ಟ್',
+  'ಜಾಬ್\s*(?:ಆಫರ್|ಓಪನಿಂಗ್|ಪ್ರೊಫೈಲ್)',
+  'ಉದ್ಯೋಗ\s*(?:ಅವಕಾಶ|ಖಾಲಿ|ಹುದ್ದೆ)',
+  'ನೇಮಕಾತಿ',
+  'ರಿಕ್ರೂಟರ್',
+  'ಎಚ್ಆರ್',
+  '\bsandarshana\b',
+  '\bnemakathi\b',
+  '\bshortlist\w*\b',
+]
+support_callback = [
+  'ಟಿಕೆಟ್\s*(?:ನಂಬರ್|ಐಡಿ|ನಂ)',
+  'ದೂರು\s*(?:ನಂಬರ್|ಐಡಿ|ದಾಖಲು|ಮಾಡಿದ್ರಿ|ಮಾಡಿದ್ದೀರಿ)',
+  'ಕಂಪ್ಲೇಂಟ್\s*(?:ನಂಬರ್|ಐಡಿ|ಮಾಡಿದ್ರಿ|ಮಾಡಿದ್ದೀರಿ|ದಾಖಲು)',
+  'ನೀವು\s*(?:ದೂರು|ಕಂಪ್ಲೇಂಟ್|ರಿಕ್ವೆಸ್ಟ್|ಟಿಕೆಟ್)\s*(?:ಮಾಡಿದ್ರಿ|ಮಾಡಿದ್ದೀರಿ|ದಾಖಲಿಸಿದ್ರಿ|ಹಾಕಿದ್ರಿ)',
+  'ಫಾಲೋ\s*ಅಪ್',
+  'ಹಿಂದಿನ\s*ಬಾರಿ',
+  '\bticket\s*(?:number|no|id)\b',
+  '\bcomplaint\s*(?:number|no|id|maadidri|madidri|maadiddiri|dakhalu)\b',
+  '\bneevu\s*(?:complaint|request|ticket)\s*(?:maadidri|madidri|maadiddiri|haakidri)\b',
+  '\bduru\s*(?:number|no|id)\b',
+  '\bhindina\s*baari\b',
+]
+family_friend = [
+  'ನಾನು\s*(?:ನಿಮ್ಮ|ಅವರ)\s*(?:ಸ್ನೇಹಿತ|ಗೆಳೆಯ|ಗೆಳತಿ|ಅಣ್ಣ|ತಮ್ಮ|ಅಕ್ಕ|ತಂಗಿ|ಚಿಕ್ಕಪ್ಪ|ಮಾವ|ಸಂಬಂಧಿ|ನೆರೆಹೊರೆ|ಸಹೋದ್ಯೋಗಿ)',
+  '(?:ನಿಮ್ಮ|ಅವರ)\s*(?:ಸ್ನೇಹಿತ|ಗೆಳೆಯ|ಅಣ್ಣ|ತಮ್ಮ|ಅಕ್ಕ|ತಂಗಿ|ಸಂಬಂಧಿ|ಸಹೋದ್ಯೋಗಿ)',
+  'ಅಪ್ಪ',
+  'ಅಮ್ಮ',
+  'ಅಣ್ಣ',
+  'ಅಕ್ಕ',
+  'ವಾಪಸ್\s*ಕರೆ\s*ಮಾಡಲು\s*ಹೇಳಿ',
+  '\bnaanu\s*(?:nimma|avara)\s*(?:snehita|geleya|gelati|anna|tamma|akka|tangi|chikkappa|maava|sambandhi|colleague|friend|classmate)\b',
+  '\b(?:nimma|avara|avana|avala)\s+(?:\w+\s+)?(?:snehita|geleya|anna|tamma|akka|tangi|sambandhi|colleague|friend|classmate|neighbou?r)\b',
+  '\b(?:appa|amma|anna|akka|tamma|tangi)\b',
+  '\bcall\s*back\s*maadi\b',
+]
+school_hospital = [
+  'ಶಾಲೆ',
+  'ಸ್ಕೂಲ್',
+  'ಕಾಲೇಜು',
+  'ಕಾಲೇಜ್',
+  'ವಿಶ್ವವಿದ್ಯಾಲಯ',
+  'ಪ್ರಿನ್ಸಿಪಾಲ್',
+  'ಶಿಕ್ಷಕ',
+  'ಟೀಚರ್',
+  'ಹಾಸ್ಟೆಲ್',
+  'ಆಸ್ಪತ್ರೆ',
+  'ಹಾಸ್ಪಿಟಲ್',
+  'ಐಸಿಯು',
+  'ಆಂಬ್ಯುಲೆನ್ಸ್',
+  'ನರ್ಸ್',
+  'ಶಸ್ತ್ರಚಿಕಿತ್ಸೆ',
+  'ಆಪರೇಷನ್',
+  'ರೋಗಿ',
+  'ವರದಿ',
+  '\b(?:shaale|school|college|principal|teacher|hospital|aaspatre|icu|ambulance|nurse|operation|report)\b',
+  '\broga(?:i)\b',
+]
+emergency = [
+  'ತುರ್ತು',
+  'ಎಮರ್ಜೆನ್ಸಿ',
+  'ಅಪಘಾತ',
+  'ಆಕ್ಸಿಡೆಂಟ್',
+  'ಗಂಭೀರ\s*(?:ಸ್ಥಿತಿ|ಪರಿಸ್ಥಿತಿ|ವಾಗಿ|ಗಾಯ)',
+  'ಸ್ಥಿತಿ\s*(?:ಗಂಭೀರ|ಚಿಂತಾಜನಕ|ಸೀರಿಯಸ್)',
+  'ಪ್ರಜ್ಞೆ\s*ತಪ್ಪ\w*',
+  'ಹೃದಯಾಘಾತ',
+  'ಹಾರ್ಟ್\s*ಅಟ್ಯಾಕ್',
+  'ಆಸ್ಪತ್ರೆಗೆ\s*ದಾಖಲ\w*',
+  'ದಾಖಲಾಗಿದ್ದಾರೆ',
+  '(?:ತಕ್ಷಣ|ಬೇಗ)\s*(?:ಬನ್ನಿ|ಬಾ|ಬರಬೇಕು|ತಲುಪಿ)',
+  '\b(?:turtu|tturtu|emergency|accident|apaghata|accident\s*aagide)\b',
+  '\bgambhira\b',
+  '\bsthiti\s*(?:gambhira|chintajanaka|serious|critical)\b',
+  '\bprajne\s*tappi\w*\b',
+  '\bheart\s*attack\b',
+  '\bhrudayaghata\b',
+  '\baaspatrege\s*dakhal\w*\b',
+  '\bdakhalagiddare\b|\bdakhalaagiddaare\b|\badmit\s*aagiddare\b|\badmit\s*aagiddaare\b|\badmit\s*aagidhe\b',
+  '\b(?:takshana|bega)\s*(?:banni|baa|barabeku|talupi)\b',
+  'ಹೆರಿಗೆ',
+  'ಆಂಬ್ಯುಲೆನ್ಸ್',
+  '\blabou?r\s*pain\b',
+  '\bherige\b',
+  '\bambulance\b',
+  '\bunconscious\b',
+]
+known_callback = [
+  'ನೀವು\s*(?:ಕರೆ|ಕಾಲ್)\s*ಮಾಡಿದ್ರಿ',
+  'ನೀವು\s*(?:ಕರೆ|ಕಾಲ್)\s*ಮಾಡಿದ್ದಿರಿ',
+  'ನಿಮ್ಮ\s*ಮಿಸ್ಡ್\s*ಕಾಲ್',
+  'ಮಿಸ್ಡ್\s*ಕಾಲ್\s*(?:ನೋಡಿದೆ|ಕಂಡೆ|ಬಂದಿತ್ತು|ಇತ್ತು)',
+  'ವಾಪಸ್\s*ಕರೆ\s*ಮಾಡ್ತಿದ್ದೀನಿ',
+  '\bneevu\s*call\s*maadidri\b',
+  '\bnimma\s*missed\s*call\b',
+  '\bmissed\s*call\s*(?:nodide|nodidhe|bandittu|ittu)\b',
+  '\bvaapas\s*call\s*maadtidini\b',
+]
+
+[cues]
+request = [
+  'ಹೇಳಿ',
+  'ಹೇಳ್ರಿ',
+  'ಹೇಳು',
+  'ಹೇಳ\w*',
+  'ಕೊಡಿ',
+  'ಕೊಡ್ರಿ',
+  'ಕೊಡ\w*',
+  'ನೀಡಿ',
+  'ನೀಡ\w*',
+  'ಕಳುಹಿಸಿ',
+  'ಕಳಿಸಿ',
+  'ಕಳುಹಿಸ\w*',
+  'ತಿಳಿಸಿ',
+  'ತಿಳಿಸ\w*',
+  'ಶೇರ್\s*ಮಾಡಿ',
+  'ಓದಿ',
+  'ಓದ\w*',
+  'ಕನ್ಫರ್ಮ್\s*ಮಾಡಿ',
+  'ವೆರಿಫೈ\s*ಮಾಡಿ',
+  'ಎಂಟರ್\s*ಮಾಡಿ',
+  '\b(?:heli|helri|helu|helbeku|helbahuda|helabahudu)\b',
+  '\b(?:kodi|kodri|kodbeku|kodabahudu|kodabahuda|kodtira|koduttira)\b',
+  '\b(?:needi|neediri|needbeku)\b',
+  '\b(?:tilisi|tilisiri|tilisbeku|tilisabahuda|tilisabahudu)\b',
+  '\b(?:kalisi|kaluhisi|kalsi|kalsiri|kalsbeku)\b',
+  '\bshare\s*maad\w*\b',
+  '\bodi\b',
+  '\bconfirm\s*maad\w*\b',
+  '\bverify\s*maad\w*\b',
+  '\benter\s*maad\w*\b',
+]
+request_weak = [
+  'ಬೇಕು',
+  'ಬೇಕಾಗಿದೆ',
+  'ಬೇಕಾಗುತ್ತೆ',
+  'ಏನು',
+  'ಎಷ್ಟು',
+  'ಯಾವುದು',
+  'ಎಲ್ಲಿ',
+  'ದಯವಿಟ್ಟು',
+  '\b(?:elli|yelli)\b',
+  '\b(?:beku|bekaagide|bekagide|bekittu|bekaaguttade)\b',
+  '\b(?:yenu|enu|eshtu|yaavudu)\b',
+  '\bdayavittu\b',
+  '\bplz\b',
+]
+pay_demand = [
+  'ಕಳುಹಿಸಿ',
+  'ಕಳಿಸಿ',
+  'ಕಳುಹಿಸ\w*',
+  'ಕಟ್ಟಿ',
+  'ಕಟ್ಟ\w*',
+  'ಪಾವತಿಸಿ',
+  'ಪಾವತಿಸ\w*',
+  'ಜಮಾ\s*ಮಾಡಿ',
+  'ಟ್ರಾನ್ಸ್\u200c?ಫರ್\s*ಮಾಡಿ',
+  'ಪೇಮೆಂಟ್\s*ಮಾಡಿ',
+  'ಮಾಡಬೇಕು',
+  'ಕೊಡಬೇಕು',
+  '\b(?:kalisi|kaluhisi|kalsi|katti|pavathisi)\b',
+  '\bjama\s*maadi\b',
+  '\btransfer\s*maadi\b',
+  '\bpayment\s*maadi\b',
+  '\bpay\s*maadi\b',
+  '\b(?:kalisbeku|kattbeku|kattabeku|maadbeku|madbeku|kodbeku)\b',
+  'ಹಾಕ\w*',
+  '\bhaak\w*\b',
+]
+claim = [
+  '(?:ಇಂದ|ಯಿಂದ|ನಿಂದ)\s*(?:ಮಾತನಾಡ್ತಿದ್ದೀನಿ|ಮಾತನಾಡುತ್ತಿದ್ದೇನೆ|ಮಾತಾಡ್ತಿದ್ದೀನಿ|ಕರೆ\s*ಮಾಡ್ತಿದ್ದೀನಿ|ಕರೆ\s*ಮಾಡುತ್ತಿದ್ದೇನೆ|ಕಾಲ್\s*ಮಾಡ್ತಿದ್ದೀನಿ|ಮಾತನಾಡ್ತಾ\s*ಇದ್ದೀನಿ)',
+  '(?:ಇಂದ|ಯಿಂದ|ನಿಂದ)\s*(?:\S+\s+){0,2}?(?:ಮಾತ|ಕರೆ|ಕಾಲ್)\w*',
+  'ನಾನು\s*(?:\S+\s+){0,3}?(?:ಮ್ಯಾನೇಜರ|ಆಫೀಸರ|ಅಧಿಕಾರಿ|ಏಜೆಂಟ|ಎಕ್ಸಿಕ್ಯೂಟಿವ್|ಇನ್ಸ್\u200c?ಪೆಕ್ಟರ)\w*',
+  '\b(?:inda|yinda|ninda)\s*(?:\w+\s+){0,2}?maa?th?\w*',
+  '\bna+nu\s+(?:\w+\s+){0,3}(?:manager|officer|executive|representative|agent|inspector)\b',
+  'ನಾನು\s*.{1,40}?\s*(?:ಇಂದ|ಯಿಂದ)',
+  '(?:ಇಂದ|ಯಿಂದ|ನ|ಅ)\s*(?:ಮ್ಯಾನೇಜರ್|ಆಫೀಸರ್|ಅಧಿಕಾರಿ|ಏಜೆಂಟ್|ಪ್ರತಿನಿಧಿ|ಎಕ್ಸಿಕ್ಯೂಟಿವ್|ಇನ್ಸ್\u200c?ಪೆಕ್ಟರ್)',
+  '\b(?:inda|yinda|ninda)\s*(?:maatadtidini|maatanaadtidini|maataadtidini|maatadtiddini|mathadtidini|call\s*madtidini|call\s*maaduttiddene|maaduttiddene|baruttiddene|maatadtaa\s*idini|maatadtaidini|call\s*maadtaidini)\b',
+  '\bnaanu\b[^.]{0,40}\b(?:inda|yinda|ninda)\b',
+  '\bnaanu\s*\w+\s*(?:manager|officer|executive|representative|agent|inspector)\b',
+]
+received_probe = [
+  '\b(?:bandide|bandidhe|bandiruva|banditu|bandha|baruttade|kalisidde|kaluhisidde|sikkide|sikkitu)\b',
+  'ಬಂದಿದೆ',
+  'ಬಂದ',
+  'ಬಂದಿರುವ',
+  'ಬಂದಿತ್ತು',
+  'ಕಳುಹಿಸಿದ',
+  'ಕಳುಹಿಸಲಾಗಿದೆ',
+]
+warning = [
+  '(?:ಎಂದಿಗೂ|ಯಾವತ್ತೂ|ಯಾವಾಗಲೂ)\s*(?:ಕೇಳುವುದಿಲ್ಲ|ಕೇಳೋದಿಲ್ಲ|ಕೇಳಲ್ಲ)',
+  'ಬ್ಯಾಂಕ್\s*(?:ಎಂದಿಗೂ|ಯಾವತ್ತೂ)?\s*(?:ಕೇಳುವುದಿಲ್ಲ|ಕೇಳೋದಿಲ್ಲ|ಕೇಳಲ್ಲ)',
+  'ಎಚ್ಚರಿಕೆ',
+  'ಜಾಗರೂಕ\w*',
+  '\b(?:endigu|yavattu|yaavattu|yavaglu|yaavaglu)\s*(?:keluvudilla|kelodilla|kelalla|keludilla|keluvudu\s*illa)\b',
+  '\bbank\s*(?:endigu|yavattu)?\s*(?:keluvudilla|kelodilla|kelalla)\b',
+  '\bechcharike\b|\becharike\b',
+  '\bjaagaruk\w*\b|\bjagaruk\w*\b',
+]
+# Denial phrases over {TERM}/{LIST}; see the English pack. Kannada script first, then Kanglish.
+negation = [
+  'ಯಾವುದೇ\s*{LIST}\s*(?:ಅನ್ನು\s*)?(?:ಬೇಕಿಲ್ಲ|ಬೇಕಾಗಿಲ್ಲ|ಬೇಡ|ಅಗತ್ಯವಿಲ್ಲ|ಅಗತ್ಯವಿರುವುದಿಲ್ಲ|ಬೇಕಾಗುವುದಿಲ್ಲ|ಇಲ್ಲ|ಕೇಳುವುದಿಲ್ಲ|ಕೇಳೋದಿಲ್ಲ|ಕೇಳಲ್ಲ|ಇರುವುದಿಲ್ಲ)',
+  '{LIST}\s*(?:ಅನ್ನು\s*)?(?:ಬೇಕಿಲ್ಲ|ಬೇಕಾಗಿಲ್ಲ|ಬೇಡ|ಅಗತ್ಯವಿಲ್ಲ|ಅಗತ್ಯವಿರುವುದಿಲ್ಲ|ಬೇಕಾಗುವುದಿಲ್ಲ|ಕೇಳುವುದಿಲ್ಲ|ಕೇಳೋದಿಲ್ಲ|ಕೇಳಲ್ಲ)',
+  '(?:ಯಾರಿಗೂ|ಯಾರೊಂದಿಗೂ|ಬೇರೆಯವರಿಗೆ)\s*{LIST}\s*(?:ಅನ್ನು\s*)?(?:ಹೇಳ|ಹಂಚಿಕೊಳ್ಳ|ಶೇರ್\s*ಮಾಡ|ಶೇರ್|ಕೊಡ|ನೀಡ|ಕಳುಹಿಸ|ಕಳಿಸ)\w*\s*ಬೇಡ\w*',
+  '{LIST}\s*(?:ಅನ್ನು\s*)?(?:(?:ಯಾರಿಗೂ|ಯಾರೊಂದಿಗೂ|ಬೇರೆಯವರಿಗೆ)\s*)?(?:ಹೇಳ|ಹಂಚಿಕೊಳ್ಳ|ಶೇರ್\s*ಮಾಡ|ಶೇರ್|ಕೊಡ|ನೀಡ|ಕಳುಹಿಸ|ಕಳಿಸ)\w*\s*ಬೇಡ\w*',
+  '(?:ಎಂದಿಗೂ|ಯಾವತ್ತೂ|ಯಾವಾಗಲೂ)\s*{LIST}\s*(?:ಅನ್ನು\s*)?(?:ಕೇಳುವುದಿಲ್ಲ|ಕೇಳೋದಿಲ್ಲ|ಕೇಳಲ್ಲ|ಕೇಳುವುದೇ\s*ಇಲ್ಲ)',
+  '{LIST}\s*(?:ಅನ್ನು\s*)?(?:ಎಂದಿಗೂ|ಯಾವತ್ತೂ|ಯಾವಾಗಲೂ)\s*(?:ಕೇಳುವುದಿಲ್ಲ|ಕೇಳೋದಿಲ್ಲ|ಕೇಳಲ್ಲ)',
+  '\b(?:yaavude|yavude|yaavudhe|yavudhe|yaavdu|yavdu)\s+{LIST}\s+(?:annu\s+)?(?:beku\s*illa|bekilla|bekagilla|beda|bedi|agatya\s*illa|agatyavilla|agathya\s*illa|illa|keluvudilla|kelodilla|kelalla)\b',
+  '{LIST}\s+(?:annu\s+)?(?:beku\s*illa|bekilla|bekagilla|beda|agatya\s*illa|agatyavilla|agathya\s*illa|keluvudilla|kelodilla|kelalla|keludilla)\b',
+  '(?:\b(?:yaarigu|yaarigoo|yaarondigu|yarigu)\s+)?{LIST}\s+(?:annu\s+)?(?:(?:yaarigu|yaarigoo|yaarondigu|yarigu)\s+)?(?:hela|heli|hanchikol|share\s*maad|share|kodu|needa|kalisu)\w*\s*bed\w*',
+  '(?:\b(?:endigu|yavattu|yaavattu|yavaglu|yaavaglu)\s+)?{LIST}\s+(?:annu\s+)?(?:(?:endigu|yavattu|yaavattu|yavaglu|yaavaglu)\s+)?(?:keluvudilla|kelodilla|kelalla|keludilla)\b',
+]
+negation_exception = [
+  '(?:\s|{BREAK})*(?:ಯಾರಿಗೂ(?:\s|{BREAK})*)?(?:ನನ್ನನ್ನು\s*ಹೊರತುಪಡಿಸಿ|ನನ್ನ\s*ಹೊರತು|ನನಗೆ\s*ಮಾತ್ರ|ನನ್ನೊಂದಿಗೆ\s*ಮಾತ್ರ|ಏಜೆಂಟ್\s*ಗೆ\s*ಮಾತ್ರ)',
+  '(?:\s|{BREAK})*(?:yaarigu(?:\s|{BREAK})+)?(?:nannannu\s+horatupadisi|nanna\s+horatu|nanage\s+matra|nannondige\s+matra|agent\s*ge\s+matra)\b',
+]
+list_joiner = [
+  'ಅಥವಾ', 'ಮತ್ತು', 'ಹಾಗೂ', 'ಅಥವ', 'ಇಲ್ಲವೇ', 'athava', 'athavaa', 'mattu', 'haagu', 'hagu', 'illave',
+]
+no_money_assurance = [
+  '(?:ಎಂದಿಗೂ|ಯಾವತ್ತೂ)\s*(?:ಹಣ|ದುಡ್ಡು|ಶುಲ್ಕ|ಫೀಸ್)\s*(?:ಕೇಳುವುದಿಲ್ಲ|ಕೇಳೋದಿಲ್ಲ|ಕೇಳಲ್ಲ|ತೆಗೆದುಕೊಳ್ಳುವುದಿಲ್ಲ)',
+  '(?:ಯಾವುದೇ|ಯಾವ)\s*(?:ಶುಲ್ಕ|ಫೀಸ್|ಹಣ|ದುಡ್ಡು)\s*(?:ಇಲ್ಲ|ಬೇಕಿಲ್ಲ|ಇರುವುದಿಲ್ಲ|ಪಡೆಯುವುದಿಲ್ಲ)',
+  'ಸಂಪೂರ್ಣ\s*ಉಚಿತ',
+  'ಉಚಿತ',
+  '\b(?:endigu|yavattu)\s*(?:hana|duddu|shulka|fees?)\s*(?:keluvudilla|kelodilla|kelalla|tegedukolluvudilla)\b',
+  '\b(?:yavude|yaavude)\s*(?:shulka|fees?|hana|duddu)\s*(?:illa|bekilla|iruvudilla|paduvudilla)\b',
+  '\bsampurna\s*uchita\b',
+  '\buchita\b',
+]
+kyc_action = [
+  'ಅಪ್ಡೇಟ್',
+  'ಎಕ್ಸ್\u200c?ಪೈರ್',
+  'ಪೆಂಡಿಂಗ್',
+  'ವೆರಿಫೈ',
+  'ವೆರಿಫಿಕೇಶನ್',
+  'ಪೂರ್ಣ\s*ಮಾಡ\w*',
+  'ಅಪೂರ್ಣ',
+  'ಬ್ಲಾಕ್',
+  'ಬಂದ್',
+  'ಇಂದು',
+  'ತಕ್ಷಣ',
+  'ಈಗಲೇ',
+  'ಕಡ್ಡಾಯ',
+  '\b(?:update|expire\w*|pending|verif\w*|complete\w*|incomplete|block\w*)\b',
+  '\b(?:ivattu|indu|takshana|eegale|kaddaya|band|bandh)\b',
+]
+buy_send = [
+  'ಖರೀದಿ\w*',
+  'ಕಳುಹಿಸ\w*',
+  'ಕಳಿಸ\w*',
+  'ಹೇಳ\w*',
+  'ಕೊಡ\w*',
+  'ಓದ\w*',
+  '\bkharidi\w*\b',
+  '\b(?:kalisi|kaluhisi|kalsi)\w*\b',
+  '\bhela?\w*\b',
+  '\bkod\w*\b',
+  '\bodi\b',
+  'ಹಾಕ\w*',
+  '\bhaak\w*\b',
+]
+family_member = [
+  'ಅಮ್ಮ',
+  'ತಾಯಿ',
+  'ಅಪ್ಪ',
+  'ತಂದೆ',
+  'ಪತ್ನಿ',
+  'ಹೆಂಡತಿ',
+  'ಗಂಡ',
+  'ಪತಿ',
+  'ಮಗ',
+  'ಮಗಳು',
+  'ಅಣ್ಣ',
+  'ತಮ್ಮ',
+  'ಅಕ್ಕ',
+  'ತಂಗಿ',
+  'ಕುಟುಂಬ',
+  'ರೋಗಿ',
+  'ಸಂಬಂಧಿ',
+  'ಅಜ್ಜ',
+  'ಅಜ್ಜಿ',
+  'ಮಗು',
+  '\b(?:amma|thayi|tayi|appa|tande|patni|hendati|ganda|pati|maga|magalu|anna|tamma|akka|tangi|kutumba|rogi|sambandhi|ajja|ajji|magu)\b',
+]
+coordination = [
+  'ಗೇಟ್',
+  'ಬಿಲ್ಡಿಂಗ್',
+  'ಲ್ಯಾಂಡ್\u200c?ಮಾರ್ಕ್',
+  'ಫ್ಲೋರ್',
+  'ಫ್ಲ್ಯಾಟ್',
+  'ಅಪಾರ್ಟ್\u200c?ಮೆಂಟ್',
+  'ಸೊಸೈಟಿ',
+  'ಟವರ್',
+  'ಬ್ಲಾಕ್',
+  'ಹೊರಗೆ',
+  'ಕೆಳಗೆ',
+  '\b(?:gate|building|landmark|floor|flat|apartment|society|tower|block|horage|kelage)\b',
+]
+
+# Kannada utterances. Kannada script for the speech provider; Latin transliteration for developers/testers.
+# NOT yet reviewed by a native speaker: see docs/MULTILINGUAL_SPEECH.md before shipping to users.
+[templates.disclosure.concise]
+text = "ನಮಸ್ಕಾರ, ನಾನು {owner_poss} AI ಕಾಲ್ ಅಸಿಸ್ಟೆಂಟ್. ನಿಮ್ಮ ಹೆಸರು ಮತ್ತು ಕರೆ ಮಾಡಿದ ಕಾರಣ ತಿಳಿಸಬಹುದೇ?"
+translit = "Namaskara, naanu {owner_poss} AI call assistant. Nimma hesaru mattu call maadida kaarana tilisabahude?"
+[templates.disclosure.warm]
+text = "ನಮಸ್ಕಾರ! ನೀವು {owner_poss} AI ಕಾಲ್ ಅಸಿಸ್ಟೆಂಟ್ ಜೊತೆ ಮಾತನಾಡುತ್ತಿದ್ದೀರಿ. ನಿಮ್ಮ ಹೆಸರು ಮತ್ತು ಕರೆಯ ಉದ್ದೇಶ ಹೇಳಬಹುದೇ?"
+translit = "Namaskara! Neevu {owner_poss} AI call assistant jote maatanaaduttiddeeri. Nimma hesaru mattu kareya uddesha helabahude?"
+[templates.disclosure.formal]
+text = "ನಮಸ್ಕಾರ. ನಾನು {owner_poss} AI ಕಾಲ್ ಅಸಿಸ್ಟೆಂಟ್. ದಯವಿಟ್ಟು ನಿಮ್ಮ ಹೆಸರು ಮತ್ತು ಕರೆಯ ಉದ್ದೇಶವನ್ನು ತಿಳಿಸಿ."
+translit = "Namaskara. Naanu {owner_poss} AI call assistant. Dayavittu nimma hesaru mattu kareya uddeshavannu tilisi."
+[templates.ask_name.default]
+text = "ಕ್ಷಮಿಸಿ, ನಿಮ್ಮ ಹೆಸರೇನು?"
+translit = "Kshamisi, nimma hesarenu?"
+[templates.ask_org.default]
+text = "ಮತ್ತು ನೀವು ಯಾವ ಕಂಪನಿ ಅಥವಾ ಸಂಸ್ಥೆಯಿಂದ ಕರೆ ಮಾಡುತ್ತಿದ್ದೀರಿ?"
+translit = "Mattu neevu yaava company athava samstheyinda call maaduttiddeeri?"
+[templates.ask_purpose.default]
+text = "ಧನ್ಯವಾದಗಳು. ಈ ಕರೆ ಯಾವುದರ ಬಗ್ಗೆ?"
+translit = "Dhanyavaadagalu. Ee kare yaavudara bagge?"
+[templates.clarify_repeat.default]
+text = "ಕ್ಷಮಿಸಿ, ಸರಿಯಾಗಿ ಕೇಳಿಸಲಿಲ್ಲ. ದಯವಿಟ್ಟು ಇನ್ನೊಮ್ಮೆ ಹೇಳಬಹುದೇ?"
+translit = "Kshamisi, sariyaagi kelisalilla. Dayavittu innomme helabahude?"
+[templates.reprompt_silence.default]
+text = "ಹಲೋ, ನೀವು ಲೈನಿನಲ್ಲಿ ಇದ್ದೀರಾ?"
+translit = "Hello, neevu line inalli iddeeraa?"
+[templates.close_silence.default]
+text = "ಏನೂ ಕೇಳಿಸುತ್ತಿಲ್ಲ, ಆದ್ದರಿಂದ ಕರೆಯನ್ನು ಮುಗಿಸಲಾಗುತ್ತಿದೆ. ಧನ್ಯವಾದಗಳು."
+translit = "Eno kelisuttilla, aaddarinda kareyannu mugisalaguttide. Dhanyavaadagalu."
+[templates.refuse_sensitive.default]
+text = "ಕ್ಷಮಿಸಿ, ಈ ಕರೆಯಲ್ಲಿ ಯಾವುದೇ ವೈಯಕ್ತಿಕ, ಆರ್ಥಿಕ ಅಥವಾ ಭದ್ರತಾ ಮಾಹಿತಿಯನ್ನು ನೀಡಲೂ ಆಗುವುದಿಲ್ಲ, ಪಡೆಯಲೂ ಆಗುವುದಿಲ್ಲ."
+translit = "Kshamisi, ee kareyalli yaavude vaiyaktika, aarthika athava bhadratha maahitiyannu needaloo aaguvudilla, padeyaloo aaguvudilla."
+[templates.end_scam.default]
+text = "ಈ ಕರೆಯನ್ನು ಈಗ ಮುಗಿಸಲಾಗುತ್ತಿದೆ. ಧನ್ಯವಾದಗಳು."
+translit = "Ee kareyannu eega mugisalaguttide. Dhanyavaadagalu."
+[templates.end_spam.default]
+text = "ಕರೆ ಮಾಡಿದ್ದಕ್ಕೆ ಧನ್ಯವಾದಗಳು, ಆದರೆ ಈ ವಿಷಯದಲ್ಲಿ ಸಹಾಯ ಮಾಡಲು ಸಾಧ್ಯವಿಲ್ಲ. ಧನ್ಯವಾದಗಳು."
+translit = "Kare maadiddakke dhanyavaadagalu, aadare ee vishayadalli sahaya maadalu saadhyavilla. Dhanyavaadagalu."
+[templates.escalate_hold.default]
+text = "ಧನ್ಯವಾದಗಳು. {owner_to} ಈಗಲೇ ತಿಳಿಸುತ್ತೇನೆ. ದಯವಿಟ್ಟು ಲೈನಿನಲ್ಲೇ ಇರಿ."
+translit = "Dhanyavaadagalu. {owner_to} eegale tilisuttene. Dayavittu line inalle iri."
+[templates.escalate_waiting.default]
+text = "ಧನ್ಯವಾದಗಳು, ಇದನ್ನು ಗಮನಿಸಲಾಗಿದೆ. {owner_to} ತಿಳಿಸಲಾಗಿದೆ, ದಯವಿಟ್ಟು ಲೈನಿನಲ್ಲೇ ಇರಿ."
+translit = "Dhanyavaadagalu, idannu gamanisalagide. {owner_to} tilisalagide, dayavittu line inalle iri."
+[templates.take_message.default]
+text = "ನಿಮ್ಮ ಸಂದೇಶವನ್ನು ತಲುಪಿಸಲಾಗುತ್ತದೆ. ದಯವಿಟ್ಟು ಚಿಕ್ಕ ಸಂದೇಶ ಮತ್ತು ಕಾಲ್‌ಬ್ಯಾಕ್ ನಂಬರ್ ತಿಳಿಸಿ."
+translit = "Nimma sandeshavannu talupisalaguttade. Dayavittu chikka sandesha mattu callback number tilisi."
+[templates.safe_continue.default]
+text = "ಧನ್ಯವಾದಗಳು, ಇದನ್ನು ಗಮನಿಸಲಾಗಿದೆ. ಇನ್ನೇನಾದರೂ ತಿಳಿಸಬೇಕೇ?"
+translit = "Dhanyavaadagalu, idannu gamanisalagide. Innenaadaroo tilisabekē?"
+[templates.owner_takeover.default]
+text = "{owner_subj} ಈಗ ಕರೆಗೆ ಬರುತ್ತಿದ್ದಾರೆ. ದಯವಿಟ್ಟು ಒಂದು ಕ್ಷಣ ಕಾಯಿರಿ."
+translit = "{owner_subj} eega karege baruttiddaare. Dayavittu ondu kshana kaayiri."
+[templates.owner_continue.default]
+text = "ಕಾದಿದ್ದಕ್ಕೆ ಧನ್ಯವಾದಗಳು. ಈ ಕರೆ ಯಾವುದರ ಬಗ್ಗೆ ಎಂದು ಸ್ವಲ್ಪ ಹೆಚ್ಚು ಹೇಳಬಹುದೇ?"
+translit = "Kaadiddakke dhanyavaadagalu. Ee kare yaavudara bagge endu swalpa hechchu helabahude?"
+[templates.unsupported_language.default]
+text = "ಸದ್ಯಕ್ಕೆ ಇಂಗ್ಲಿಷ್, ಹಿಂದಿ ಮತ್ತು ಕನ್ನಡದಲ್ಲಿ ಮಾತ್ರ ಮಾತನಾಡಬಹುದು. ದಯವಿಟ್ಟು ಇವುಗಳಲ್ಲಿ ಒಂದರಲ್ಲಿ ಮಾತನಾಡಿ."
+translit = "Sadyakke English, hindi mattu kannadadalli maatra maatanaadabahudu. Dayavittu ivugalalli ondaralli maatanaadi."
+[templates.probe_deflect.default]
+text = "ಕ್ಷಮಿಸಿ, ಯಾವುದೇ ವೈಯಕ್ತಿಕ ಮಾಹಿತಿಯನ್ನು ಹಂಚಿಕೊಳ್ಳಲು ಸಾಧ್ಯವಿಲ್ಲ. ಬೇಕಿದ್ದರೆ ಸಂದೇಶ ಬಿಡಬಹುದು."
+translit = "Kshamisi, yaavude vaiyaktika maahitiyannu hanchikollalu saadhyavilla. Bekiddare sandesha bidabahudu."
+[templates.decline_personal.default]
+text = "ಕ್ಷಮಿಸಿ, ಯಾವುದೇ ವೈಯಕ್ತಿಕ ಮಾಹಿತಿಯನ್ನು ಹಂಚಿಕೊಳ್ಳಲು ಸಾಧ್ಯವಿಲ್ಲ."
+translit = "Kshamisi, yaavude vaiyaktika maahitiyannu hanchikollalu saadhyavilla."
+[templates.injection_refuse.default]
+text = "ಕ್ಷಮಿಸಿ, ನನ್ನ ಕೆಲಸದ ನಿಯಮಗಳನ್ನು ಬದಲಾಯಿಸಲು ಸಾಧ್ಯವಿಲ್ಲ. ಸಂದೇಶವನ್ನು ಮಾತ್ರ ಪಡೆಯಬಹುದು."
+translit = "Kshamisi, nanna kelasada niyamagalannu badalaayisalu saadhyavilla. Sandeshavannu maatra padeyabahudu."
+[templates.farewell_message.default]
+text = "ಧನ್ಯವಾದಗಳು, ಸಂದೇಶವನ್ನು ತಲುಪಿಸಲಾಗುತ್ತದೆ. ನಮಸ್ಕಾರ."
+translit = "Dhanyavaadagalu, sandeshavannu talupisalaguttade. Namaskara."
+[templates.owner_ended.default]
+text = "ಈ ಕರೆ ಈಗ ಮುಗಿಯುತ್ತಿದೆ. ಧನ್ಯವಾದಗಳು."
+translit = "Ee kare eega mugiyuttide. Dhanyavaadagalu."
+[templates.call_limit.default]
+text = "ಕರೆಯ ಸಮಯ ಮುಗಿದಿದೆ. ಧನ್ಯವಾದಗಳು, ನಮಸ್ಕಾರ."
+translit = "Kareya samaya mugidide. Dhanyavaadagalu, namaskara."
+[templates.failed.default]
+text = "ಕ್ಷಮಿಸಿ, ತಾಂತ್ರಿಕ ಸಮಸ್ಯೆ ಉಂಟಾಗಿದೆ. ದಯವಿಟ್ಟು ನಂತರ ಪ್ರಯತ್ನಿಸಿ. ನಮಸ್ಕಾರ."
+translit = "Kshamisi, taantrika samasye untaagide. Dayavittu nantara prayatnisi. Namaskara."

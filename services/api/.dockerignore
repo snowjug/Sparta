@@ -1,0 +1,51 @@
+# Build context for services/api. Keep local state, secrets, caches and tests out of the image.
+
+# Version control and editor state
+.git
+.gitignore
+.idea
+.vscode
+
+# Local virtual environments and caches
+.venv
+venv
+env
+**/__pycache__
+**/*.py[cod]
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.hypothesis
+.coverage
+.coverage.*
+htmlcov
+coverage.xml
+dist
+build
+*.egg-info
+
+# Local data: development keys, SQLite files and logs must never be baked into an image
+var
+data
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+*.log
+
+# Secrets and environment files (configuration is injected at run time)
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx
+secrets
+
+# Not needed at run time
+tests
+requirements-dev.lock
+Dockerfile
+.dockerignore
