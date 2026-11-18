@@ -9,6 +9,7 @@ import type {
   RiskAssessment,
   TurnResult,
 } from "../api/types";
+import { isClosingState } from "../call-state";
 
 export type ConnectionStatus = "idle" | "connecting" | "open" | "reconnecting" | "closed" | "failed";
 
@@ -73,6 +74,12 @@ export interface LiveCallState {
   summary: CallSummary | null;
   providerErrors: ProviderErrorInfo[];
   ended: { reason: string; durationMs: number | null; at: number } | null;
+  /**
+   * The conversation reached END_SPAM / END_SILENCE (or a REST turn result said the call is ending) but the closing sentence has not been
+   * announced yet. The server emits `state.changed -> END_*` about 10 ms BEFORE `assistant.speaking`, so for that moment the call is not
+   * over for the caller. Cleared by `assistant.speaking`, `call.ended` and every snapshot (a snapshot already contains that sentence).
+   */
+  closingPending: boolean;
   simulated: boolean;
   /** Highest event seq applied. Events at or below it are duplicates and are ignored. */
   lastSeq: number;
@@ -105,6 +112,7 @@ export function initialLiveState(callId: string | null = null): LiveCallState {
     summary: null,
     providerErrors: [],
     ended: null,
+    closingPending: false,
     simulated: false,
     lastSeq: 0,
     gapAfterSeq: null,
@@ -204,6 +212,24 @@ export function staleEscalationId(state: LiveCallState): string | null {
   return state.state !== null && state.state !== "ESCALATE" ? escalation.id : null;
 }
 
+/**
+ * The server itself has said the call is over: `call.ended`, or a snapshot of a finished call. Unlike `status`, which a REST turn result
+ * flips a little early, nothing may undo this: a finished call never comes back.
+ */
+export function isConfirmedOver(state: Pick<LiveCallState, "ended" | "call">): boolean {
+  return state.ended !== null || (state.call !== null && state.call.status !== "active");
+}
+
+/**
+ * A snapshot describes the call as of the moment the server built it. It is stale, and must not overwrite what the model has learned
+ * since, when an event the model already applied is newer than it (`seq`), or when it still shows as active a call the server has
+ * already confirmed over (REST replies carry no sequence number).
+ */
+function isStaleSnapshot(state: LiveCallState, call: CallDetail, seq?: number): boolean {
+  if (typeof seq === "number" && seq > 0 && seq < state.lastSeq) return true;
+  return call.status === "active" && isConfirmedOver(state);
+}
+
 function hydrateFromCall(state: LiveCallState, call: CallDetail, at: number, serverNow?: number): LiveCallState {
   const turns = [...call.turns].sort((a, b) => a.seq - b.seq);
   const language = lastCallerLanguage(turns) ?? state.language;
@@ -225,6 +251,7 @@ function hydrateFromCall(state: LiveCallState, call: CallDetail, at: number, ser
     simulated: call.simulated,
     partial: null,
     assistant: { ...state.assistant, speaking },
+    closingPending: false, // the closing turn is persisted together with the end state, so a snapshot already contains it
     hydrated: true,
   };
 }
@@ -265,15 +292,21 @@ function applyEffect(state: LiveCallState, event: LiveEvent, at: number): LiveCa
   switch (event.type) {
     case "call.snapshot": {
       const call = data.call as CallDetail | undefined;
+      if (!call || isStaleSnapshot(state, call, event.seq)) return state;
       const serverNow = Date.parse(event.ts);
-      return call ? hydrateFromCall(state, call, at, Number.isNaN(serverNow) ? undefined : serverNow) : state;
+      return hydrateFromCall(state, call, at, Number.isNaN(serverNow) ? undefined : serverNow);
     }
     case "call.connected":
       return { ...state, state: (data.state as CallState) ?? state.state, status: "active", simulated: event.simulated || state.simulated };
     case "call.listening":
       return { ...state, listening: true };
-    case "state.changed":
-      return typeof data.to === "string" ? { ...state, state: data.to as CallState } : state;
+    case "state.changed": {
+      if (typeof data.to !== "string") return state;
+      const to = data.to as CallState;
+      // END_SPAM / END_SILENCE come before the closing sentence is announced: until `assistant.speaking` the call is not over for the caller.
+      const closing = state.closingPending || (isClosingState(to) && !isConfirmedOver(state));
+      return { ...state, state: to, closingPending: closing };
+    }
     case "transcript.partial": {
       if (typeof data.text !== "string") return state;
       const speaker = (data.speaker as Speaker) ?? "caller";
@@ -327,6 +360,7 @@ function applyEffect(state: LiveCallState, event: LiveEvent, at: number): LiveCa
         ...state,
         listening: false,
         partial: null,
+        closingPending: false, // the closing sentence (if this is it) is now announced; `speaking` carries it from here
         assistant: {
           ...state.assistant,
           interrupted: null,
@@ -396,6 +430,7 @@ function applyEffect(state: LiveCallState, event: LiveEvent, at: number): LiveCa
         status: endState === "FAILED" ? "failed" : "ended",
         listening: false,
         partial: null,
+        closingPending: false,
         assistant: { ...state.assistant, speaking: null },
         ended: { reason: String(data.reason ?? ""), durationMs: typeof data.duration_ms === "number" ? data.duration_ms : null, at },
       };
@@ -447,6 +482,17 @@ function handleLive(state: LiveCallState, event: LiveEvent, at: number): LiveCal
   return applyOrdered(state, event, at);
 }
 
+/** Applies the events that were held while a sequence gap was open (in order, skipping what the model already has) and closes the gap. */
+function drainPending(state: LiveCallState, at: number): LiveCallState {
+  const held = [...state.pending].sort((a, b) => a.seq - b.seq);
+  let next: LiveCallState = { ...state, pending: [], gapAfterSeq: null };
+  for (const event of held) {
+    if (event.seq <= next.lastSeq) continue;
+    next = applyOrdered(next, event, at);
+  }
+  return next;
+}
+
 export function liveReducer(state: LiveCallState, action: LiveAction): LiveCallState {
   switch (action.type) {
     case "reset":
@@ -467,16 +513,14 @@ export function liveReducer(state: LiveCallState, action: LiveAction): LiveCallS
         }
         next = applyOrdered(next, event, action.at);
       }
-      const held = [...next.pending].sort((a, b) => a.seq - b.seq);
-      next = { ...next, pending: [], gapAfterSeq: null };
-      for (const event of held) {
-        if (event.seq <= next.lastSeq) continue;
-        next = applyOrdered(next, event, action.at);
-      }
-      return next;
+      return drainPending(next, action.at);
     }
     case "snapshot": {
       if (state.hydrated && !action.force) return state;
+      if (isStaleSnapshot(state, action.call)) {
+        // The server already said this call is over: the reply adds nothing, but a gap it was meant to heal must not stay open.
+        return state.gapAfterSeq === null && state.pending.length === 0 ? state : drainPending(state, action.at);
+      }
       const hydrated = hydrateFromCall(state, action.call, action.at);
       // The REST snapshot replaces the model; held live events are re-applied idempotently on top of it.
       const held = [...state.pending].sort((a, b) => a.seq - b.seq);
@@ -499,14 +543,22 @@ export function liveReducer(state: LiveCallState, action: LiveAction): LiveCallS
       if (result.assistant_turn) turns = upsertTurn(turns, result.assistant_turn);
       // A caller turn that arrived while the assistant was speaking interrupted that sentence.
       if (result.interrupted_turn_id) turns = markInterrupted(turns, result.interrupted_turn_id, null);
+      // A response that outlived the call (the server already said it is over) must not move it back to an earlier state.
+      const over = isConfirmedOver(state);
+      // The closing sentence is part of this result, but the WebSocket announces it (`assistant.speaking`), possibly after the response.
+      const closing = result.ended ? result.assistant_turn : null;
+      const announced =
+        closing !== null && (state.assistant.speaking?.turnId === closing.id || state.assistant.lastFinishedTurnId === closing.id || closing.interrupted);
+      const closingPending = !over && (state.closingPending || (closing?.speech != null && !announced));
       return {
         ...state,
         turns,
         risk: result.risk ?? state.risk,
-        state: result.state,
-        status: result.ended ? (result.state === "FAILED" ? "failed" : "ended") : state.status,
+        state: over ? state.state : result.state,
+        status: over ? state.status : result.ended ? (result.state === "FAILED" ? "failed" : "ended") : state.status,
         escalation: result.escalation ?? state.escalation,
         partial: null,
+        closingPending,
       };
     }
     default:

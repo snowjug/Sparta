@@ -78,3 +78,11 @@ export function describeCallState(state: CallState | null | undefined, status?: 
 export function isEndState(state: CallState | null | undefined): boolean {
   return state === "COMPLETED" || state === "FAILED" || state === "END_SPAM" || state === "END_SILENCE";
 }
+
+/**
+ * END_SPAM and END_SILENCE are entered BEFORE the closing sentence is spoken: the engine moves to the end state, then says goodbye,
+ * and the call itself only ends (`call.ended`, COMPLETED) once that sentence has been spoken.
+ */
+export function isClosingState(state: CallState | null | undefined): boolean {
+  return state === "END_SPAM" || state === "END_SILENCE";
+}

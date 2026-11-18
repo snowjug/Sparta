@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import type { Page } from "@playwright/test";
 import { SCENARIO_TURNS } from "./support/api";
 import { startLabCall, sendTypedTurn, waitForAssistantToFinish } from "./support/lab";
 import { FAKE_SPEECH_RECOGNITION, silentWav, SPY_SPEECH_SYNTHESIS } from "./support/media";
@@ -6,6 +7,42 @@ import { expect, test } from "./support/test";
 import { notifications, toggleSwitch } from "./support/ui";
 
 // Simulator Lab: everything the brief lists for screen H, against the real backend.
+
+interface StageRecord {
+  /** Every distinct value `data-mode` of the voice stage had, in order. */
+  modes: string[];
+  flags: { partial: boolean; labels: string[] };
+}
+
+/** From now on, records every mode the voice stage shows (one observer on the whole document: React may re-create the stage while the call runs). */
+async function recordStage(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const modes: string[] = [];
+    const flags = { partial: false, labels: [] as string[] };
+    const sample = () => {
+      const mode = document.querySelector('[data-testid="voice-stage"]')?.getAttribute("data-mode") ?? "";
+      if (mode && modes.at(-1) !== mode) modes.push(mode);
+      if (document.querySelector('[data-testid="partial-turn"]')) flags.partial = true;
+      const label = document.querySelector('[data-testid="voice-stage-label"]')?.textContent ?? "";
+      if (label && flags.labels.at(-1) !== label) flags.labels.push(label);
+    };
+    sample();
+    new MutationObserver(sample).observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ["data-mode"] });
+    Object.assign(window, { __modes: modes, __flags: flags });
+  });
+}
+
+async function stageRecord(page: Page): Promise<StageRecord> {
+  return page.evaluate(() => ({ modes: (window as unknown as { __modes: string[] }).__modes, flags: (window as unknown as { __flags: StageRecord["flags"] }).__flags }));
+}
+
+/** The invariant of the stage at the end of a call: the closing sentence is shown as speech, and "ended" appears once, last, and stays. */
+function expectEndedOnlyAfterTheClosingSentence(modes: string[]): void {
+  const sequence = `stage modes in order: ${modes.join(" > ")}`;
+  expect(modes.filter((mode) => mode === "ended"), sequence).toHaveLength(1);
+  expect(modes.at(-1), sequence).toBe("ended");
+  expect(modes.at(-2), sequence).toBe("assistant_speaking");
+}
 
 test.describe("setup, scenarios and providers", () => {
   test("lists the curated scenarios, honest provider status and a SIMULATED badge", async ({ page, api }) => {
@@ -227,28 +264,13 @@ test.describe("honest voice stage", () => {
     test.setTimeout(120_000);
     const callId = await startLabCall(page, { scenario: "bank-otp-en", autoplay: true });
     const result = page.getByTestId("lab-console");
-    await page.evaluate(() => {
-      // One observer on the whole document: React may re-create the stage or the transcript while the call runs.
-      const modes: string[] = [];
-      const flags = { partial: false, labels: [] as string[] };
-      const sample = () => {
-        const mode = document.querySelector('[data-testid="voice-stage"]')?.getAttribute("data-mode") ?? "";
-        if (mode && modes.at(-1) !== mode) modes.push(mode);
-        if (document.querySelector('[data-testid="partial-turn"]')) flags.partial = true;
-        const label = document.querySelector('[data-testid="voice-stage-label"]')?.textContent ?? "";
-        if (label && flags.labels.at(-1) !== label) flags.labels.push(label);
-      };
-      sample();
-      new MutationObserver(sample).observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ["data-mode"] });
-      Object.assign(window, { __modes: modes, __flags: flags });
-    });
+    await recordStage(page);
 
     await expect(result).toHaveAttribute("data-status", "ended", { timeout: 90_000 });
-    const { modes, flags } = await page.evaluate(() => ({ modes: (window as unknown as { __modes: string[] }).__modes, flags: (window as unknown as { __flags: { partial: boolean; labels: string[] } }).__flags }));
+    const { modes, flags } = await stageRecord(page);
     expect(modes).toContain("assistant_speaking");
     expect(modes).toContain("caller_speaking");
-    expect(modes.at(-1)).toBe("ended");
-    expect(modes.filter((mode) => mode === "ended")).toHaveLength(1);
+    expectEndedOnlyAfterTheClosingSentence(modes);
     expect(flags.partial).toBe(true);
     // The label is a text equivalent of the animation: every state change is also announced in words.
     expect(flags.labels.join(" | ")).toMatch(/speaking/i);
@@ -265,6 +287,67 @@ test.describe("honest voice stage", () => {
     expect(call.risk?.risk_level).toMatch(/^(high|critical)$/);
     expect(call.action_taken).toBe("refused_and_ended");
     expect(call.summary?.text).toBeTruthy();
+  });
+
+  test("a browser that renders between the closing frames (slow machine) still shows 'ended' only after the closing sentence", async ({ page }) => {
+    test.setTimeout(120_000);
+    // The API sends `state.changed -> END_SPAM`, the closing turn and `assistant.speaking` within about 10 ms, and a busy browser can render between
+    // those frames (this failed once on a slow CI runner). Here every frame of the real stream is held back 40 ms, so a render always falls between them.
+    await page.routeWebSocket(/\/api\/v1\/live\//, (ws) => {
+      const server = ws.connectToServer();
+      let queue: Promise<void> = Promise.resolve();
+      server.onMessage((message) => {
+        queue = queue.then(
+          () =>
+            new Promise<void>((resolve) => {
+              setTimeout(() => {
+                ws.send(message);
+                resolve();
+              }, 40);
+            }),
+        );
+      });
+    });
+    await startLabCall(page, { scenario: "bank-otp-en", autoplay: true });
+    await recordStage(page);
+    await expect(page.getByTestId("lab-console")).toHaveAttribute("data-status", "ended", { timeout: 90_000 });
+    expectEndedOnlyAfterTheClosingSentence((await stageRecord(page)).modes);
+  });
+
+  test("a snapshot from before the end of the call, delivered after it, cannot bring the call back (ended is terminal)", async ({ page }) => {
+    test.setTimeout(120_000);
+    // The real first frame of the stream is the snapshot taken while Sparta introduced itself: status active, assistant speaking.
+    // It is replayed after `call.ended`, as a slow network or a late reconnect could deliver it.
+    const stream: { firstSnapshot: string | null; deliver: ((message: string) => void) | null } = { firstSnapshot: null, deliver: null };
+    await page.routeWebSocket(/\/api\/v1\/live\//, (ws) => {
+      const server = ws.connectToServer();
+      stream.deliver = (message) => ws.send(message);
+      server.onMessage((message) => {
+        if (stream.firstSnapshot === null && typeof message === "string" && (JSON.parse(message) as { type?: string }).type === "call.snapshot") stream.firstSnapshot = message;
+        ws.send(message);
+      });
+    });
+    await startLabCall(page, { scenario: "bank-otp-en", autoplay: true });
+    await recordStage(page);
+    const console = page.getByTestId("lab-console");
+    await page.locator("summary", { hasText: "Event log" }).click();
+    await expect(console).toHaveAttribute("data-status", "ended", { timeout: 90_000 });
+    const before = await stageRecord(page);
+    expectEndedOnlyAfterTheClosingSentence(before.modes);
+    const snapshot = stream.firstSnapshot;
+    expect(snapshot, "the first frame of the stream was a snapshot").not.toBeNull();
+    expect((JSON.parse(snapshot ?? "{}") as { data: { call: { status: string; assistant_speaking: boolean } } }).data.call).toMatchObject({ status: "active", assistant_speaking: true });
+
+    const snapshots = page.locator('[data-testid="event-row"][data-type="call.snapshot"]');
+    await expect(snapshots).toHaveCount(1);
+    stream.deliver?.(snapshot ?? "");
+    // The event log lists it as soon as the model has handled it: from then on the screen shows what that frame did (nothing).
+    await expect(snapshots).toHaveCount(2);
+    await expect(console).toHaveAttribute("data-status", "ended");
+    await expect(console).toHaveAttribute("data-state", "COMPLETED");
+    await expect(page.getByTestId("lab-summary")).toBeVisible();
+    expect((await stageRecord(page)).modes, "the replayed snapshot changed the stage").toEqual(before.modes);
+    await expect(page.getByTestId("voice-stage")).toHaveAttribute("data-mode", "ended");
   });
 
   test("with reduced motion the stage stops animating but still shows every state in words", async ({ page }) => {

@@ -34,6 +34,11 @@ export interface VoiceModeInput {
   escalation: Pick<Escalation, "status"> | null;
   /** The newest turn was spoken by the caller and the assistant has not answered yet. */
   awaitingAssistant: boolean;
+  /**
+   * The conversation reached its end state but the closing sentence has not been announced yet (`LiveCallState.closingPending`): the
+   * server enters END_SPAM / END_SILENCE a few milliseconds BEFORE `assistant.speaking`. Optional, so callers without a live model can omit it.
+   */
+  closingPending?: boolean;
   /** Client clock in ms (injectable for tests). */
   now: number;
 }
@@ -53,12 +58,16 @@ export function deriveVoiceMode(input: VoiceModeInput): VoiceMode {
   if (status === "failed" || state === "FAILED") return "failed";
   const speaking = isAssistantSpeaking(input.assistantSpeaking, now);
   const finished = status === "ended" || isEndState(state);
-  if (finished && !speaking) return "ended";
+  // The end state is reached before the closing sentence is announced: the call is over for the caller only after that sentence.
+  // Without an open stream nothing more can arrive, so there is nothing to wait for.
+  const closing = finished && !speaking && input.closingPending === true && connection === "open";
+  if (finished && !speaking && !closing) return "ended";
   if (!hydrated) return connection === "connecting" || connection === "idle" ? "connecting" : "offline";
   if (connection === "reconnecting" || connection === "failed" || connection === "closed") {
     if (!finished) return "offline";
   }
   if (speaking) return "assistant_speaking";
+  if (closing) return "thinking";
   if (input.interrupted && now - input.interrupted.at < INTERRUPT_FLASH_MS) return "interrupted";
   if (state === "OWNER_TAKEOVER") return "taken_over";
   if (state === "ESCALATE" || input.escalation?.status === "requested") return "escalated";

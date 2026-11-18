@@ -81,6 +81,24 @@ describe("deriveVoiceMode (state-driven, never random)", () => {
     expect(deriveVoiceMode({ ...base, state: "END_SPAM", status: "ended" })).toBe("ended");
   });
 
+  it("is not 'ended' while the closing sentence is still on its way: the end state arrives a few ms before assistant.speaking", () => {
+    const closing: VoiceModeInput = { ...base, state: "END_SPAM", status: "active", closingPending: true };
+    expect(deriveVoiceMode(closing)).toBe("thinking");
+    expect(deriveVoiceMode({ ...closing, state: "END_SILENCE" })).toBe("thinking");
+    // once the sentence is announced it is the sentence that is shown, and when it has been spoken the call is over
+    expect(deriveVoiceMode({ ...closing, closingPending: false, assistantSpeaking: speech() })).toBe("assistant_speaking");
+    expect(deriveVoiceMode({ ...closing, closingPending: false })).toBe("ended");
+    // a failed call is never "thinking"
+    expect(deriveVoiceMode({ ...closing, status: "failed", state: "FAILED" })).toBe("failed");
+  });
+
+  it("does not wait for a closing sentence when the stream cannot deliver it any more", () => {
+    const closing: VoiceModeInput = { ...base, state: "END_SPAM", status: "active", closingPending: true };
+    for (const connection of ["reconnecting", "closed", "failed", "idle"] as const) {
+      expect(deriveVoiceMode({ ...closing, connection }), connection).toBe("ended");
+    }
+  });
+
   it("has a label, detail text and colour for every mode (state is never colour only)", () => {
     for (const [mode, presentation] of Object.entries(MODE_PRESENTATION)) {
       expect(presentation.label.length, mode).toBeGreaterThan(2);

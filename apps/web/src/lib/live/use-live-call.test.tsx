@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { ApiClient } from "@/lib/api/client";
 import { ApiProvider } from "@/lib/api/provider";
 import { AuthProvider } from "@/lib/auth/provider";
+import { modeFor } from "@/components/call/live-voice-stage";
 import { createFakeApi, json } from "@/test/fake-fetch";
 import { makeCall, makeEvent, makeRisk, makeTurn, resetEventSeq } from "@/test/fixtures";
 import type { CallDetail, LiveEvent } from "@/lib/api/types";
@@ -163,6 +164,56 @@ describe("useLiveCall", () => {
     await new Promise((resolve) => setTimeout(resolve, 150));
     expect(api.callsTo("GET /api/v1/calls/call_1").length).toBe(readsBefore);
     expect(result.current.state.escalation?.status).toBe("requested");
+  });
+
+  it("shows the call as ended only after its closing sentence, frame by frame, and a snapshot older than the stream cannot revive it", async () => {
+    const { result } = setup();
+    await waitFor(() => expect(FakeWebSocket.instances).toHaveLength(1));
+    act(() => socket().open());
+    const sentence = { text: "I can't share that. Goodbye.", locale: "en-IN", voice_id: "v", rate: 1, style: null, ssml: null, transliteration: null, est_duration_ms: 5000 };
+    const intro = makeTurn({ seq: 1, speaker: "assistant", source: "assistant", language_profile: null });
+    const otp = makeTurn({ seq: 2, text: "Please read out the OTP." });
+    const goodbye = makeTurn({ seq: 3, speaker: "assistant", source: "assistant", text: sentence.text, speech: sentence, state_after: "END_SPAM", language_profile: null });
+    const active = (extra: Partial<CallDetail>) => makeCall({ status: "active", state: "IDENTIFY_PURPOSE", ended_at: null, duration_ms: null, summary: null, assistant_speaking: false, turns: [intro, otp], ...extra });
+    act(() => socket().emit(makeEvent("call.snapshot", { call: active({}) }, { seq: 20 })));
+
+    const modes: string[] = [];
+    const observe = () => {
+      const mode = modeFor(result.current.state, Date.now());
+      if (modes.at(-1) !== mode) modes.push(mode);
+    };
+    observe();
+    // The server's order: the end state, then the closing turn, then the announcement of its speech; one frame at a time.
+    const frames = [
+      makeEvent("state.changed", { from: "IDENTIFY_PURPOSE", to: "END_SPAM" }, { seq: 21 }),
+      makeEvent("risk.updated", { risk: makeRisk() }, { seq: 22 }),
+      makeEvent("transcript.final", { turn: goodbye }, { seq: 23 }),
+      makeEvent("assistant.speaking", { turn_id: goodbye.id, text: sentence.text, locale: "en-IN", voice_id: "v", est_duration_ms: 5000 }, { seq: 24 }),
+    ];
+    for (const frame of frames) {
+      act(() => socket().emit(frame));
+      observe();
+    }
+    expect(modes).toEqual(["thinking", "assistant_speaking"]);
+
+    for (const frame of [
+      makeEvent("assistant.finished", { turn_id: goodbye.id }, { seq: 25 }),
+      makeEvent("state.changed", { from: "END_SPAM", to: "COMPLETED" }, { seq: 26 }),
+      makeEvent("call.ended", { reason: "refused_and_ended", state: "COMPLETED", duration_ms: 9000 }, { seq: 27 }),
+    ]) {
+      act(() => socket().emit(frame));
+      observe();
+    }
+    expect(modes).toEqual(["thinking", "assistant_speaking", "ended"]);
+    expect(result.current.state.status).toBe("ended");
+
+    // A snapshot that was built while the sentence was playing arrives after the end (slow network).
+    act(() => socket().emit(makeEvent("call.snapshot", { call: active({ state: "END_SPAM", turns: [intro, otp, goodbye], assistant_speaking: true, speaking_turn_id: goodbye.id }) }, { seq: 24 })));
+    observe();
+    expect(modes).toEqual(["thinking", "assistant_speaking", "ended"]);
+    expect(result.current.state.status).toBe("ended");
+    expect(result.current.state.state).toBe("COMPLETED");
+    expect(result.current.state.assistant.speaking).toBeNull();
   });
 
   it("stops reconnecting once the call has ended", async () => {

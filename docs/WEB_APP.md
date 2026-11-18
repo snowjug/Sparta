@@ -81,6 +81,13 @@ onboarding step and "skipped" flag in `sessionStorage`. They are read through `u
   not answer in time). When the call leaves `ESCALATE` while the model still says `requested`, the hook reads `GET /calls/{id}` once and merges only the escalation and
   owner actions (action `escalations`, helper `staleEscalationId`), so the banner is replaced by "You did not answer in time, so Sparta took a message." A late
   reply can never turn a resolved escalation back into `requested`.
+* **The end of a call**: the API enters END_SPAM / END_SILENCE about 10 ms *before* `assistant.speaking` announces the closing sentence, and ends the call
+  (`assistant.finished`, `state.changed -> COMPLETED`, `call.ended`) only after that sentence was spoken. The model therefore keeps `closingPending` from the end
+  state until `assistant.speaking` (or `call.ended`, or a snapshot, which already contains the sentence), and the voice stage shows "Thinking" meanwhile instead of
+  "Call ended"; it does not wait when the stream is not open. "Ended" is terminal: a snapshot older than an event the model already applied (`seq`), or a REST
+  snapshot that still says "active" after the server confirmed the end (`isConfirmedOver`), is ignored, and a late REST turn result cannot move a finished call back.
+  A slow CI runner once rendered between those two frames and recorded `ended > assistant_speaking > ended`; `src/lib/live/stage-mode.test.ts` replays the real event
+  order frame by frame, and `e2e/lab.spec.ts` reproduces both orders against the real API (frames held back one by one; a real early snapshot replayed after `call.ended`).
 
 ### The voice stage is state-driven, not decorative
 
@@ -140,6 +147,9 @@ backend code of commit `3236870` (the later `0fd2a84` changed infrastructure fil
    and the message-taking turn, but nothing says the escalation is now `expired` (`GET /calls/{id}` has the right `escalations[].status`). The live screen therefore
    notices that the call left `ESCALATE` while its escalation still reads `requested` and re-reads the call once (`staleEscalationId`, `src/lib/live`). An
    `escalation.resolved` event (or the escalation inside `state.changed`) would remove that read.
+2. **Contract note (not a defect): the end state is announced before the closing sentence.** `state.changed -> END_SPAM|END_SILENCE` is emitted about 10 ms before the
+   `assistant.speaking` of the closing sentence, so a client cannot tell from the stream alone that the call is not over yet; the web app infers it (`closingPending`,
+   section 3). A flag on that event (for example `closing: true`) would make the inference unnecessary.
 
 Not a defect, but good to know: an owner may have at most 5 active calls, and an ended call counts as active until the assistant has finished its sentence.
 
@@ -166,12 +176,14 @@ Not a defect, but good to know: an owner may have at most 5 active calls, and an
 
 ## 8. Verification record (2026-11-18)
 
-Commands and results are in `apps/web/README.md` ("Last verified"): lint 0 problems, typecheck 0 errors, 20 test files / 294 tests, production build OK, lock file
-clean, **110 of 110 end-to-end tests passed** (4 parallel workers, no retries, real API on port 8100 and the production build on 3100), axe-core 0 serious/moderate/minor
+Commands and results are in `apps/web/README.md` ("Last verified"): lint 0 problems, typecheck 0 errors, 22 test files / 310 tests, production build OK, lock file
+clean, **112 of 112 end-to-end tests passed** (4 parallel workers, no retries, real API on port 8100 and the production build on 3100), axe-core 0 serious/moderate/minor
 violations on every screen in both themes, 45 screenshots.
 
 Defects that the end-to-end suite and axe found in **the web app itself** (all fixed, each now covered by a test): the interrupted assistant turn was not marked in the
 live transcript; a validation error without `details` showed nothing inline; primary link buttons were light text on brass at 1.96:1 (an unlayered `a { color: inherit }`
 beat Tailwind's layers); Home's counters were an invalid `<dl>`; heading levels skipped; Tab could leave a modal dialog; the display menu closed under the mouse; two
 landmarks shared one accessible name; the audit log was stale after a mutation; the **"waiting for you" banner never cleared when the owner did not answer in time**
-(the API sends no event for it, see section 6); and **a History filter change could be lost** when a second one was made before the router had committed the first.
+(the API sends no event for it, see section 6); **a History filter change could be lost** when a second one was made before the router had committed the first; and
+**the voice stage could show "Call ended" about 10 ms before the closing sentence** (a flake that surfaced once on a slower CI runner as `ended > assistant_speaking > ended`),
+and a snapshot older than the stream could bring a finished call back to life (section 3, "The end of a call").
