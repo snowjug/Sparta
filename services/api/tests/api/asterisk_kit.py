@@ -37,7 +37,7 @@ from sparta.telephony.asterisk.protocol import (
 
 API = "/api/v1"
 SECRET = "asterisk-test-secret-0123456789abcdef"
-OWNER = {"X-Sparta-Dev-User": "phone-owner"}
+OWNER: dict[str, str] = {}  # the default development owner: Atharv, the name the assistant introduces itself with
 RATE = 8000
 ASTERISK: dict[str, object] = {
     "telephony_provider": "asterisk",
@@ -47,8 +47,8 @@ ASTERISK: dict[str, object] = {
     "asterisk_media_peers": ["127.0.0.1"],
     "stt_provider": "fake",
     "tts_provider": "fake",
-    "telephony_owner_user_id": "phone-owner",
 }
+OPENING = "Hi, I'm Atharv's AI call assistant. May I know who's calling and what this is regarding?"
 FORM = {"Content-Type": "application/x-www-form-urlencoded"}
 
 
@@ -242,7 +242,9 @@ class Kit:
 
     # ---------------------------------------------------------------------------------------- the owner
     async def calls(self) -> list[dict[str, Any]]:
-        return (await self.env.client.get(f"{API}/calls", headers=OWNER)).json()["items"]
+        reply = await self.env.client.get(f"{API}/calls", headers=OWNER)
+        assert reply.status_code == 200, reply.text
+        return reply.json()["items"]
 
     async def detail(self, call_id: str) -> dict[str, Any]:
         reply = await self.env.client.get(f"{API}/calls/{call_id}", headers=OWNER)
