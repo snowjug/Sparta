@@ -21,6 +21,7 @@ import io.github.snowjug.sparta.data.remote.dto.RiskLevel
 import io.github.snowjug.sparta.data.repo.CallFilter
 import io.github.snowjug.sparta.data.repo.RecentItem
 import io.github.snowjug.sparta.testing.Samples
+import io.github.snowjug.sparta.testing.assertNoTextInside
 import io.github.snowjug.sparta.testing.assertTextContains
 import io.github.snowjug.sparta.ui.calls.CallsActions
 import io.github.snowjug.sparta.ui.calls.CallsContent
@@ -79,6 +80,15 @@ class CallsContentTest {
         node("call_row_sim").assertTextContains("Simulated")
         compose.onNodeWithTag("call_row_real").assertTextContains("Azure Communication Services")
         compose.onNodeWithTag("simulated_badge", useUnmergedTree = true).assertExists() // only the simulated row has one
+    }
+
+    @Test
+    fun `a local SIP call says Local SIP and is neither simulated nor called real`() {
+        show(state(backend("sip") { copy(simulated = false, provider = ProviderKind.ASTERISK) }))
+        node("call_row_sip").assertTextContains("Local SIP (Asterisk)")
+        compose.assertNoTextInside("call_row_sip", "Simulated")
+        compose.assertNoTextInside("call_row_sip", "Real")
+        compose.onNodeWithTag("simulated_badge", useUnmergedTree = true).assertDoesNotExist()
     }
 
     @Test

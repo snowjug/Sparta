@@ -112,6 +112,8 @@ export function OwnerControls({ callId, status, capabilities, needsDecision, blo
   const canContinue = Boolean(caps?.can_continue) && active;
   const canEnd = Boolean(caps?.can_end) && active;
   const canBlock = (caps?.can_block ?? true) && !blocked;
+  // A SIP-extension takeover rings a fixed extension on the local server: the provider's own note says so, and no owner phone number is involved.
+  const sipExtension = caps?.takeover_via === "sip_extension";
 
   const reasonText = (supported: boolean | undefined, fallback: string): string | null => {
     if (!active) return "This call has ended.";
@@ -170,9 +172,9 @@ export function OwnerControls({ callId, status, capabilities, needsDecision, blo
       </div>
 
       <div id="owner-controls-notes" className="space-y-1.5 text-sm text-muted">
-        {caps?.simulated && caps.takeover_note ? (
+        {(caps?.simulated || sipExtension) && caps?.takeover_note ? (
           <p className="flex items-start gap-2" data-testid="takeover-note">
-            <Icon name="flask" size={16} className="mt-0.5 shrink-0 text-info" />
+            {caps.simulated ? <Icon name="flask" size={16} className="mt-0.5 shrink-0 text-info" /> : <Icon name="handoff" size={16} className="mt-0.5 shrink-0" />}
             <span>{caps.takeover_note}</span>
           </p>
         ) : null}

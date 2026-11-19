@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { OnboardingScreen } from "./onboarding-screen";
 import { renderWithApp } from "@/test/render";
 import { apiError, createFakeApi } from "@/test/fake-fetch";
-import { makeCall, makePreferences, makeProfile, makeStatus } from "@/test/fixtures";
+import { makeCall, makeLocalSipStatus, makePreferences, makeProfile, makeStatus } from "@/test/fixtures";
 import { makeAssistantRoutes } from "@/test/routes";
 
 const nav = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn() }));
@@ -96,15 +96,39 @@ describe("OnboardingScreen", () => {
     expect(await screen.findByTestId("forwarding-number")).toHaveTextContent("Not set");
     expect(screen.getByTestId("forwarding-explained")).toHaveTextContent(/real incoming calls cannot reach Sparta yet/);
     expect(screen.getByText("Not connected")).toBeInTheDocument();
+    expect(screen.getByTestId("telephony-connection")).toHaveTextContent(/^Simulated$/);
+    expect(screen.getByTestId("telephony-speech")).toHaveTextContent(/^Simulated$/);
+    expect(screen.queryByTestId("local-sip-explained")).toBeNull();
   });
 
   it("shows a configured forwarding number without the 'not set' explanation", async () => {
     window.sessionStorage.setItem("sparta.onboarding.step", "8");
-    const fake = api({ "GET /api/v1/system/status": () => makeStatus({ telephony: { provider: "azure", simulated: false, live_calls_supported: true, forwarding_number: "+1 555 0100", note: "ACS connected" } }) });
+    const fake = api({ "GET /api/v1/system/status": () => makeStatus({ telephony: { provider: "azure", simulated: false, live_calls_supported: true, forwarding_number: "+1 555 0100", note: "ACS connected", connection: "pstn", pstn: "provider", takeover: "phone_number" } }) });
     renderWithApp(<OnboardingScreen />, { api: fake });
     expect(await screen.findByTestId("forwarding-number")).toHaveTextContent("+1 555 0100");
     expect(screen.queryByTestId("forwarding-explained")).toBeNull();
     expect(screen.getByText("Real · Azure")).toBeInTheDocument();
+    expect(screen.getByTestId("telephony-connection")).toHaveTextContent(/^Phone network$/);
+    expect(screen.getByTestId("telephony-takeover")).toHaveTextContent(/^Your phone number$/);
+    expect(screen.queryByTestId("telephony-pstn")).toBeNull();
+  });
+
+  it("explains local SIP honestly: SIP phones can call Sparta, ordinary phone numbers cannot, Take over rings an extension", async () => {
+    window.sessionStorage.setItem("sparta.onboarding.step", "8");
+    renderWithApp(<OnboardingScreen />, { api: api({ "GET /api/v1/system/status": () => makeLocalSipStatus() }) });
+    const step = await screen.findByTestId("telephony-step");
+    expect(within(step).getByTestId("telephony-connection")).toHaveTextContent(/^Local SIP$/);
+    expect(within(step).getByTestId("telephony-pstn")).toHaveTextContent(/^Not configured$/);
+    expect(within(step).getByTestId("telephony-speech")).toHaveTextContent(/^Local$/);
+    expect(within(step).getByTestId("telephony-takeover")).toHaveTextContent(/^SIP extension$/);
+    expect(within(step).getByText("Asterisk")).toBeInTheDocument();
+    expect(within(step).getByText("Local SIP calls")).toBeInTheDocument();
+    expect(within(step).getByTestId("local-sip-explained")).toHaveTextContent(/SIP phones on your network can call Sparta\. Normal phone numbers cannot reach it this way/);
+    expect(within(step).getByTestId("forwarding-number")).toHaveTextContent("Not used with local SIP");
+    // no PSTN forwarding story and no "real phone calls" claim for local SIP
+    expect(within(step).queryByTestId("forwarding-explained")).toBeNull();
+    expect(within(step).queryByText("Real phone calls")).toBeNull();
+    expect(within(step).queryByText(/Real ·/)).toBeNull();
   });
 
   it("stays on the step and shows the API's field error when saving fails", async () => {

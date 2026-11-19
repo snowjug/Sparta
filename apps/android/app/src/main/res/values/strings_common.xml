@@ -35,6 +35,7 @@
     <string name="provider_simulator">Simulator</string>
     <string name="provider_azure">Azure Communication Services</string>
     <string name="provider_android_screening">On-device screening</string>
+    <string name="provider_asterisk">Local SIP (Asterisk)</string>
     <string name="provider_other">Other provider</string>
     <string name="provider_unknown">Unknown provider</string>
 

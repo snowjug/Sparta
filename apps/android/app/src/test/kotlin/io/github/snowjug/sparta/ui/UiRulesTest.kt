@@ -1,5 +1,8 @@
 package io.github.snowjug.sparta.ui
 
+import android.content.Context
+import androidx.test.core.app.ApplicationProvider
+import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.snowjug.sparta.core.live.VoicePhase
 import io.github.snowjug.sparta.core.nav.DeepLink
 import io.github.snowjug.sparta.core.nav.DeepLinks
@@ -7,11 +10,33 @@ import io.github.snowjug.sparta.core.nav.Routes
 import io.github.snowjug.sparta.core.notify.QuietHours
 import io.github.snowjug.sparta.core.ui.AdaptiveLayout
 import io.github.snowjug.sparta.core.ui.WidthClass
+import io.github.snowjug.sparta.data.remote.dto.ProviderKind
 import io.github.snowjug.sparta.ui.components.VoiceVisualizerSpec
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.junit.runner.RunWith
+
+@RunWith(AndroidJUnit4::class)
+class ProviderLabelsTest {
+    private val context: Context = ApplicationProvider.getApplicationContext()
+
+    @Test
+    fun `every provider kind has a label and the Asterisk provider is named as local SIP`() {
+        ProviderKind.entries.forEach { kind ->
+            assertTrue("$kind needs a label", context.getString(Labels.provider(kind)).isNotBlank())
+        }
+        assertEquals("Local SIP (Asterisk)", context.getString(Labels.provider(ProviderKind.ASTERISK)))
+    }
+
+    @Test
+    fun `local SIP is never described as a real phone call`() {
+        val label = context.getString(Labels.provider(ProviderKind.ASTERISK)).lowercase()
+        assertFalse(label.contains("real"))
+        assertFalse(label.contains("phone"))
+    }
+}
 
 class AdaptiveLayoutTest {
     @Test

@@ -13,7 +13,7 @@ import { Dialog } from "@/components/ui/dialog";
 import { SideNav, BottomNav } from "@/components/shell/nav";
 import { renderWithApp } from "@/test/render";
 import { createFakeApi, json } from "@/test/fake-fetch";
-import { makeCall, makeCallItem, makePreferences, makeStatus } from "@/test/fixtures";
+import { makeCall, makeCallItem, makeLocalSipStatus, makePreferences, makeStatus } from "@/test/fixtures";
 import { makeAssistantRoutes } from "@/test/routes";
 import { expectNoSeriousViolations } from "@/test/axe";
 
@@ -47,12 +47,12 @@ const scenarios = [
   { id: "bank-otp-en", title: "Bank OTP request (English)", description: "A bank asks for the OTP.", language_profile: "english", languages: ["en-IN"], tags: [], turn_count: 2, expected_action: "refuse_and_end", custom: false },
 ];
 
-function api() {
+function api(extra: Record<string, () => unknown> = {}) {
   return createFakeApi({
     ...makeAssistantRoutes(),
     "GET /api/v1/preferences": () => makePreferences({ onboarding_completed: true }),
     "GET /api/v1/home": () => ({
-      protection: { status: "active", headline: "Protection is on", detail: "Sparta is screening simulated calls.", provider: "simulator", simulated: true, live_calls_supported: false },
+      protection: { status: "active", headline: "Protection is on", detail: "Sparta is screening simulated calls.", provider: "simulator", simulated: true, live_calls_supported: false, connection: "simulated", pstn: "not_applicable" },
       today: { handled: 1, high_risk: 1, escalations: 0, ended_spam: 1, minutes_handled: 0.7 },
       next_action: { kind: "review_call", label: "Review a call", route: "/calls/call_1" },
       attention: [makeCallItem({ owner_attention_required: true })],
@@ -75,6 +75,7 @@ function api() {
     "POST /api/v1/simulator/replay": () => ({ call: makeCall(), events: [], checksum: "a".repeat(64), checksum_covers: "events" }),
     "GET /api/v1/system/status": () => makeStatus(),
     "GET /api/v1/calls/call_1/events": () => [],
+    ...extra,
   });
 }
 
@@ -128,6 +129,27 @@ describe("accessibility (axe-core, serious and critical violations)", () => {
     const { container } = renderWithApp(<OnboardingScreen />, { api: api() });
     await waitFor(() => expect(screen.getByTestId("step-counter")).toHaveTextContent(`Step ${step + 1} of 9`));
     await expectNoSeriousViolations(container);
+  });
+
+  it("Onboarding phone connection step and Home with local SIP", async () => {
+    window.sessionStorage.setItem("sparta.onboarding.step", "8");
+    const localSip = api({
+      "GET /api/v1/system/status": () => makeLocalSipStatus(),
+      "GET /api/v1/home": () => ({
+        protection: { status: "active", headline: "Sparta is answering local SIP calls", detail: "Calls from SIP phones on your own network reach your AI assistant.", provider: "asterisk", simulated: false, live_calls_supported: true, connection: "local_sip", pstn: "not_configured" },
+        today: { handled: 0, high_risk: 0, escalations: 0, ended_spam: 0, minutes_handled: 0 },
+        next_action: { kind: "none", label: "You are all caught up", route: "/" },
+        attention: [],
+        recent: [],
+      }),
+    });
+    const step = renderWithApp(<OnboardingScreen />, { api: localSip });
+    await screen.findByTestId("local-sip-explained");
+    await expectNoSeriousViolations(step.container);
+    step.unmount();
+    const home = renderWithApp(<HomeScreen />, { api: localSip });
+    await screen.findByText("PSTN: Not configured");
+    await expectNoSeriousViolations(home.container);
   });
 
   it("Simulator Lab (setup, with the builder and replay panels open)", async () => {

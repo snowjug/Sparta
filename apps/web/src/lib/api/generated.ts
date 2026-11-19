@@ -1033,6 +1033,13 @@ export interface components {
             /** Takeover Note */
             takeover_note?: string | null;
             /**
+             * Takeover Via
+             * @description What Take Over does with this provider: nothing, a simulated bridge, a call to the owner's phone number, or a ring of a SIP extension on the local server (never a PSTN number).
+             * @default phone_number
+             * @enum {string}
+             */
+            takeover_via?: "none" | "simulated" | "phone_number" | "sip_extension";
+            /**
              * Two Way Audio
              * @default false
              */
@@ -1785,6 +1792,12 @@ export interface components {
         };
         /** ProtectionView */
         ProtectionView: {
+            /**
+             * Connection
+             * @default pstn
+             * @enum {string}
+             */
+            connection?: "simulated" | "local_sip" | "pstn";
             /** Detail */
             detail: string;
             /** Headline */
@@ -1793,6 +1806,12 @@ export interface components {
             live_calls_supported: boolean;
             /** Provider */
             provider: string;
+            /**
+             * Pstn
+             * @default provider
+             * @enum {string}
+             */
+            pstn?: "not_applicable" | "not_configured" | "provider";
             /** Simulated */
             simulated: boolean;
             /**
@@ -1826,7 +1845,7 @@ export interface components {
          * ProviderKind
          * @enum {string}
          */
-        ProviderKind: "simulator" | "azure" | "android_screening" | "other";
+        ProviderKind: "simulator" | "azure" | "android_screening" | "asterisk" | "other";
         /** ProviderOption */
         ProviderOption: {
             /** Active */
@@ -2265,6 +2284,13 @@ export interface components {
         };
         /** TelephonyView */
         TelephonyView: {
+            /**
+             * Connection
+             * @description How calls reach Sparta with this provider: simulated typing, local SIP over IP (no phone number), or a phone-network provider.
+             * @default pstn
+             * @enum {string}
+             */
+            connection?: "simulated" | "local_sip" | "pstn";
             /** Forwarding Number */
             forwarding_number?: string | null;
             /** Live Calls Supported */
@@ -2278,9 +2304,23 @@ export interface components {
              * Provider
              * @enum {string}
              */
-            provider: "simulator" | "azure" | "other";
+            provider: "simulator" | "azure" | "asterisk" | "other";
+            /**
+             * Pstn
+             * @description Whether ordinary mobile and landline numbers can reach Sparta: never with the simulator, not configured with local SIP (that needs a carrier, a number and a trunk), else through the provider.
+             * @default provider
+             * @enum {string}
+             */
+            pstn?: "not_applicable" | "not_configured" | "provider";
             /** Simulated */
             simulated: boolean;
+            /**
+             * Takeover
+             * @description What Take Over does with this provider.
+             * @default phone_number
+             * @enum {string}
+             */
+            takeover?: "none" | "simulated" | "phone_number" | "sip_extension";
         };
         /** TicketRequest */
         TicketRequest: {

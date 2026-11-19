@@ -9,6 +9,7 @@ import io.github.snowjug.sparta.data.remote.dto.CallState
 import io.github.snowjug.sparta.data.remote.dto.CallStatus
 import io.github.snowjug.sparta.data.remote.dto.EscalationStatus
 import io.github.snowjug.sparta.data.remote.dto.FeedbackKind
+import io.github.snowjug.sparta.data.remote.dto.HomeSummaryDto
 import io.github.snowjug.sparta.data.remote.dto.OwnerActionType
 import io.github.snowjug.sparta.data.remote.dto.ProviderKind
 import io.github.snowjug.sparta.data.remote.dto.RecommendedAction
@@ -189,6 +190,68 @@ class DtoDeserializationTest {
         val status = SpartaJson.decodeFromString(SystemStatusDto.serializer(), "{}")
         assertTrue(status.telephony.simulated)
         assertFalse(status.telephony.liveCallsSupported)
+    }
+
+    @Test
+    fun `the asterisk provider decodes and an unknown provider still falls back`() {
+        val page = SpartaJson.decodeFromString(
+            CallPageDto.serializer(),
+            """{"items":[
+                {"id":"c1","provider":"asterisk","simulated":false,"status":"active"},
+                {"id":"c2","provider":"a_future_provider","simulated":false}
+            ]}""",
+        )
+        assertEquals(ProviderKind.ASTERISK, page.items[0].provider)
+        assertEquals("asterisk", ProviderKind.ASTERISK.wire)
+        assertFalse(page.items[0].simulated)
+        assertEquals(CallStatus.ACTIVE, page.items[0].status)
+        assertEquals(ProviderKind.UNKNOWN, page.items[1].provider)
+    }
+
+    @Test
+    fun `a local SIP status ignores connection pstn and takeover and keeps the honest basics`() {
+        val status = SpartaJson.decodeFromString(
+            SystemStatusDto.serializer(),
+            """{"telephony":{"provider":"asterisk","simulated":false,"live_calls_supported":true,"forwarding_number":null,
+                "note":"Local SIP through Asterisk.","connection":"local_sip","pstn":"not_configured","takeover":"sip_extension"},
+               "stt_provider":"local-faster-whisper","tts_provider":"local-piper"}""",
+        )
+        assertEquals("asterisk", status.telephony.provider)
+        assertFalse(status.telephony.simulated)
+        assertTrue(status.telephony.liveCallsSupported)
+        assertNull(status.telephony.forwardingNumber)
+        assertEquals("Local SIP through Asterisk.", status.telephony.note)
+        assertEquals("local-faster-whisper", status.sttProvider)
+        assertEquals("local-piper", status.ttsProvider)
+    }
+
+    @Test
+    fun `the home protection of a local SIP backend ignores connection and pstn`() {
+        val home = SpartaJson.decodeFromString(
+            HomeSummaryDto.serializer(),
+            """{"protection":{"status":"active","headline":"Sparta is answering local SIP calls","detail":"",
+                "provider":"asterisk","simulated":false,"live_calls_supported":true,"connection":"local_sip","pstn":"not_configured"}}""",
+        )
+        assertEquals("asterisk", home.protection.provider)
+        assertFalse(home.protection.simulated)
+        assertTrue(home.protection.liveCallsSupported)
+        assertEquals("active", home.protection.status)
+    }
+
+    @Test
+    fun `a SIP extension takeover decodes as an enabled control and the takeover_via field is ignored`() {
+        val note = "Take Over rings SIP extension 6002 on this local server. It does not call a phone number."
+        val call = SpartaJson.decodeFromString(
+            CallDetailDto.serializer(),
+            """{"id":"x","provider":"asterisk","simulated":false,
+                "capabilities":{"can_take_over":true,"can_continue":true,"can_end":true,"can_block":true,
+                "takeover_note":"$note","takeover_via":"sip_extension","simulated":false,"two_way_audio":true,"audio_note":null}}""",
+        )
+        assertEquals(ProviderKind.ASTERISK, call.provider)
+        assertTrue(call.capabilities.canTakeOver)
+        assertFalse(call.capabilities.simulated)
+        assertTrue(call.capabilities.twoWayAudio)
+        assertEquals(note, call.capabilities.takeoverNote)
     }
 
     @Test

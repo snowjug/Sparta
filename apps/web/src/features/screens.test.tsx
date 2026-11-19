@@ -413,7 +413,7 @@ describe("CallDetailScreen", () => {
 
 describe("HomeScreen", () => {
   const home = (overrides: Record<string, unknown> = {}) => ({
-    protection: { status: "active", headline: "Protection is on (simulator)", detail: "Sparta is screening simulated calls.", provider: "simulator", simulated: true, live_calls_supported: false },
+    protection: { status: "active", headline: "Protection is on (simulator)", detail: "Sparta is screening simulated calls.", provider: "simulator", simulated: true, live_calls_supported: false, connection: "simulated", pstn: "not_applicable" },
     today: { handled: 3, high_risk: 1, escalations: 1, ended_spam: 1, minutes_handled: 3.7 },
     next_action: { kind: "review_call", label: "Review a call", route: "/calls/call_1" },
     attention: [makeCallItem({ id: "call_1", owner_attention_required: true })],
@@ -451,10 +451,29 @@ describe("HomeScreen", () => {
   });
 
   it("flags a degraded protection state instead of hiding it", async () => {
-    const api = createFakeApi({ ...makeAssistantRoutes(), "GET /api/v1/home": () => home({ protection: { status: "degraded", headline: "Calls are not being screened right now", detail: "The telephony provider is not responding.", provider: "azure", simulated: false, live_calls_supported: true } }) });
+    const api = createFakeApi({ ...makeAssistantRoutes(), "GET /api/v1/home": () => home({ protection: { status: "degraded", headline: "Calls are not being screened right now", detail: "The telephony provider is not responding.", provider: "azure", simulated: false, live_calls_supported: true, connection: "pstn", pstn: "provider" } }) });
     renderWithApp(<HomeScreen />, { api });
     expect(await screen.findByText("Not screening right now")).toBeInTheDocument();
     expect(screen.getByText("Real · Azure")).toBeInTheDocument();
+  });
+
+  it("shows local SIP as local SIP with a neutral PSTN badge, never as real phone calls", async () => {
+    const protection = {
+      status: "active",
+      headline: "Sparta is answering local SIP calls",
+      detail: "Calls from SIP phones on your own network reach your AI assistant. Calls from ordinary phone numbers cannot reach it.",
+      provider: "asterisk",
+      simulated: false,
+      live_calls_supported: true,
+      connection: "local_sip",
+      pstn: "not_configured",
+    };
+    const api = createFakeApi({ ...makeAssistantRoutes(), "GET /api/v1/home": () => home({ protection }) });
+    renderWithApp(<HomeScreen />, { api });
+    const card = await screen.findByTestId("protection-card");
+    expect(within(card).getByText("Local SIP")).toBeInTheDocument();
+    expect(within(card).getByText("PSTN: Not configured")).toBeInTheDocument();
+    expect(within(card).queryByText(/Real/)).toBeNull();
   });
 
   it("shows the API's error with a retry when the summary cannot load", async () => {

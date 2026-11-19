@@ -51,8 +51,12 @@ function ProtectionCard({ data }: { data: HomeSummary }) {
           </h2>
           <p className="mt-1 text-pretty text-base text-muted">{protection.detail}</p>
           <div className="mt-3 flex flex-wrap items-center gap-2">
-            <SimulationBadge simulated={protection.simulated} provider={protection.provider} />
-            {!protection.live_calls_supported ? (
+            <SimulationBadge simulated={protection.simulated} provider={protection.provider} connection={protection.connection} />
+            {protection.pstn === "not_configured" ? (
+              <Badge tone="neutral" icon="phone" title="Ordinary mobile and landline numbers cannot reach Sparta with local SIP.">
+                PSTN: Not configured
+              </Badge>
+            ) : !protection.live_calls_supported ? (
               <Badge tone="neutral" icon="phone">
                 Real phone calls not connected
               </Badge>

@@ -165,6 +165,7 @@ enum class ProviderKind(val wire: String) {
     SIMULATOR("simulator"),
     AZURE("azure"),
     ANDROID_SCREENING("android_screening"),
+    ASTERISK("asterisk"),
     OTHER("other"),
     UNKNOWN("unknown"),
 }

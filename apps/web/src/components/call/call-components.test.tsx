@@ -209,6 +209,21 @@ describe("OwnerControls", () => {
     expect(screen.getByTestId("action-block")).toBeEnabled();
   });
 
+  it("keeps Take over on for a SIP-extension takeover and shows the provider's note, without asking for a phone number", () => {
+    const note = "Take Over rings SIP extension 6002 on this local server. It does not call a phone number.";
+    setup({ simulated: false, takeover_via: "sip_extension", takeover_note: note, two_way_audio: true, audio_note: null });
+    expect(screen.getByRole("button", { name: "Take over" })).toBeEnabled();
+    expect(screen.getByTestId("takeover-note")).toHaveTextContent(note);
+    expect(screen.queryByTestId("takeover-unavailable")).toBeNull();
+    expect(screen.queryByText(/Set the phone number/)).toBeNull();
+  });
+
+  it("shows no takeover note for a phone-number provider that can take over (the note is only for simulated and SIP-extension takeovers)", () => {
+    setup({ simulated: false, takeover_via: "phone_number", takeover_note: null, two_way_audio: true, audio_note: null });
+    expect(screen.getByTestId("action-takeover")).toBeEnabled();
+    expect(screen.queryByTestId("takeover-note")).toBeNull();
+  });
+
   it("turns every control off once the call has ended, keeping Block available", () => {
     renderWithApp(<OwnerControls callId="call_1" status="ended" capabilities={makeCaps()} />);
     expect(screen.getByTestId("action-takeover")).toBeDisabled();
