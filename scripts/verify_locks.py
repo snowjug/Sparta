@@ -25,7 +25,13 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 API_DIR = ROOT / "services" / "api"
-DEFAULT_LOCKS = ("requirements.lock", "requirements-extras.lock", "requirements-build.lock", "requirements-dev.lock")
+DEFAULT_LOCKS = (
+    "requirements.lock",
+    "requirements-extras.lock",
+    "requirements-build.lock",
+    "requirements-dev.lock",
+    "requirements-local-speech.lock",
+)
 
 PIN = re.compile(r"^([A-Za-z0-9_.\-]+)==([^\s;\\]+)")
 SHA256 = re.compile(r"--hash=sha256:([0-9a-f]{64})")
