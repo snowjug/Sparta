@@ -110,10 +110,10 @@ def _burst_at(samples: "array[int]", start: int, window: int, rate: int) -> int 
 
 
 def find_bursts(
-    pcm16: bytes, rate: int, *, max_scan_ms: int | None = None, first_only: bool = False
+    pcm16: bytes, rate: int, *, max_scan_ms: int | None = None, first_only: bool = False, start_ms: int = 0
 ) -> list[tuple[int, int]]:
-    """Every intact burst in ``pcm16`` as ``(offset in ms, line id)``, in order. A recording of a call shows which lines
-    were spoken and when."""
+    """Every intact burst in ``pcm16`` as ``(offset in ms, line id)``, in order, searching from ``start_ms``. A recording
+    of a call shows which lines were spoken and when."""
     samples = _samples(pcm16)
     window = rate * SYMBOL_MS // 1000
     hop = max(1, rate * 10 // 1000)
@@ -121,7 +121,7 @@ def find_bursts(
     if max_scan_ms is not None:
         last = min(last, rate * max_scan_ms // 1000)
     found: list[tuple[int, int]] = []
-    start = 0
+    start = rate * start_ms // 1000
     while start <= last:
         line_id = _burst_at(samples, start, window, rate)
         if line_id is None:

@@ -31,7 +31,7 @@ import re
 import secrets
 import uuid
 from collections import OrderedDict
-from collections.abc import AsyncIterator, Mapping
+from collections.abc import AsyncIterator, Awaitable, Mapping
 from dataclasses import dataclass, field
 
 from sparta.clock import Clock, SystemClock
@@ -76,6 +76,20 @@ _CHANNEL = re.compile(r"[A-Za-z0-9._:\-]{1,64}")
 _EXTENSION = re.compile(r"[0-9]{2,8}")
 _DIAL_STATUS = re.compile(r"[A-Z_]{1,24}|-")
 REJECT_REASONS = ("busy", "declined", "unavailable")
+
+
+def _consume(task: "asyncio.Future[None]") -> None:
+    if not task.cancelled():
+        task.exception()  # retrieved here, so a failure after its waiter was cancelled is not reported as "never retrieved"
+
+
+async def _shielded(call: Awaitable[None]) -> None:
+    """Deliver an event to the call service so that tearing a call down cannot cancel it half-way through its database
+    transaction: if the waiting task is cancelled, the delivery still runs to completion on its own."""
+    inner = asyncio.ensure_future(call)
+    inner.add_done_callback(_consume)
+    await asyncio.shield(inner)
+
 
 NOTE = (
     "Local SIP through Asterisk: real two-way voice over IP on a trusted network. There is no phone-number (PSTN) "
@@ -448,8 +462,8 @@ class AsteriskTelephonyProvider:
                 )
                 started = self._clock.monotonic()
                 finished = await session.send_audio_stream(self._pcm(request, started))
-            if not finished and self._calls.get(state.call_id) is state and not state.hangup_requested:
-                await self._report_error(state.call_id, "play", "the media stream closed during playback")
+            # A stream that closed mid-line is not a provider failure: the caller hung up (the media session reports
+            # that as a remote hang-up), or Sparta ended or handed over the call itself.
         except asyncio.CancelledError:
             raise
         except ProviderError as exc:
@@ -464,7 +478,7 @@ class AsteriskTelephonyProvider:
                 state.quiet.set()
         if finished and self._sink is not None:
             try:
-                await self._sink.playback_finished(state.call_id, playback_id)
+                await _shielded(self._sink.playback_finished(state.call_id, playback_id))
             except Exception as exc:
                 log.warning("playback completion failed", extra={"error_type": type(exc).__name__})
 
@@ -557,13 +571,13 @@ class AsteriskTelephonyProvider:
             return  # already finished (this is the second of several signals that the call is over)
         await self._finish_call(state)
         if self._sink is not None:
-            await self._sink.remote_hangup(state.call_id, reason)
+            await _shielded(self._sink.remote_hangup(state.call_id, reason))
 
     async def _report_error(self, call_id: str, stage: str, message: str) -> None:
         if self._sink is None:
             return
         try:
-            await self._sink.provider_error(call_id, stage, message)
+            await _shielded(self._sink.provider_error(call_id, stage, message))
         except Exception as exc:
             log.warning("provider error could not be reported", extra={"error_type": type(exc).__name__})
 
