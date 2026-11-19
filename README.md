@@ -428,13 +428,22 @@ Phase 1's record on `main` follows the table.
 | Controlled call matrix (Phase 2) | 12 whole-call tests over a real WebSocket with scripted speech services; local processing time from the end of the caller's turn to the first audio, p50 about 92 ms and p95 about 205 ms, with zero-latency fakes: [docs/PHASE2_CONTROLLED_RESULTS.md](docs/PHASE2_CONTROLLED_RESULTS.md) |
 | `gitleaks` 8.30.1 (`gitleaks git`) on the history of the branch | no leaks; two fake test values it flagged are allowlisted by exact value ([docs/SECURITY_REVIEW_PHASE2.md](docs/SECURITY_REVIEW_PHASE2.md)) |
 
-**Phase 3 on GitHub** (pull request 12, 2026-11-19, `ubuntu-24.04` runners, first run at `deef687`): **all 16 checks passed on the first
-run**: the changed-area filter, Backend (with PostgreSQL and Redis service containers, 4 min 6 s), Backend security (`pip-audit`,
-`bandit`, lock hashes, now including the local-speech lock), Web, Android (unit tests, lint, debug APK), Infrastructure and tooling
-(Compose, Bicep, workflows, scripts), both container images built and scanned by Trivy, `gitleaks`, CodeQL for Java and Kotlin,
+**Phase 3 on GitHub** (pull request 12, 2026-11-19, `ubuntu-24.04` runners): the first run, at `deef687`, passed **all 16 checks**: the
+changed-area filter, Backend (with PostgreSQL and Redis service containers, 4 min 6 s), Backend security (`pip-audit`, `bandit`, lock
+hashes, now including the local-speech lock), Web, Android (unit tests, lint, debug APK), Infrastructure and tooling (Compose,
+Bicep, workflows, scripts), both container images built and scanned by Trivy, `gitleaks`, CodeQL for Java and Kotlin,
 JavaScript and TypeScript, and Python (no open alert), dependency review, the `ci-ok` gate, and the informational Playwright job
-(12 min 41 s). **The Docker SIP end-to-end tests do not run in CI** (they skip unless `SPARTA_SIP_E2E=1`): their results above are from
-the local runs.
+(12 min 41 s). **A second run, on a README-only commit (`1e0633e`), failed one backend test**,
+`test_a_caller_who_talks_over_the_assistant_stops_it_within_a_few_frames`: "the greeting should have been cut, not played to its
+end". It was a race in the **test harness**, not in the product. The kit's driver fast-forwards the virtual clock that paces
+speech, while the test froze that clock by polling in real time, so how far into the greeting the freeze landed depended on
+scheduling: on Linux it was between 27 and 78 frames (0.5 to 1.5 s, in 40 measured runs, against a limit of 75), and two of those 40
+runs crossed the limit, idle or loaded. The root fix (no retry, no wider bound) is `Kit.freeze_media_when`, which stops virtual time
+inside the driver on an exact frame count (the other test that used the same idiom was changed too, and the wait for the stop now
+looks at the greeting's own playback id, which the answer's playback cannot hide). Afterwards, on Linux in a `python:3.12`
+container with 8 CPUs: 80 of 80 repeats of both tests, half idle and half with every CPU busy, and 6 of 6 runs of every Python test file this
+phase added or touched except the Docker end-to-end ones (724 passed, 20 skipped each; three idle, three under full load). **The Docker
+SIP end-to-end tests do not run in CI** (they skip unless `SPARTA_SIP_E2E=1`): their results above are from the local runs.
 
 **Phase 2 on GitHub** (pull request 11, 2026-11-18, `ubuntu-24.04` runners): the first run failed three things that did not
 show locally, all fixed in `e468311`. `requirements-dev.lock` carried five md5 hashes for the Speech SDK (the package mirror

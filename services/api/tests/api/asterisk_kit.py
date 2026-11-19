@@ -4,11 +4,17 @@ AudioSocket connection, speaking tone-coded audio (see ``sparta.providers.fake_t
 The app runs on a virtual clock. Speech is paced on it (tag ``media``), so ``Kit`` drives exactly those sleeps and
 nothing else: virtual time moves only while Sparta is sending audio. That keeps the tests quick and deterministic, and it
 means nothing measured here is real timing (the Docker SIP end-to-end test measures that, with its own labels).
+
+The driver fast-forwards: it can send tens of frames in the time a test task takes to be scheduled again. A test that wants
+virtual time to stand still at a point in the line must therefore not poll and then clear ``media_running`` (on Linux that
+left anywhere from 27 to 78 frames on the wire, in 40 measured runs), but call ``freeze_media_when``: the driver tests the condition
+before every step, so the stop lands on the exact frame whatever the machine is doing.
 """
 
 import asyncio
 import base64
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from types import TracebackType
 from typing import Any, Self
@@ -172,6 +178,8 @@ class Kit:
         self.peers: list[Peer] = []
         self.media_running = asyncio.Event()
         self.media_running.set()
+        self.media_frozen = asyncio.Event()
+        self._freeze_when: Callable[[], bool] | None = None
         self._stop = asyncio.Event()
         self._driver: asyncio.Task[None] | None = None
         self._counter = 0
@@ -184,6 +192,7 @@ class Kit:
         self, exc_type: type[BaseException] | None, exc: BaseException | None, tb: TracebackType | None
     ) -> None:
         self._stop.set()
+        self.media_running.set()  # a test that failed while time was frozen must not leave the driver waiting forever
         if self._driver is not None:
             await self._driver
         for peer in self.peers:
@@ -192,12 +201,33 @@ class Kit:
     async def _drive(self) -> None:
         clock = self.env.clock
         while not self._stop.is_set():
+            if self._freeze_when is not None and self._freeze_when():
+                self._freeze_when = None
+                self.media_running.clear()
+                self.media_frozen.set()
             await self.media_running.wait()
             delta = clock.next_delta("media")
             if delta is None:
                 await asyncio.sleep(0.001)
             else:
                 await clock.advance(delta)
+
+    async def freeze_media_when(self, condition: Callable[[], bool], what: str, timeout_s: float = 10.0) -> None:
+        """Stop virtual time at the first step where ``condition()`` holds, and return once it has stopped; resume with
+        ``media_running.set()``. The driver tests the condition before EVERY step, so the stop lands on the exact frame:
+        polling from the test and then clearing ``media_running`` does not (see the module docstring)."""
+        self.media_frozen.clear()
+        self._freeze_when = condition
+        try:
+            await asyncio.wait_for(self.media_frozen.wait(), timeout_s)
+        except TimeoutError:
+            self._freeze_when = None
+            raise AssertionError(f"timed out waiting for: {what}") from None
+
+    def frames_out(self, channel: str) -> int:
+        """How many 20 ms frames Sparta has written to this call's media connection (its own count, not the peer's)."""
+        state = self.provider._by_channel.get(channel)
+        return int(state.session.stats["frames_out"]) if state is not None and state.session is not None else 0
 
     # ----------------------------------------------------------------------------------- HTTP callbacks
     def channel(self) -> str:

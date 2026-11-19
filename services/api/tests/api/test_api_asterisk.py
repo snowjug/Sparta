@@ -261,18 +261,24 @@ async def test_a_caller_who_talks_over_the_assistant_stops_it_within_a_few_frame
         channel, media_id = await kit.accept()
         peer = await kit.connect(media_id)
         state = kit.provider._by_channel[channel]
-        await kit.until(lambda: len(peer.rx) >= 320 * 25, "half a second of the greeting")
-        kit.media_running.clear()  # freeze virtual time part-way through the line
-        await asyncio.sleep(0.05)
+        # Virtual time stands still on exactly the 25th frame, half a second into the line. (Polling from the test and then
+        # freezing left anywhere from 27 to 78 frames on the wire on Linux: the greeting could be nearly over, so "cut
+        # early" proved nothing, and the old bound on it failed in CI.)
+        await kit.freeze_media_when(lambda: kit.frames_out(channel) >= 25, "half a second of the greeting to be sent")
+        on_the_wire = kit.frames_out(channel)
+        assert 25 <= on_the_wire <= 28  # the frame it was frozen on, plus at most the opening burst of the lead
+        greeting = set(state.playbacks)
+        assert greeting, "the assistant should be in the middle of its line"
+        await kit.until(lambda: len(peer.rx) >= 320 * on_the_wire, "the frames already sent to arrive")
         await peer.say(INTERRUPT_ID)  # "Yeah, I'm calling from Amazon." while the assistant is still talking
-        await kit.until(lambda: not state.playbacks, "the assistant to stop talking")
-        stopped_at = len(peer.rx)
+        # By id, so that the answer's own playback appearing first cannot hide that the greeting has been stopped.
+        await kit.until(lambda: not (greeting & set(state.playbacks)), "the assistant to stop talking")
         kit.media_running.set()
         await peer.wait_lines(2)  # it listened and answered the interruption
         first_line_ms = peer.lines()[1][0]
         assert first_line_ms < 1500, "the greeting should have been cut, not played to its end (about four seconds)"
-        # what was already on the wire when the caller spoke is all that could not be recalled
-        assert stopped_at - 320 * 25 <= 320 * 30
+        # The answer follows what had already been sent; the rest of the greeting was never sent.
+        assert first_line_ms <= on_the_wire * 20 + 40
         call = await kit.only_call()
         assert [s for s, _ in await kit.transcript(call["id"])][:2] == ["assistant", "caller"]
 
@@ -319,12 +325,13 @@ async def test_a_media_connection_that_goes_silent_is_closed_and_the_call_ends()
 async def test_a_caller_who_hangs_up_mid_sentence_leaves_nothing_running(caplog):
     caplog.set_level(logging.WARNING)
     async with running_env(**ASTERISK) as env, Kit(env) as kit:
-        _channel, media_id = await kit.accept()
+        channel, media_id = await kit.accept()
         peer = await kit.connect(media_id)
-        await kit.until(lambda: len(peer.rx) >= 320 * 10, "the greeting to start")
-        kit.media_running.clear()
+        state = kit.provider._by_channel[channel]
+        await kit.freeze_media_when(lambda: kit.frames_out(channel) >= 10, "the greeting to start")  # on the 10th frame
+        assert state.playbacks, "the assistant should be in the middle of its line"
         await peer.close()
-        await asyncio.sleep(0.05)
+        await kit.until(lambda: state.session is None or state.session.closed, "Sparta to see the caller hang up")
         kit.media_running.set()
         call = await kit.only_call()
         await kit.until_ended(call["id"])
