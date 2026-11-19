@@ -428,6 +428,14 @@ Phase 1's record on `main` follows the table.
 | Controlled call matrix (Phase 2) | 12 whole-call tests over a real WebSocket with scripted speech services; local processing time from the end of the caller's turn to the first audio, p50 about 92 ms and p95 about 205 ms, with zero-latency fakes: [docs/PHASE2_CONTROLLED_RESULTS.md](docs/PHASE2_CONTROLLED_RESULTS.md) |
 | `gitleaks` 8.30.1 (`gitleaks git`) on the history of the branch | no leaks; two fake test values it flagged are allowlisted by exact value ([docs/SECURITY_REVIEW_PHASE2.md](docs/SECURITY_REVIEW_PHASE2.md)) |
 
+**Phase 3 on GitHub** (pull request 12, 2026-11-19, `ubuntu-24.04` runners, first run at `deef687`): **all 16 checks passed on the first
+run**: the changed-area filter, Backend (with PostgreSQL and Redis service containers, 4 min 6 s), Backend security (`pip-audit`,
+`bandit`, lock hashes, now including the local-speech lock), Web, Android (unit tests, lint, debug APK), Infrastructure and tooling
+(Compose, Bicep, workflows, scripts), both container images built and scanned by Trivy, `gitleaks`, CodeQL for Java and Kotlin,
+JavaScript and TypeScript, and Python (no open alert), dependency review, the `ci-ok` gate, and the informational Playwright job
+(12 min 41 s). **The Docker SIP end-to-end tests do not run in CI** (they skip unless `SPARTA_SIP_E2E=1`): their results above are from
+the local runs.
+
 **Phase 2 on GitHub** (pull request 11, 2026-11-18, `ubuntu-24.04` runners): the first run failed three things that did not
 show locally, all fixed in `e468311`. `requirements-dev.lock` carried five md5 hashes for the Speech SDK (the package mirror
 it was generated through publishes them), which pip's hash-checking mode refuses, so the backend and backend-security jobs
