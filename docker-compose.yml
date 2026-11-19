@@ -56,6 +56,9 @@ services:
       context: ./services/api
       args:
         SPARTA_EXTRAS: ${SPARTA_EXTRAS-azure,otlp}
+        # 1 adds free local speech (faster-whisper and Piper, which is GPL-3.0) to the image; `python scripts/sip_local.py init`
+        # sets it when you choose local speech. The models are never in the image: they are mounted (see volumes).
+        SPARTA_LOCAL_SPEECH: ${SPARTA_LOCAL_SPEECH:-0}
         PIP_INDEX_URL: ${PIP_INDEX_URL:-https://pypi.org/simple}
     init: true
     restart: unless-stopped
@@ -63,6 +66,9 @@ services:
     env_file:
       - path: .env
         required: false
+    networks:
+      - default
+      - sip # Asterisk's own network: it reaches the API here, and nothing else (no Postgres, no Redis)
     environment:
       SPARTA_ENV: ${SPARTA_ENV:-development}
       SPARTA_AUTH_MODE: ${SPARTA_AUTH_MODE:-dev}
@@ -78,6 +84,14 @@ services:
       SPARTA_AUTO_MIGRATE: "false"
       SPARTA_PUBLIC_BASE_URL: http://localhost:${SPARTA_API_PORT:-8000}
       SPARTA_CORS_ORIGINS: http://localhost:${SPARTA_WEB_PORT:-3000},http://127.0.0.1:${SPARTA_WEB_PORT:-3000}
+      # Local SIP (the optional `asterisk` profile below): the API listens for Asterisk's media connection on the compose
+      # network only (port 8090 is not published) and accepts it only from the `asterisk` service. Unused unless
+      # SPARTA_TELEPHONY_PROVIDER=asterisk, which `python scripts/sip_local.py init` writes to .env.
+      SPARTA_ASTERISK_MEDIA_BIND: ${SPARTA_ASTERISK_MEDIA_BIND:-0.0.0.0}
+      SPARTA_ASTERISK_MEDIA_PEERS: ${SPARTA_ASTERISK_MEDIA_PEERS:-asterisk}
+      # Where the local speech models are inside the container (the host folder is mounted read-only below). Nothing is
+      # ever downloaded at run time: `python -m sparta models fetch` (from services/api) puts them in the host folder.
+      SPARTA_LOCAL_MODEL_DIR: /models
     # Apply migrations, create the development owner, then serve. `exec` hands PID 1 to the server so it receives SIGTERM.
     command:
       - sh
@@ -88,6 +102,8 @@ services:
     volumes:
       # Development keys (SPARTA_DATA_KEYS / SPARTA_PEPPER unset) live here, so stored data survives restarts.
       - sparta-api-data:/var/lib/sparta
+      # Local speech models (read-only), fetched on the host with `python -m sparta models fetch` run from services/api.
+      - ${SPARTA_MODELS_HOST_DIR:-./services/api/var/models}:/models:ro
     depends_on:
       postgres:
         condition: service_healthy
@@ -133,7 +149,59 @@ services:
     security_opt:
       - no-new-privileges:true
 
+  # LOCAL SIP (optional): Asterisk, so a SIP phone (Linphone) can call Sparta over your own network with no Twilio, no phone
+  # number and no paid service. This is NOT a phone-network (PSTN) connection. Needs the dev secrets first:
+  #   python scripts/sip_local.py init                 # writes .env (provider + callback secret) and .env.sip (SIP passwords)
+  #   docker compose --profile asterisk up --build     # then register a SIP client: python scripts/sip_local.py show --reveal
+  # SIP and RTP are published on 127.0.0.1 by default (Linphone on the same machine). To reach it from a phone on your Wi-Fi
+  # set SPARTA_ASTERISK_BIND to this machine's LAN address and SPARTA_ASTERISK_EXTERNAL_IP to the same address (README).
+  asterisk:
+    profiles: ["asterisk"]
+    build:
+      context: ./infrastructure/asterisk
+    image: sparta-asterisk:local
+    init: true
+    restart: unless-stopped
+    # The SIP passwords live in .env.sip only, so the API container never sees them.
+    env_file:
+      - path: .env.sip
+        required: false
+    environment:
+      SPARTA_WEBHOOK_SECRET: ${SPARTA_ASTERISK_WEBHOOK_SECRET:-}
+      SPARTA_API_HOST: api
+      SPARTA_API_PORT: "8000"
+      SPARTA_MEDIA_PORT: "8090"
+      ASTERISK_MAX_CALLS: ${SPARTA_ASTERISK_MAX_CALLS:-2}
+      ASTERISK_MAX_CALL_SECONDS: ${SPARTA_ASTERISK_MAX_CALL_SECONDS:-600}
+      ASTERISK_EXTERNAL_IP: ${SPARTA_ASTERISK_EXTERNAL_IP:-}
+      ASTERISK_ALLOWED_NETS: ${SPARTA_ASTERISK_ALLOWED_NETS:-127.0.0.0/8,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16}
+    ports:
+      - "${SPARTA_ASTERISK_BIND:-127.0.0.1}:${SPARTA_ASTERISK_SIP_PORT:-5060}:5060/udp"
+      - "${SPARTA_ASTERISK_BIND:-127.0.0.1}:10000-10019:10000-10019/udp"
+    # Asterisk parses SIP and RTP from your LAN before anyone has authenticated, so it must not share a network with
+    # Postgres and Redis (dev passwords) or the web app. It shares one with the API only, which it needs for its callbacks.
+    networks:
+      - sip
+    depends_on:
+      api:
+        condition: service_healthy
+    read_only: true
+    tmpfs:
+      - /etc/asterisk:uid=10001,gid=10001,mode=0750
+      - /run/asterisk:uid=10001,gid=10001,mode=0750
+      - /var/lib/asterisk:uid=10001,gid=10001,mode=0750
+      - /var/log/asterisk:uid=10001,gid=10001,mode=0750
+      - /var/spool/asterisk:uid=10001,gid=10001,mode=0750
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
 volumes:
   sparta-pgdata:
   sparta-redis:
   sparta-api-data:
+
+networks:
+  sip: {}
