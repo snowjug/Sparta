@@ -34,7 +34,7 @@ shrinks to the Phase 3 commits; if it is closed, Phase 3 must be rebased.
 
 | Suite | Baseline | Final (`a600b87`; later commits change documentation only) |
 |---|---|---|
-| Backend pytest | 2321 passed | **2900 passed**, 56 skipped (36 Docker end-to-end tests, 12 needing `numpy`, 8 needing the downloaded models) |
+| Backend pytest | 2321 passed | **2902 passed**, 56 skipped (36 Docker end-to-end tests, 12 needing `numpy`, 8 needing the downloaded models) |
 | Web vitest | 310 passed (from the Phase 2 README) | **318 passed** |
 | Web Playwright | 112 passed (from the Phase 2 README) | **112 passed** |
 | Android JVM unit tests | 634 passed; lint 0 errors, 21 warnings (from the Phase 2 README) | **641 passed, 0 skipped** (forced re-run); lint 0 errors, 21 warnings |

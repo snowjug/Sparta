@@ -388,7 +388,7 @@ Windows 11 machine, with this repository's own tools. The branch was cut from pu
 | Check | Result |
 | --- | --- |
 | `scripts\check.ps1 -Security` (what CI runs) | all 13 steps passed (603 s) |
-| Backend `pytest`, with PostgreSQL 16 and Redis 7 (re-run on the final tree) | 2900 passed, 56 skipped in 7 min 34 s (Phase 2: 2321 passed; the 13-step run above had 54 skipped, before two real-speech cases were added to the Docker tests). The skips are 36 Docker end-to-end tests (28 with tone speech and 8 with real speech, next rows), 12 that need `numpy` and 8 that need the downloaded speech models; both of the last two are optional extras |
+| Backend `pytest`, with PostgreSQL 16 and Redis 7 (re-run on the final tree) | 2902 passed, 56 skipped in 5 min 29 s (Phase 2: 2321 passed; the 13-step run above had 2900 passed and 54 skipped, before two real-speech cases and two doctor tests were added). The skips are 36 Docker end-to-end tests (28 with tone speech and 8 with real speech, next rows), 12 that need `numpy` and 8 that need the downloaded speech models; both of the last two are optional extras |
 | `pytest tests/unit/providers_local`, in the optional speech environment (`numpy`, faster-whisper, Piper, models in `SPARTA_LOCAL_MODEL_DIR`) | 279 passed, 0 skipped (49 s), including the 20 tests the row above skips |
 | `ruff check`, `ruff format --check`, `mypy src` | clean; no issues in 133 source files |
 | `python -m sparta openapi --check` | the contract is current |
