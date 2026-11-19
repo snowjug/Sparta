@@ -88,6 +88,10 @@ def create_app(settings: Settings | None = None, *, container: Container | None 
             setup_tracing(settings)
             built = await Container.build(settings)
             await built.start()
+            try:
+                await built.calls.warm_owner()
+            except Exception as exc:  # best effort: the first call builds the matchers itself
+                log.warning("owner matcher warm-up failed", extra={"error_type": type(exc).__name__})
             app.state.container = built
             http = httpx.AsyncClient(timeout=5.0, follow_redirects=False)
             app.state.authenticator = build_authenticator(settings, http)

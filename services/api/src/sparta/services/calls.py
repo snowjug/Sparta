@@ -1434,14 +1434,25 @@ class CallService:
 
     async def incoming_call(self, call: IncomingCall) -> str:
         """A real provider delivered a call: create it for the configured owner and return its Sparta id."""
-        owner = self.settings.telephony_owner_user_id or self.settings.dev_user_id
-        principal = Principal(
-            id=owner, display_name=self.settings.dev_user_name if owner == self.settings.dev_user_id else ""
-        )
+        # A label is for a caller that has no number to show (a SIP extension). A name a carrier passes along with a number is
+        # the caller's own claim, so it is not shown next to it.
+        label = call.display_name if not call.caller_number else None
         detail = await self._create(
-            principal, self.telephony, CreateCallRequest(caller_label=call.display_name), incoming=call
+            self.telephony_owner(), self.telephony, CreateCallRequest(caller_label=label), incoming=call
         )
         return detail.id
+
+    def telephony_owner(self) -> Principal:
+        """The owner that calls delivered by a provider (nobody in the app started them) belong to."""
+        owner = self.settings.telephony_owner_user_id or self.settings.dev_user_id
+        return Principal(
+            id=owner, display_name=self.settings.dev_user_name if owner == self.settings.dev_user_id else ""
+        )
+
+    async def warm_owner(self) -> None:
+        """Build the telephony owner's matchers at start-up. Without it the first call after a restart waits for them
+        inside the provider's webhook, and a carrier or PBX only waits a few seconds for that answer."""
+        await self.warm_matchers(self.telephony_owner())
 
     async def caller_audio(self, call_id: str, pcm16: bytes, sample_rate: int) -> None:
         rt = self._runtimes.get(call_id)

@@ -5,7 +5,7 @@ import json
 from datetime import timedelta
 
 import pytest
-from call_harness import OWNER, Harness, running_container
+from call_harness import OWNER, Harness, make_settings, running_container
 from pydantic import SecretStr
 from sqlalchemy import select
 
@@ -42,6 +42,24 @@ async def test_creating_a_call_warms_the_owners_matchers():
         assert not c.engine.is_warm(OWNER.display_name)
         await Harness(c).start(number="+919800000061")
         assert c.engine.is_warm(OWNER.display_name)
+
+
+async def test_the_telephony_owners_matchers_can_be_built_ahead_of_the_first_call():
+    async with running_container() as c:
+        assert not c.engine.is_warm(OWNER.display_name)
+        await c.calls.warm_owner()
+        assert c.engine.is_warm(OWNER.display_name)
+
+
+async def test_starting_the_server_builds_the_telephony_owners_matchers(monkeypatch: pytest.MonkeyPatch):
+    # A provider's webhook must not be where the matchers get built: the first call after a restart would wait for
+    # them there (seconds on a busy host), and a PBX or carrier gives up on a webhook that slow.
+    from sparta.api.main import create_app
+
+    monkeypatch.setattr("sparta.api.main.configure_logging", lambda *_args, **_kwargs: None)
+    app = create_app(make_settings())
+    async with app.router.lifespan_context(app):
+        assert app.state.container.engine.is_warm(OWNER.display_name)
 
 
 # -------------------------------------------------------------------------- cached request responses
