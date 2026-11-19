@@ -14,6 +14,15 @@ building, role set-up, permissions, backend configuration, tests, and a candid l
 Every simulated thing is labelled "Simulated". "Screened on this phone" calls say they have no transcript, no analysis and
 no live controls. There is no call recording anywhere in the app.
 
+**Local SIP (Phase 3) and this app.** Sparta can now take a *voice* call from a SIP phone on your own network through a local
+Asterisk (`TELEPHONY_PROVIDER=asterisk`, [TELEPHONY.md](TELEPHONY.md) section 4.5). This app does **not** place or answer that call:
+a separate SIP app (Linphone, an open-source client) does, and the Sparta app is where you then watch it. For such a call the app
+shows the provider as **Local SIP (Asterisk)**; the web app shows `Connection: Local SIP`, `PSTN: Not configured` and a Take over
+that rings a SIP extension. Nothing about local SIP lets a normal mobile or landline call reach Sparta. The Linphone set-up and test
+script are in [ANDROID_SIP_TESTING.md](ANDROID_SIP_TESTING.md); it is a checklist that has **not been run on a phone**. The app's
+Protection and Diagnostics rows show the raw provider string for it, and `status_live_calls_yes` still says "forwarded calls";
+these wording details were left alone on purpose in Phase 3.
+
 ## 2. Prerequisites
 
 * **JDK 17** (`JAVA_HOME`).

@@ -26,6 +26,7 @@ flowchart LR
     SIM["Built-in simulator"]
     ACS["Azure Communication Services<br/>(live behaviour UNVERIFIED)"]
     TWI["Twilio Media Streams<br/>(live behaviour UNVERIFIED)"]
+    AST["Asterisk, local SIP<br/>(a SIP client verified in Docker; no PSTN)"]
     OTH["Other provider<br/>(plugin + signed webhooks)"]
   end
   subgraph API["services/api, package sparta"]
@@ -53,15 +54,26 @@ flowchart LR
   SIM --- PORTS
   ACS -->|"signed webhooks, media socket"| HTTP
   TWI -->|"signed webhooks, media socket"| HTTP
+  AST -->|"dialplan callbacks, AudioSocket media"| HTTP
   OTH -->|"signed webhooks"| HTTP
   PORTS -->|"answer, play, hang up, transfer"| ACS
   PORTS -->|"TwiML answer, REST hang up, redirect"| TWI
+  PORTS -->|"paced audio frames, hang up, ring the owner extension"| AST
 ```
 
 The native Android screening role (`CallScreeningService`) is a separate capability: it can allow, silence or reject a
 call on the phone and report the decision to the backend, but it cannot answer, bridge, record or hear a call
 ([TELEPHONY.md](TELEPHONY.md), [ANDROID_SETUP.md](ANDROID_SETUP.md)). The AI conversation happens only for calls that
-reach a telephony provider (the simulator, or a provider that delivers real calls).
+reach a telephony provider (the simulator, a provider that delivers real calls, or a SIP phone through the local Asterisk).
+
+**Local SIP (Phase 3).** Asterisk is a separate container, not part of the Python service: it registers SIP phones and routes
+extension 6000 to Sparta, which sees it as one more `TelephonyProvider` (`telephony/asterisk/`). Two channels connect them: three
+authenticated HTTP callbacks from the dialplan (`/webhooks/asterisk/incoming|next|ended`) and one AudioSocket TCP connection per
+call (Sparta listens, Asterisk connects) carrying 8 kHz PCM both ways. Everything after the audio arrives is the same code as for
+every other provider ([TELEPHONY.md](TELEPHONY.md) section 4.5, [DECISIONS/ADR-ASTERISK-MEDIA-BRIDGE.md](DECISIONS/ADR-ASTERISK-MEDIA-BRIDGE.md)).
+The recogniser and the voice behind it can be local (faster-whisper and Piper), Azure, or a test-only tone-coded `fake`
+([MULTILINGUAL_SPEECH.md](MULTILINGUAL_SPEECH.md) section 11). At server start `Container.warm_up` builds the telephony owner's
+matchers and loads any local model, so the first call does not wait for them inside the provider's webhook.
 
 ## 2. Packages
 
@@ -73,8 +85,8 @@ All paths are under `services/api/src/sparta/`.
 | `language/` | Language packs (`packs/*.toml`), registry, script and lexicon detector, text normalisation | `domain` |
 | `risk/` | Safety policy (`policies/default-v1.toml`), signal matchers, risk scoring, claim extraction | `domain`, `language` |
 | `orchestrator/` | `ConversationEngine` (pure, deterministic), state machine, reply planner, output validator, summary | `clock`, `domain`, `language`, `providers` (the SSML duration estimate only), `risk` |
-| `providers/` | Ports and adapters for speech-to-text, text-to-speech, conversation model and voice-activity detection; simulators; Azure adapters; resilience wrapper | `clock`, `config`, `domain`, `observability` |
-| `telephony/` | Telephony port, simulator, Azure Communication Services adapter, Twilio adapter (and its mu-law codec), webhook verification | `clock`, `config`, `domain`, `observability`, `providers` |
+| `providers/` | Ports and adapters for speech-to-text, text-to-speech, conversation model and voice-activity detection; simulators; Azure adapters; the optional local faster-whisper and Piper adapters, their hash-checked model manifest and the test-only tone-coded `fake` speech; resilience wrapper | `clock`, `config`, `domain`, `observability` |
+| `telephony/` | Telephony port, simulator, Azure Communication Services adapter, Twilio adapter (and its mu-law codec), the Asterisk provider with its AudioSocket media layer (`telephony/asterisk/`), webhook verification | `clock`, `config`, `domain`, `observability`, `providers` |
 | `db/` | SQLAlchemy models, repository, field encryption, async sessions, Alembic runner | `config`, `domain` |
 | `services/` | Application services that apply side effects: `CallService`, `OwnerService`, `SimulatorService`, `AudioService`, `AudioPipeline`, retention, background jobs, live hub, key-value store, rate limiter, composition root (`container.py`) | `clock`, `config`, `db`, `domain`, `language`, `logging_setup`, `observability`, `orchestrator`, `providers`, `risk` (the owner-name replacement before a model call), `telephony` |
 | `api/` | FastAPI app factory, middleware, authentication, routers | `config`, `db`, `domain`, `logging_setup`, `observability`, `providers`, `services`, `telephony` |
@@ -111,7 +123,7 @@ above) matches these rules.
 3. **The caller speaks.** The text reaches `CallService._submit_turn` in one of these ways: typed or scripted turns
    from the simulator, a browser speech result (`POST /calls/{id}/turns`), an uploaded clip
    (`POST /calls/{id}/audio`, transcribed in memory), or provider audio. Provider audio (Azure Communication Services
-   or Twilio media streaming) goes through `services/audio_pipeline.py`: energy-based voice-activity detection, a 300 ms
+   or Twilio media streaming, or the Asterisk AudioSocket connection) goes through `services/audio_pipeline.py`: energy-based voice-activity detection, a 300 ms
    pre-roll, one recognition stream per utterance (streaming through the Speech SDK when installed, so partials arrive as
    live captions), strictly ordered delivery, and barge-in when speech starts while the
    assistant is talking.

@@ -12,23 +12,30 @@ Phase 2 added a second programmable-number provider (Twilio, section 4.3) becaus
 customer and has none in India, and a preflight command: `python -m sparta doctor --provider azure|twilio --online`
 reports what is configured, what answers and what can only be proven by a real call.
 
+Phase 3 added a fourth path that needs **no provider account and no number**: **local SIP over Asterisk** (section 4.5), where a
+SIP phone on the owner's own network calls an open-source PBX that streams real two-way audio to Sparta. It is *not* a
+phone-network (PSTN) connection. A separate SIP client (baresip, in Docker) has called it for real; no physical phone has.
+`python -m sparta doctor --provider asterisk` is its preflight.
+
 Related: [ARCHITECTURE.md](ARCHITECTURE.md) (ports and call flow), [ANDROID_SETUP.md](ANDROID_SETUP.md),
 [research/acs-android-verification.md](research/acs-android-verification.md) and
 [research/phase2-provider-verification.md](research/phase2-provider-verification.md) (documentation facts and their
 sources), [PHASE2_REAL_WORLD_PLAN.md](PHASE2_REAL_WORLD_PLAN.md), [SAFETY_MODEL.md](SAFETY_MODEL.md),
 [PRIVACY.md](PRIVACY.md), [DEPLOYMENT.md](DEPLOYMENT.md).
 
-## 1. Three paths, three different capabilities
+## 1. Four paths, four different capabilities
 
 | Path | What it does | What it cannot do | Status |
 | --- | --- | --- | --- |
 | **Simulator** (`TELEPHONY_PROVIDER=simulator`, the default) | A complete, credential-free provider for development and demos: scripted, typed, browser-microphone and uploaded-audio calls through the real conversation engine, with live events, barge-in, silence timers and a labelled takeover simulation | Carry a real call or real audio. Every call is `simulated: true`, `two_way_audio: false`, `live_calls_supported: false` | Implemented and tested (`telephony/simulator.py`) |
 | **Native Android call screening** (`CallScreeningService`) | On the phone, for each incoming call: allow, silence the ringer or reject, from local rules and synced block and trust lists; reports the decision to the backend as a `screening_only` call | Answer a call, speak to the caller, bridge a call, record, or hear any call audio. It receives call metadata only | Implemented in `apps/android`; **never run on a device or emulator** ([ANDROID_SETUP.md](ANDROID_SETUP.md) section 10) |
 | **Programmable-number provider** (`TELEPHONY_PROVIDER=azure`, `twilio` or `other`) | Receives calls delivered to a provider-owned number, answers them, streams caller audio to Sparta, plays the assistant's speech, hangs up and can transfer to the owner | Intercept calls to the owner's own SIM by itself. The owner has to forward unknown or unanswered calls to the provider's number (section 3) | Azure and Twilio adapters implemented against fakes of the SDK, the REST API and the media socket; **UNVERIFIED live**. The `other` route is a plugin hook plus signed webhooks, tested only with a stand-in plugin |
+| **Local SIP over Asterisk** (`TELEPHONY_PROVIDER=asterisk`) | Takes the real audio of a **SIP call from a phone on the owner's own network** through a local Asterisk, speaks back, handles barge-in, refuses and hangs up, and can ring an owner SIP extension. Free: no provider account, no phone number | Receive a call from the phone network. An ordinary mobile or landline caller cannot reach it: that needs a paid carrier, a phone number and a SIP trunk, which are **not** delivered. It never dials out. | Verified in Docker with a headless SIP client and a machine voice (section 4.5); **never run with a physical phone** |
 
-The AI conversation exists only on the first and third paths. On a normal cellular call that reaches only the Android
-phone, Sparta can screen (allow, silence, reject) but cannot talk to the caller. The apps and `CallDetail.capabilities`
-say so for each call and never imply otherwise.
+The AI conversation exists only on the third and fourth paths (and, simulated, on the first). On a normal cellular call that
+reaches only the Android phone, Sparta can screen (allow, silence, reject) but cannot talk to the caller. The apps and
+`CallDetail.capabilities` say so for each call and never imply otherwise: a local SIP call is labelled `Connection: Local SIP`
+and `PSTN: Not configured`.
 
 ## 2. Native Android capabilities and limits
 
@@ -251,9 +258,62 @@ For a provider that can speak WebSockets and webhooks, such as an Indian program
    signature = hmac.new(secret.encode(), f"{timestamp}.{nonce}.".encode() + body, hashlib.sha256).hexdigest()
    ```
 
+### 4.5 Local SIP over Asterisk (`TELEPHONY_PROVIDER=asterisk`)
+
+A free path for a **SIP phone on the owner's own network**: no provider account, no phone number. A separate, locked-down Asterisk 22
+LTS container (`infrastructure/asterisk/`) registers the phones, routes extension **6000** to Sparta and nothing else, and streams
+the call's audio to Sparta over **AudioSocket** (8 kHz PCM16, 20 ms frames over TCP). Why AudioSocket and not ARI or
+`chan_websocket` is in [DECISIONS/ADR-ASTERISK-MEDIA-BRIDGE.md](DECISIONS/ADR-ASTERISK-MEDIA-BRIDGE.md). The code is
+`telephony/asterisk/` (`protocol.py` the wire format, `session.py` one connection, `pacer.py` 20 ms pacing, `server.py` the
+listener and the peer allow-list, `provider.py` the `TelephonyProvider`) plus three callback routes in `api/routers/webhooks.py`.
+
+**One call:**
+
+1. A SIP phone registers as **6001** (digest authentication, a random 32-character password) and dials **6000**.
+2. The dialplan applies its own limits (`GROUP()` calls at once, `TIMEOUT(absolute)` seconds), then POSTs
+   `/api/v1/webhooks/asterisk/incoming` (HTTP Basic with a shared secret, checked in constant time, from Asterisk's address only).
+   Sparta answers `ACCEPT <single-use media id>` or `REJECT <reason>`.
+3. Asterisk answers the call and opens `AudioSocket(<media id>, api:8090)`. Sparta's listener (compose network only, never
+   published) accepts only Asterisk, requires the id as the first message within 3 s, accepts it once and refuses a second stream.
+4. Caller audio goes through the same pipeline as every provider (voice-activity detection, recognition, the deterministic engine);
+   the reply is synthesised to 8 kHz PCM and sent as paced 20 ms frames, about 40 ms ahead of real time. A caller who talks over it
+   cancels the playback task, so at most that lead (plus the phone's jitter buffer) is still on its way.
+5. **Take over** closes the socket gracefully, the dialplan asks `/next`, and only if Sparta says `DIAL 6002` (once) does
+   it run `Dial(PJSIP/6002,30,r)`: a **SIP extension**, never a phone number. If 6002 does not answer the call ends.
+6. When the call is over, the dialplan POSTs `/ended` (idempotent).
+
+**What the API and the apps report:** `provider: asterisk`, `connection: local_sip`, `pstn: not_configured`,
+`takeover_via: sip_extension`, and `two_way_audio` true only while the media connection is up. A SIP caller has no phone number, so
+the call is labelled `SIP 6001` (or `Local SIP caller`), no per-number throttle applies, and the daily caps and the line limit still
+do. DTMF is received and ignored.
+
+**Settings** (the full list with comments is in `.env.example`): `SPARTA_TELEPHONY_PROVIDER=asterisk`,
+`SPARTA_ASTERISK_WEBHOOK_SECRET` (at least 24 characters), `SPARTA_ASTERISK_MEDIA_BIND`/`_PORT`/`_PEERS` (who may open the media
+connection: an address, a range no wider than a /8, or a host name), `SPARTA_ASTERISK_EXTENSION` and
+`SPARTA_ASTERISK_OWNER_EXTENSION`, and the speech providers (`local` for free local speech). `python scripts/sip_local.py init` writes
+a working set; `python -m sparta doctor --provider asterisk [--online]` checks it, including the shipped Asterisk files.
+
+**Verified, in Docker, with a headless baresip client and a machine voice** (`python scripts/sip_e2e.py`, 28 scenarios; and
+`--speech local`, 6 scenarios with real Whisper and Piper): registration with the right password and refusal of a wrong one or an
+unknown user; a call that is answered with the AI disclosure; an OTP request refused by voice with the call ended and a summary; a
+caller who talks over the greeting stopping it; a legitimate caller; noise and silence; Asterisk's own call limit; six numbers that
+cannot be dialled; an unauthenticated INVITE and OPTIONS answered with nothing but a challenge; a host that is not Asterisk unable
+to open the media socket; the module and configuration lock-down; and no secret in the container output. The latencies, labelled by
+how they were measured, are in [PHASE3_ASTERISK_PLAN.md](PHASE3_ASTERISK_PLAN.md).
+
+**UNVERIFIED:** a physical phone and a real SIP app (Linphone), a human voice, an Indian accent, a noisy line, Wi-Fi and firewall
+behaviour on a real network, take-over to a second real phone, and anything over the phone network. The checklist for the phone is
+[ANDROID_SIP_TESTING.md](ANDROID_SIP_TESTING.md).
+
+**Not delivered, on purpose:** PSTN. Reaching ordinary phone numbers needs a paid carrier, a phone number (DID) and a SIP trunk,
+plus a legal review ([PRIVACY.md](PRIVACY.md) section 13). The configuration has no trunk and no outbound route, and the dialplan
+cannot dial out. SIP and RTP are not encrypted; the container does not limit failed logins
+([SECURITY_REVIEW_PHASE3.md](SECURITY_REVIEW_PHASE3.md)).
+
 ## 5. Limitations
 
-* No live call has been placed through any provider; no audio has been heard by a person.
+* No call over the **phone network** has been placed through any provider. A local SIP call has been made (to Asterisk, from a
+  headless SIP client in Docker, with a machine voice); no audio has been heard by a person.
 * One owner per deployment for provider calls (section 3).
 * Azure speech recognition streams through the Speech SDK when it is installed (partials and a final per utterance, one
   connection per utterance); without the SDK it is per utterance over REST with no partials. Neither has recognised a real

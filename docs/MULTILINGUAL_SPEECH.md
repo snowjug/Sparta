@@ -16,6 +16,9 @@ Scope and honesty notes:
   [research/phase2-provider-verification.md](research/phase2-provider-verification.md)). Phase 2's Hinglish and Kanglish
   journeys ([PHASE2_CONTROLLED_RESULTS.md](PHASE2_CONTROLLED_RESULTS.md)) feed *scripted* transcripts to the engine: they
   show what the engine does with a correct transcript, not that Azure produces one.
+* Phase 3 added free **local** speech (faster-whisper and Piper, section 11). It *was* run, on real audio, on one machine: it
+  recognises English, is unreliable for Hindi and cannot recognise Kannada with the small model. That is measured, not
+  assumed, and it is the only recognition in this repository that has heard audio.
 * Examples marked "verified by running" were executed on 2026-11-18 against commit `117752e` (`LanguageDetector.detect`,
   `SignalDetector.detect` and `ConversationEngine.on_caller_turn`). On the final tree of the same day (commit `5f980d1`,
   with the fixes in [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) section 6) the development-split evaluation was run
@@ -299,3 +302,51 @@ recogniser error.
    have a default voice and every English template key (tested).
 4. Add scenarios to the **dev** split and tune there; keep the test split untouched (see
    [SAFETY_MODEL.md](SAFETY_MODEL.md#13-changing-the-rules)).
+
+## 11. Free local speech (Phase 3): what it can and cannot do
+
+`SPARTA_STT_PROVIDER=local` and `SPARTA_TTS_PROVIDER=local` run recognition and synthesis on the machine itself, with no cloud
+account: **faster-whisper** (MIT, CPU int8, the `small` model by default) hears the caller and **Piper** (a GPL-3.0 engine) speaks.
+They are an optional extra (`pip install "sparta-api[local-speech]"`, or `SPARTA_LOCAL_SPEECH=1` in the Docker build), never part of
+the default install, and they never download anything while running: `python -m sparta models fetch` is the only command that
+does (from Hugging Face, pinned to a commit and a SHA-256 per file, redirects not followed), and `models verify` re-checks the files.
+ONNX Runtime's telemetry is switched off. This is an **experimental developer stack**, not a quality claim.
+
+**What works, measured on one Windows laptop (CPU only, shared with other work, so treat the times as upper bounds):**
+
+| Language | Recognition (Whisper `small`) | Voice (Piper) |
+| --- | --- | --- |
+| English (`en-IN`) | **Works.** "I'm calling from your bank. Tell me your OTP." spoken by Piper, down-sampled to 8 kHz and read back by Whisper came back word for word (confidence 0.77). No claim is made for telephone-band audio or Indian-English accents: they were not measured. | `en_US-ljspeech-medium` (an American voice; there is no Indian-English voice in the official catalogue) |
+| Hindi (`hi-IN`) | **Unreliable.** The Devanagari OTP request came back as "सर आपका के वाईसी अप्देट करना है, क्रपिया उतीपी बताएगे" (the word for OTP became "उतीपी") with a confidence of 0.69 to 0.73, so it passes the poor-audio gate while wrong. | `hi_IN-priyamvada-medium` |
+| Kannada (`kn-IN`) | **Not usable.** The Kannada sentence came back in Devanagari script as the wrong words (confidence 0.50). The research figure for `small` is a 100% word error rate on FLEURS Kannada. | `kn_IN-syspin_male-medium` (a community voice) |
+| Hinglish, Kanglish | Not measured separately; they inherit the Hindi and Kannada limits. | |
+
+Confidence is **capped** where the small model is known to be poor (Hindi and Kannada), so that the engine treats such a transcript
+as poor audio instead of acting on it; a forced Whisper language reports a probability of 1.0, which is not a confidence and is
+ignored. The deterministic rules run on whatever text comes back, so a wrong transcript can **miss** a scam: a Hindi or Kannada
+caller is not reliably screened with the small model. A larger model (`large-v3-turbo`) is the next thing to try; it was not
+downloaded or measured (the machine had too little free memory), and its cost is an extrapolation, not a measurement.
+
+**Measurements** (local, this machine, CPU int8, `small`, shared machine):
+
+| What | Value |
+| --- | --- |
+| Start-up (warm-up, now done once at server start) | import 3.5 s, model load 2.8 s, first inference 2.6 s; each voice loads in about 1.5 s; memory 94 MB to 679 MB with the model and three voices. The very first start after a download, with the CPU saturated: recogniser warm-up 51.7 s, voices 18.2 s |
+| Recognising a 3.7 s English utterance (15 runs) | p50 2.69 s, p95 4.02 s with the language forced; p50 4.56 s with automatic language detection (it runs the encoder twice). Whisper always processes a padded 30 s window, which is about 2.4 s of the cost |
+| Piper, first audio chunk | English 0.29 s p50 (5.2 s of speech), Hindi 0.39 s, Kannada 0.44 s; real-time factor about 0.10 |
+| Stopping speech on a barge-in | the audio ends about 0.1 ms after the stop; the next line starts about 66 ms later |
+| Event-loop delay while recognising | a 5 ms ticker was up to 42 ms late (the Asterisk playback lead is 40 ms) |
+
+Known limits that follow from the design: the language is sticky for the rest of a call once the first utterance has set it;
+with one inference worker, recognitions from different calls queue behind each other; a missing voice raises a clear error
+instead of speaking another language (an English fallback would need the English text carried through the speech request, which
+it is not); and a decoder limit stops the runaway loops that the small model produced on Hindi and Kannada (which once held the only
+worker for 34 to 53 s).
+
+**Licences, which need a legal review before any distribution:** faster-whisper and the Whisper weights are MIT. Piper's engine is
+**GPL-3.0-or-later** (copyleft), which is why it is an opt-in extra and a separate lock file. The English voice is trained on the
+LJ Speech dataset (public domain). The Hindi voice's dataset licence is **CC-BY-NC-SA-4.0** (non-commercial, share-alike) and the grant
+for the trained weights is not established; the Kannada voice is a community model whose author states **non-commercial use only**.
+Do not use the Hindi and Kannada voices commercially without clearing this.
+
+**No native speaker has reviewed any of this**, and nothing here has been heard by a person on a phone.

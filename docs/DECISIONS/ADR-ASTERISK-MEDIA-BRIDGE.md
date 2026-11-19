@@ -83,10 +83,16 @@ RTP timestamps above roughly 80 ms of skew, so a long burst would only add jitte
   and are limited to the Asterisk container's network. The dialplan sanitises (`FILTER()`, `URIENCODE()`) every
   caller-controlled value it forwards; Sparta validates it again.
 * **Asterisk.** No anonymous endpoint, `identify_by=username`, `allow_unauthenticated_options=no`, `allow_transfer=no`.
-  The only dialplan context is `from-sparta-sip`, which can reach exactly 6000, 6001 and 6002; there is no PSTN, trunk or
-  wildcard outbound route. `GROUP()` limits concurrent calls and `TIMEOUT(absolute)` limits call length. SIP and RTP are
+  The only dialplan context is `from-sparta-sip`, which routes exactly **6000** (Sparta): 6001 and 6002 are the two registered
+  phones and hang up when dialled, and 6002 is rung only by the take-over step; there is no PSTN, trunk or wildcard outbound
+  route. `GROUP()` limits concurrent calls and `TIMEOUT(absolute)` limits call length. SIP and RTP are
   published on loopback by default; a LAN address is an explicit opt-in. Verbose and debug logging are off so that
   dialplan-expanded secrets are never written, and an end-to-end test greps the container output for the generated secrets.
+  In the compose file Asterisk is on its own network shared only with the API (not Postgres or Redis), and the container
+  refuses secrets that are short or repetitive and allowed networks wider than a /8.
+* **What this does not do.** The container has **no limit on failed logins** (it would need `NET_ADMIN`); a fail2ban filter for
+  Linux hosts is provided. The network ACL checks the packet's source address, which Docker Desktop rewrites. SIP and RTP are
+  cleartext. These are accepted and documented in [SECURITY_REVIEW_PHASE3.md](../SECURITY_REVIEW_PHASE3.md).
 * Threats considered in [THREAT_MODEL.md](../THREAT_MODEL.md) and [SECURITY_REVIEW_PHASE3.md](../SECURITY_REVIEW_PHASE3.md).
 
 ### Owner takeover

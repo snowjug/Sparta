@@ -168,6 +168,12 @@ Gaps in this release, stated plainly:
   writes audio.
 * Audio is not stored by Sparta; when Azure Speech is configured the audio **is sent to Azure** for recognition (section
   11). What Azure does with it is governed by Microsoft's terms and your Azure configuration; Sparta has not verified it.
+* **Local SIP and local speech (Phase 3).** With `TELEPHONY_PROVIDER=asterisk` the call's audio passes from the SIP phone to the
+  Asterisk container and from there over a TCP connection on the compose network to Sparta, in memory. The dialplan never calls a
+  recording application and Asterisk's call-detail and event logs are switched off, so Asterisk writes no recording and no call
+  record. With `SPARTA_STT_PROVIDER=local` and `SPARTA_TTS_PROVIDER=local` the audio is recognised and synthesised on the machine
+  and goes nowhere else. SIP and RTP between the phone and Asterisk are **not encrypted**: anyone who can read that network can hear
+  the call.
 
 ## 9. Logs, metrics and telemetry
 
@@ -238,6 +244,8 @@ This list is from the code; Microsoft's own retention and processing terms were 
 | Azure OpenAI | `SPARTA_LLM_PROVIDER=azure_openai` | Per turn: the caller's text (at most 600 characters), up to six earlier turns of **both** speakers (at most 300 characters each), already-detected signal codes and the language. The owner's display name is replaced by "the owner" in the caller's text, the earlier turns and the summary inputs before they reach the provider (`redact_owner_name` in `risk/matchers.py`, called from `services/calls.py`; `tests/integration/test_model_provider_input.py`). Words are compared in the detectors' canonical form, so accented names, repeated letters, a nukta spelled either way and possessives are found, and a full name becomes one "the owner". Name words shorter than three letters are not replaced, and a name written in another script than the profile's is sent as written. For a summary (`SPARTA_FEATURE_LLM_SUMMARIES=true`): the rules summary, which can contain the caller's claimed name and organisation, and up to 12 turns. An LLM summary is rejected if it contains a number, link or e-mail address that is not in the source | `providers/llm/azure_openai.py`, `services/calls.py` |
 | Azure Communication Services and Event Grid | `TELEPHONY_PROVIDER=azure` | Call signalling and media for the call; Event Grid delivers the caller number, display name and call identifiers to Sparta's webhook | `telephony/azure_acs.py` |
 | Twilio | `TELEPHONY_PROVIDER=twilio` | Twilio is the carrier of the call: it holds the caller's and the dialled number and the audio in transit and streams the caller's audio to Sparta (mu-law over a WebSocket). Sparta sends back the assistant's speech and, for a takeover, the owner's `takeover_number` and the caller id in TwiML. Sparta does not request a Twilio recording. Twilio's own logs, retention and recording defaults are Twilio's and were not checked | `telephony/twilio.py` |
+| Asterisk (a container you run) | `TELEPHONY_PROVIDER=asterisk` | Nothing leaves your network: the SIP phone, Asterisk and Sparta are all on it. Asterisk sees the SIP signalling and audio and sends Sparta the extension number (as a label such as "SIP 6001"), a channel id and the 8 kHz audio. Its container log holds IP addresses, extension numbers and failed-login lines, and no audio or transcript | `telephony/asterisk/`, `infrastructure/asterisk/` |
+| faster-whisper and Piper (on this machine) | `SPARTA_STT_PROVIDER=local`, `SPARTA_TTS_PROVIDER=local` | Nothing: recognition and synthesis run locally. The models are fetched once by `python -m sparta models fetch` from Hugging Face (pinned, SHA-256 checked); the providers never download. ONNX Runtime's telemetry is disabled by an environment variable; what it would transmit otherwise was not captured or verified | `providers/stt/local.py`, `providers/tts/local.py`, `providers/local_models.py` |
 | Identity provider (OIDC) | `SPARTA_AUTH_MODE=oidc` | Sparta fetches the issuer's public signing keys over HTTPS; users' tokens are sent to Sparta, not by Sparta | `api/auth.py` |
 | OpenTelemetry collector | `SPARTA_OTLP_ENDPOINT` and the `otlp` extra | Traces only. Sparta's spans carry route templates, status codes, timings, request ids, provider and stage names and call ids; FastAPI's own spans, which would carry the raw path and query string, are switched off (section 9) | `observability/tracing.py`, `api/main.py` |
 | Push providers (FCM, APNs) | none | Not implemented: push notifications are not sent | `services/notifier.py` |
@@ -247,7 +255,7 @@ Region, data-processing agreements and cross-border transfer for these services 
 
 ## 12. What Sparta does not do
 
-* It does not record calls and does not store raw audio.
+* It does not record calls and does not store raw audio. (The Asterisk container is not told to record either.)
 * It does not use caller audio or transcripts to train or fine-tune any model, and no code path does so. The optional
   research note in [experiments/unsloth/README.md](../experiments/unsloth/README.md) sets the conditions under which that
   could ever be considered; it ships no training code.

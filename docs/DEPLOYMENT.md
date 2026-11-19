@@ -424,6 +424,15 @@ Read [`docs/TELEPHONY.md`](TELEPHONY.md) and [`docs/research/`](research/). The 
   development API on a tunnel is for a short, supervised test. Dev tunnels need `--allow-anonymous` for the provider's
   requests to arrive; the API verifies the provider's signature or token itself. Neither a dev tunnel nor ngrok has been
   tested with this API.
+* **Local SIP over Asterisk (Phase 3) is not part of this deployment.** `TELEPHONY_PROVIDER=asterisk` is for a trusted local
+  network (a SIP phone on the owner's Wi-Fi): the Bicep template does not deploy Asterisk, SIP and RTP are not encrypted, and the
+  Asterisk container does not limit failed logins, so do not expose it to the internet. If you run the API with
+  `SPARTA_ENV=production` and that provider anyway, the usual guards apply (OIDC, PostgreSQL, Redis, a real recogniser and
+  voice; the test-only `fake` speech is refused), plus `SPARTA_ASTERISK_WEBHOOK_SECRET` of at least 24 characters and a media-peer
+  list no wider than a /8. It reaches no phone network: ordinary phone numbers need a paid carrier, a number and a trunk. See
+  [TELEPHONY.md](TELEPHONY.md) section 4.5 and [SECURITY_REVIEW_PHASE3.md](SECURITY_REVIEW_PHASE3.md). Free local speech
+  (`SPARTA_STT_PROVIDER=local`) adds a GPL-3.0 engine and non-commercial Hindi and Kannada voices: a licence decision before any
+  distribution ([MULTILINGUAL_SPEECH.md](MULTILINGUAL_SPEECH.md) section 11).
 * **Speech:** `en-IN`, `hi-IN` and `kn-IN` are supported for recognition and synthesis (use `centralindia`: `southindia`
   does not offer standalone Speech). The Speech SDK that streams recognition is part of the `azure` extra, imports in the
   runtime image without extra system packages (checked) and has not recognised a real caller. **Personal Voice** requires Microsoft

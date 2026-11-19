@@ -11,13 +11,16 @@ ended, and a legitimate call that looks urgent is flagged so that the owner can 
 risk level with the evidence behind it, and a transcript the owner can delete. The assistant converses in English, Hindi and
 Kannada and follows callers who mix them (Hinglish and Kanglish, written in Latin script).
 
-> **Status: a prototype that has only run against a built-in simulator and fakes.** Nothing in this repository has been
-> connected to a live phone network, a live speech service or a live language model, and no native Hindi or Kannada speaker
-> has reviewed the language packs or the evaluation data. Phase 2 added the code for a real telephone call (a Twilio
-> adapter, streaming Azure Speech recognition, a `sparta doctor` preflight, cost caps and safe failure handling) and proved
-> it against fakes only: **completion level A (code-complete), not a working phone line**
-> ([docs/PHASE2_REAL_WORLD_PLAN.md](docs/PHASE2_REAL_WORLD_PLAN.md)). Read [Limitations](#limitations) before relying on
-> any statement about real calls.
+> **Status: a prototype.** By default everything runs on a built-in simulator and fakes. Phase 3 adds a free, open-source
+> **local voice path**: a SIP phone on your own network calls an Asterisk PBX in Docker, which streams real two-way audio to
+> Sparta. A real SIP client (baresip, in Docker) has completed calls against it with real speech recognition and synthesis
+> (completion level B, with a machine-voice caller; [docs/PHASE3_ASTERISK_PLAN.md](docs/PHASE3_ASTERISK_PLAN.md)). **No
+> physical phone has called it, and nothing here is connected to the phone network (PSTN):** a friend dialling your mobile
+> number cannot reach Sparta this way, and that needs a paid carrier, a number and a SIP trunk that this repository does not
+> provide. The Twilio and Azure paths from Phase 2 have only run against fakes (**level A**). No native Hindi or Kannada
+> speaker has reviewed the language packs or the evaluation data, and the free local recogniser does **not** reliably
+> understand Hindi or Kannada: in the Docker test a Hindi, a Hinglish and a Kannada OTP request were all missed. Read
+> [Limitations](#limitations) before relying on any statement about real calls.
 
 ## Contents
 
@@ -26,6 +29,7 @@ Kannada and follows callers who mix them (Hinglish and Kanglish, written in Lati
 * [What is real and what is simulated](#what-is-real-and-what-is-simulated)
 * [Evaluation results](#evaluation-results)
 * [Quick start](#quick-start)
+* [Run Sparta voice locally without Twilio](#run-sparta-voice-locally-without-twilio)
 * [Try the simulator](#try-the-simulator)
 * [Configuration](#configuration)
 * [Testing](#testing)
@@ -40,17 +44,23 @@ Kannada and follows callers who mix them (Hinglish and Kanglish, written in Lati
 
 Three levels, and only the evidence listed counts:
 **A** code-complete (everything that does not need an external account is built and tested with fakes);
-**B** a real external telephone call reached Sparta and was answered, with real speech recognition and synthesis;
+**B** a real external call reached Sparta and was answered, with real speech recognition and synthesis;
 **C** B plus a physical Android phone, a monitored deployment, several real calls and a legal review.
-**This repository is at level A.**
+**The Twilio and Azure paths are at level A. The local SIP path is at level B with a machine-voice caller** (a real SIP client,
+real SIP, RTP and G.711, real recognition and synthesis, in Docker) **and not at level C**: no physical phone has called it. Level
+B here is *not* a phone-network (PSTN) call and not a human on a phone.
 
 | Area | Status | Evidence |
 | --- | --- | --- |
 | Simulator-based product (engine, rules, replies, apps, API) | **Verified** | Backend tests, web tests, Playwright, Android unit tests, CI; evaluation on synthetic scenarios |
 | Real-call path through the Twilio and ACS adapters, streaming speech recognition, owner takeover, cost caps, failure handling | **Verified against fakes only** | Adapter and API tests, plus a controlled matrix of whole calls over a real WebSocket with scripted speech services ([docs/PHASE2_CONTROLLED_RESULTS.md](docs/PHASE2_CONTROLLED_RESULTS.md)) |
-| A real call, real recognition, real voice, real model, real latency | **Unverified** | None was placed or measured. Needs an upgraded Twilio account and number, an Azure Speech resource and a public HTTPS URL ([docs/PHASE2_REAL_WORLD_PLAN.md](docs/PHASE2_REAL_WORLD_PLAN.md), section 6) |
+| **Local SIP (Asterisk): a separate SIP client registers, calls Sparta, hears the AI disclosure, is refused an OTP, interrupts the assistant, hangs up** | **Verified in Docker, with a machine voice** | `python scripts/sip_e2e.py` (28 tests, real Asterisk 22, real SIP, RTP and G.711, headless baresip) and `python scripts/sip_e2e.py --speech local` (6 tests with real faster-whisper and Piper: [docs/PHASE3_ASTERISK_PLAN.md](docs/PHASE3_ASTERISK_PLAN.md)) |
+| Local SIP on a physical Android phone (Linphone) | **Not run** | No phone was attached. [docs/ANDROID_SIP_TESTING.md](docs/ANDROID_SIP_TESTING.md) is the checklist |
+| Free local speech: English | **Verified**, with limits | A Piper voice's English line was recognised word for word by Whisper `small`; about 3 to 4 s per utterance on CPU. Telephone-band audio and accents were not measured |
+| Free local speech: Hindi, Hinglish, Kannada | **Unreliable (Hindi), not usable (Kannada)** | Measured: the OTP requests in all three were misheard and **not refused** ([docs/MULTILINGUAL_SPEECH.md](docs/MULTILINGUAL_SPEECH.md) section 11) |
+| A real call from the **phone network** (ordinary mobile or landline numbers) | **Not delivered** | Needs a paid carrier, a phone number and a SIP trunk; Twilio and ACS remain unverified live ([docs/PHASE2_REAL_WORLD_PLAN.md](docs/PHASE2_REAL_WORLD_PLAN.md), section 6) |
 | Azure deployment | **Unverified** | The Bicep compiles and lints; it has never been deployed |
-| Android: build, unit tests, lint | **Verified** | 634 JVM unit tests, lint, debug APK |
+| Android: build, unit tests, lint | **Verified** | 641 JVM unit tests, lint, debug APK |
 | Android on an emulator or a physical phone, call-screening role, notifications | **Not run** | No phone or emulator image was available; [docs/ANDROID_SETUP.md](docs/ANDROID_SETUP.md) has the checklist, every row "NOT RUN" |
 | Personal Voice | **Off, not usable** | Consent recording only, by design |
 | Legal and privacy review | **Not done** | [docs/PRIVACY.md](docs/PRIVACY.md), section 13 |
@@ -59,7 +69,7 @@ Three levels, and only the evidence listed counts:
 
 ```mermaid
 flowchart LR
-  CALLER["Caller"] --> PROVIDER["Telephony provider<br/>simulator, Twilio, Azure Communication Services, other"]
+  CALLER["Caller"] -->   PROVIDER["Telephony provider<br/>simulator, Twilio, Azure Communication Services, local SIP (Asterisk), other"]
   PROVIDER --> SERVICE["CallService<br/>stores, publishes events, plays replies, hangs up"]
   SERVICE --> ENGINE["ConversationEngine<br/>pure and deterministic"]
   ENGINE --> RULES["Risk rules and language packs<br/>TOML files"]
@@ -69,8 +79,8 @@ flowchart LR
   MODEL["Optional language model<br/>off by default"] -.->|"extra signals, filtered by the engine"| ENGINE
 ```
 
-1. A telephony provider delivers the call: the built-in simulator, Twilio Media Streams, Azure Communication Services, or
-   another provider through a plugin.
+1. A telephony provider delivers the call: the built-in simulator, Twilio Media Streams, Azure Communication Services, a SIP
+   phone through a local Asterisk, or another provider through a plugin.
 2. `CallService` hands every caller utterance to `ConversationEngine`, which detects the language, matches the signals
    defined in `services/api/src/sparta/risk/policies/default-v1.toml` (36 signals, 14 of them requests for protected
    information), scores the risk, advances a state machine and chooses a reply. The engine is deterministic: the same
@@ -94,7 +104,8 @@ Details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/SAFETY_MODEL.md](do
 | Telephony: Azure Communication Services | Adapter and signed-webhook verification are implemented and unit-tested against fakes. They have never run against a live ACS resource, and a new ACS customer cannot currently obtain a number (none in India at all): [docs/research/phase2-provider-verification.md](docs/research/phase2-provider-verification.md). |
 | Telephony: Twilio Media Streams | Added in Phase 2: signed voice and status webhooks, a media WebSocket (mu-law 8 kHz) with per-call tokens, barge-in, `<Dial>` takeover, `<Reject>` for blocked callers and calls over a cap, doctor checks. Tested against fakes and a scripted caller over a real WebSocket; never run against a Twilio account. A Twilio **trial** account cannot be used ([docs/TELEPHONY.md](docs/TELEPHONY.md), section 4.3). |
 | Telephony: another provider | A plugin interface and HMAC-signed generic webhook exist. No provider integration ships. |
-| Speech recognition and synthesis | The simulator produces no audio. Azure Speech adapters (streaming recognition through the Speech SDK with partials, confidence and language identification, or REST per utterance; text-to-speech including mu-law for Twilio), and the real-time audio pipeline for provider media streams (voice-activity detection, barge-in), are implemented and tested with fakes. A real call that cannot speak or hear is ended with a summary that says so. They have never run with real credentials. |
+| Telephony: local SIP (Asterisk) | Added in Phase 3: `SPARTA_TELEPHONY_PROVIDER=asterisk`, a free provider that takes the audio of a SIP call over Asterisk's AudioSocket and speaks back over the same connection, with barge-in, a refusal-and-hang-up path and take-over that rings an owner **SIP extension** (never a phone number). A separate SIP client (baresip, in Docker) has called it for real; **no physical phone has, and it does not carry calls from the phone network**. Reported honestly by the API and the apps as `Connection: Local SIP`, `PSTN: Not configured` ([infrastructure/asterisk/README.md](infrastructure/asterisk/README.md), [docs/TELEPHONY.md](docs/TELEPHONY.md) section 4.5). |
+| Speech recognition and synthesis | The simulator produces no audio. Azure Speech adapters (streaming recognition through the Speech SDK with partials, confidence and language identification, or REST per utterance; text-to-speech including mu-law for Twilio), and the real-time audio pipeline for provider media streams (voice-activity detection, barge-in), are implemented and tested with fakes. A real call that cannot speak or hear is ended with a summary that says so. The Azure adapters have never run with real credentials. **Phase 3 added free local engines, faster-whisper and Piper, that have run on real audio** (English recognised accurately, Hindi unreliable, Kannada not usable with the small model: [docs/MULTILINGUAL_SPEECH.md](docs/MULTILINGUAL_SPEECH.md) section 11), and a test-only tone-coded voice (`fake`) that production refuses. |
 | Language model | Optional and off by default. The Azure OpenAI adapter has never run with real credentials. Caller-speech translation is not implemented. |
 | Backend API | HTTP and WebSocket API with a generated contract ([docs/API_CONTRACT.md](docs/API_CONTRACT.md), `packages/contracts/openapi.json`). Sign-in is a development identity or OpenID Connect bearer tokens; the OIDC path has never run against a real identity provider. |
 | Web app | Eight screens including the Simulator Lab ([apps/web/README.md](apps/web/README.md), [docs/WEB_APP.md](docs/WEB_APP.md)). The default is the development identity. OpenID Connect sign-in (Authorization Code with PKCE, `NEXT_PUBLIC_AUTH_MODE=oidc`) is implemented and unit-tested with a fake client, but has never run against a real identity provider. |
@@ -223,6 +234,49 @@ on `0.0.0.0` inside the container, which `serve` allows with the development ide
 backend: `docker compose up -d --build postgres redis api`. `docker compose down` stops it and keeps the data volumes;
 `docker compose down -v` also deletes them.
 
+## Run Sparta voice locally without Twilio
+
+Three different things can reach Sparta. Do not confuse them:
+
+| | What it is | Cost | State in this repository |
+| --- | --- | --- | --- |
+| **SIMULATOR** | You type, speak or upload the caller's side in the Simulator Lab. Nothing is dialled and no phone is involved | free | A working local simulation |
+| **LOCAL SIP** | A SIP phone (Linphone on Android, a desk phone, `baresip`) on **your own network** calls an open-source [Asterisk](https://www.asterisk.org/) PBX in Docker, which streams real two-way audio to Sparta. No Twilio, no phone number, no account | free, open source | A real SIP client has completed calls in Docker (see [Product status](#product-status)); **never tried on a physical phone** |
+| **PSTN** | Ordinary mobile and landline numbers reaching Sparta | **paid**: a carrier, a phone number (DID) and a SIP trunk | **Not delivered.** Local SIP is not "phone-call support": a friend dialling your number cannot reach it this way |
+
+Prerequisites: Docker with Compose v2.24 or newer, and Python 3.12 for the helper scripts. From the repository root:
+
+```bash
+python scripts/sip_local.py init                 # random secrets -> .env and .env.sip (git-ignored); prints nothing secret
+cd services/api && python -m sparta models fetch # free local speech models, about 650 MB, each file checked against a pinned SHA-256
+cd ../.. && docker compose --profile asterisk up --build   # first build compiles Asterisk (5-15 min) and adds the speech engines
+python scripts/sip_local.py show --reveal        # server address, extension numbers and the SIP passwords for the phone
+```
+
+(`python -m sparta models fetch` needs the backend environment from [Quick start](#quick-start) option 1 or 2.) Then register a
+SIP client as extension **6001** with the password from `show --reveal`, and dial **6000**. Step-by-step phone setup,
+troubleshooting and the full test script are in [docs/ANDROID_SIP_TESTING.md](docs/ANDROID_SIP_TESTING.md) (a checklist: **not run
+on a phone**). Open the web app at <http://localhost:3000> to watch the live call and read the summary. By default SIP and RTP are
+published on `127.0.0.1` only (a client on the same computer); to reach it from a phone on your Wi-Fi set
+`SPARTA_ASTERISK_BIND` and `SPARTA_ASTERISK_EXTERNAL_IP` to the computer's LAN address, as that document explains.
+
+* **No speech models?** `python scripts/sip_local.py init --speech fake` uses a test-only tone-coded voice. It exercises the whole
+  path but cannot understand a person.
+* **Check the set-up:** `python -m sparta doctor --provider asterisk` (from `services/api`) prints PASS, WARNING, BLOCKED or
+  UNVERIFIED per check and never prints a secret.
+* **Test it without a phone** (Docker only): `python scripts/sip_e2e.py` runs a real Asterisk and a headless SIP client through
+  28 scenarios with tone speech; `python scripts/sip_e2e.py --speech local --models services/api/var/models --python <python with the
+  local-speech extra>` does the same call with real Whisper and Piper.
+* **What local speech can do:** English works; Hindi is unreliable; Kannada is not usable with the small model, so a Hindi or
+  Kannada caller is **not reliably screened** ([docs/MULTILINGUAL_SPEECH.md](docs/MULTILINGUAL_SPEECH.md) section 11). Recognition
+  takes about 3 to 4 seconds per utterance on a CPU, so the assistant answers about 4 seconds after the caller stops.
+* **Licences:** Piper is GPL-3.0 (an opt-in extra, never in the default image), and its Hindi and Kannada voices are
+  non-commercial. Asterisk is GPL-2.0 and is only talked to over the network. Details in
+  [infrastructure/asterisk/README.md](infrastructure/asterisk/README.md) and the speech document.
+* **Security:** SIP and RTP are not encrypted, the container does not limit failed logins, and the network filter cannot see real
+  source addresses on Docker Desktop. Use a network you trust. [docs/SECURITY_REVIEW_PHASE3.md](docs/SECURITY_REVIEW_PHASE3.md) lists
+  what was reviewed (automatically, not by a human) and what was fixed.
+
 ## Try the simulator
 
 The Simulator Lab plays the caller against the real engine. Nothing is dialled and the backend produces no audio (the web
@@ -303,7 +357,7 @@ simulator with deterministic rules: no cloud account, no cost, no audio. The var
 | `SPARTA_DATABASE_URL` | SQLite file under `services/api/var` | PostgreSQL with `postgresql+asyncpg://...`. |
 | `SPARTA_REDIS_URL` | unset | Shared rate limits, WebSocket tickets and call locks across instances. Unset means in-process memory, which is only correct for one instance. |
 | `SPARTA_DATA_KEYS`, `SPARTA_PEPPER`, `SPARTA_WEBHOOK_SECRET` | unset | Content encryption keys, caller-number hashing, webhook signing. All three are required in production. Outside production the first two are generated into `services/api/var` when unset; the webhook secret is not. `python -m sparta keygen` prints fresh values and stores nothing. |
-| `SPARTA_TELEPHONY_PROVIDER`, `SPARTA_STT_PROVIDER`, `SPARTA_TTS_PROVIDER`, `SPARTA_LLM_PROVIDER` | `simulator`, `simulator`, `simulator`, `rules` | Provider selection (`SPARTA_TELEPHONY_PROVIDER` is `simulator`, `azure`, `twilio` or `other`). Choosing a real provider makes the API refuse to start until the credentials listed in `.env.example` are present, and production also refuses real telephony with a simulated recogniser or voice. |
+| `SPARTA_TELEPHONY_PROVIDER`, `SPARTA_STT_PROVIDER`, `SPARTA_TTS_PROVIDER`, `SPARTA_LLM_PROVIDER` | `simulator`, `simulator`, `simulator`, `rules` | Provider selection (`SPARTA_TELEPHONY_PROVIDER` is `simulator`, `azure`, `twilio`, `asterisk` or `other`; speech is `simulator`, `azure`, `local` or the test-only `fake`). Choosing a real provider makes the API refuse to start until the credentials listed in `.env.example` are present, and production also refuses real telephony with a simulated recogniser or voice, and refuses `fake`. `python scripts/sip_local.py init` writes the local-SIP set. |
 | `SPARTA_DAILY_CALL_MINUTES_CAP`, `SPARTA_PER_NUMBER_DAILY_CALL_CAP`, `SPARTA_PROVIDER_FAILURE_LIMIT` | `240`, `10`, `2` | Cost brakes for real calls: minutes per owner per day, calls from one number per day (further calls are rejected without being answered), and how many speaking or listening failures in a row end a call. |
 | `SPARTA_CORS_ORIGINS` | `http://localhost:3000,http://127.0.0.1:3000` | Browser origins allowed to call the API. |
 
@@ -461,10 +515,20 @@ Not verified against any live service:
 
 * Azure Communication Services and Twilio (call answering, webhooks and callbacks, media streaming, transfer), Event Grid
   delivery tokens, Azure Speech (streaming recognition, language identification on telephone audio, Hinglish and Kanglish),
-  Azure OpenAI and Personal Voice have never been exercised with real credentials, and **no real telephone call has ever
-  reached Sparta**. The code and its fakes are tested; the real behaviour is **UNVERIFIED**. The controlled matrix in
+  Azure OpenAI and Personal Voice have never been exercised with real credentials, and **no call from the phone network has
+  ever reached Sparta**. The code and its fakes are tested; the real behaviour is **UNVERIFIED**. The controlled matrix in
   [docs/PHASE2_CONTROLLED_RESULTS.md](docs/PHASE2_CONTROLLED_RESULTS.md) is not an external test, and its latencies are
   local processing time with zero-latency fakes.
+* **Local SIP** (Phase 3) was exercised only with a headless SIP client in Docker and a machine-voice caller. Not verified: a
+  physical Android phone and a real SIP app (Linphone), a human voice, an Indian accent, telephone-line noise, Wi-Fi and
+  firewall behaviour, a second registered phone for take-over, and a longer or busier session. Its measured numbers
+  ([docs/PHASE3_ASTERISK_PLAN.md](docs/PHASE3_ASTERISK_PLAN.md)) are local-Docker figures, not device figures.
+* **Local speech** recognises English but not reliably Hindi, and not Kannada, with the small model: the OTP requests in Hindi,
+  Hinglish and Kannada were **missed** in the Docker test. Answers come about 4 seconds after the caller stops, because recognition
+  takes 3 to 4 seconds on a CPU. Telephone-band audio and accents were not measured, and no native speaker has heard any of it.
+* SIP and RTP are not encrypted; the Asterisk container does not limit failed logins; the network filter cannot see real source
+  addresses on Docker Desktop ([docs/SECURITY_REVIEW_PHASE3.md](docs/SECURITY_REVIEW_PHASE3.md)). The Phase 3 security review was
+  automated, not a penetration test.
 * OpenID Connect sign-in (the backend's token verification and the web app's sign-in flow) has never been tried against a
   real identity provider.
 * Conditional call forwarding to a provider number is carrier-specific, and no carrier has been tested.
@@ -476,13 +540,14 @@ Not verified against any live service:
 Not implemented:
 
 * The AI conversation does not happen on the phone itself. Android's call-screening role cannot answer, speak to, hear or
-  record a call. The conversation exists only for calls that reach a telephony provider.
-* A first real call needs a paid provider account and a number that Sparta does not buy. Azure Communication Services
+  record a call. The conversation exists only for calls that reach a telephony provider (Twilio, ACS, or a SIP phone through
+  Asterisk).
+* A call from the **phone network** needs a paid provider account and a number that Sparta does not buy. Azure Communication Services
   cannot provision Indian (+91) numbers, a new customer may not be able to get one at all, and its standalone telephony is
   scheduled to retire; a Twilio trial account removes the TwiML Sparta needs; both points and the alternatives are in
   [docs/research/phase2-provider-verification.md](docs/research/phase2-provider-verification.md),
   [docs/research/acs-android-verification.md](docs/research/acs-android-verification.md) and
-  [docs/TELEPHONY.md](docs/TELEPHONY.md).
+  [docs/TELEPHONY.md](docs/TELEPHONY.md). Local SIP is free but reaches only SIP phones on your network.
 * Translation of caller speech; the assistant's own lines carry an English rendering from the templates.
 * A usable personal voice; push notifications to the Android app (FCM is not set up); account deletion; purging of audit
   events.
@@ -534,9 +599,11 @@ packages/contracts/      openapi.json, generated from the backend (python -m spa
 packages/evaluation/     evaluation dataset v1 (development and test splits) and its schema
 docs/                    architecture, safety, privacy, threat model, telephony, languages, evaluation, decisions, research
 scripts/, Makefile       developer tasks for Windows PowerShell and for bash
-docker-compose.yml       development stack (PostgreSQL, Redis, API, web app)
+docker-compose.yml       development stack (PostgreSQL, Redis, API, web app; the `asterisk` profile adds local SIP)
 .env.example             settings template with development defaults
 infrastructure/azure/    Bicep for an Azure deployment (not deployed)
+infrastructure/asterisk/ the local-SIP Asterisk image (Dockerfile, dialplan, PJSIP config), its end-to-end stack and fail2ban filter
+scripts/sip_local.py     generates the local-SIP secrets and shows how to register a phone; sip_e2e.py runs the Docker SIP test
 .github/                 CI, CodeQL, container, dependency-review, secret-scan and deploy workflows; templates
 experiments/unsloth/     optional research notes (no code)
 ```
@@ -547,9 +614,11 @@ experiments/unsloth/     optional research notes (no code)
 | --- | --- |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Components, data flow, the conversation state machine, provider interfaces, storage, sequence diagrams, failure modes |
 | [docs/SAFETY_MODEL.md](docs/SAFETY_MODEL.md) | Protected information, the signal table, scoring, denial handling, escalation, what the model may and may not do |
-| [docs/MULTILINGUAL_SPEECH.md](docs/MULTILINGUAL_SPEECH.md) | Language detection, code-switching, locales and voices, fallbacks, test corpus |
-| [docs/TELEPHONY.md](docs/TELEPHONY.md) | What Android can and cannot do, the programmable-number path (Twilio, ACS), provider setup, live-test checklist |
+| [docs/MULTILINGUAL_SPEECH.md](docs/MULTILINGUAL_SPEECH.md) | Language detection, code-switching, locales and voices, fallbacks, test corpus, and what the free local speech can and cannot do |
+| [docs/TELEPHONY.md](docs/TELEPHONY.md) | What Android can and cannot do, the programmable-number path (Twilio, ACS), local SIP over Asterisk, provider setup, live-test checklist |
 | [docs/PHASE2_REAL_WORLD_PLAN.md](docs/PHASE2_REAL_WORLD_PLAN.md), [docs/PHASE2_CONTROLLED_RESULTS.md](docs/PHASE2_CONTROLLED_RESULTS.md), [docs/SECURITY_REVIEW_PHASE2.md](docs/SECURITY_REVIEW_PHASE2.md) | Phase 2 (the real-call path): blockers, decisions, completion level, the smallest ask to reach a real call; the controlled call matrix and its evidence; the security review of the new path |
+| [docs/PHASE3_ASTERISK_PLAN.md](docs/PHASE3_ASTERISK_PLAN.md), [docs/DECISIONS/ADR-ASTERISK-MEDIA-BRIDGE.md](docs/DECISIONS/ADR-ASTERISK-MEDIA-BRIDGE.md), [docs/SECURITY_REVIEW_PHASE3.md](docs/SECURITY_REVIEW_PHASE3.md) | Phase 3 (free local SIP): the plan, results and completion level; why AudioSocket; the security review of the new path |
+| [docs/ANDROID_SIP_TESTING.md](docs/ANDROID_SIP_TESTING.md), [infrastructure/asterisk/README.md](infrastructure/asterisk/README.md) | Registering Linphone and making the test call (a checklist, not run on a phone); the Asterisk image, its settings and what it does not do |
 | [docs/PRIVACY.md](docs/PRIVACY.md) | What is stored, what is encrypted, retention, deletion paths, subprocessors |
 | [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md) | Assets, actors, abuse cases, mitigations with file references, residual risks |
 | [docs/EVALUATION.md](docs/EVALUATION.md) | Dataset, scoring, discipline, published numbers, reproduction |
@@ -558,7 +627,7 @@ experiments/unsloth/     optional research notes (no code)
 | [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md) | Milestones, status and the remaining external dependencies |
 | [docs/SECURITY_REVIEW.md](docs/SECURITY_REVIEW.md) | Findings of the automated security review, what was fixed, what is still open |
 | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md), [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md) | Azure deployment, secrets, legal and approvals checklist, release steps |
-| [docs/DECISIONS/](docs/DECISIONS/) | Architecture decision records 0001 to 0006 |
+| [docs/DECISIONS/](docs/DECISIONS/) | Architecture decision records 0001 to 0006, and the Asterisk media-bridge decision |
 | [docs/research/](docs/research/) | Verified notes on Azure Communication Services, Android, Azure Speech, Azure OpenAI and (Phase 2) the telephony providers |
 | [services/api/README.md](services/api/README.md), [apps/web/README.md](apps/web/README.md), [apps/android/README.md](apps/android/README.md), [packages/evaluation/README.md](packages/evaluation/README.md), [experiments/unsloth/README.md](experiments/unsloth/README.md) | Per-component notes |
 

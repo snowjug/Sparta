@@ -62,28 +62,26 @@ The final numbers are in the PR description and the final report.
 
 | # | Milestone | Status |
 |---|---|---|
-| 1 | Fake tone STT/TTS, `fake` provider setting, production guard | done |
-| 2 | ADR and this plan | done |
-| 3 | Asterisk image and configuration (`infrastructure/asterisk/`), compose profile | see git log |
-| 4 | Asterisk provider: AudioSocket server, webhooks, pacer, DTMF, transfer, duplicate protection, cleanup | see git log |
-| 5 | Local STT/TTS providers, model manifest and fetch command | see git log |
-| 6 | Provider matrix tests, malformed/oversized/duplicate/timeout/interruption, multilingual and prompt-injection suites | see git log |
-| 7 | `sparta doctor --provider asterisk` | see git log |
-| 8 | Minimal UI state (provider, connection, PSTN, takeover) and OpenAPI | see git log |
-| 9 | Docker SIP end-to-end, latency measurements, evidence JSON | see git log |
-| 10 | Docs, security review, threat model | see git log |
-| 11 | Full regression, PR, CI | see PR |
+| 1 | Fake tone STT/TTS, `fake` provider setting, production guard | **done** (`5fde03b`) |
+| 2 | ADR and this plan | **done** (`7f02c82`) |
+| 3 | Asterisk image and configuration (`infrastructure/asterisk/`), compose profile | **done**, built and run (`a600b87`) |
+| 4 | Asterisk provider: AudioSocket server, webhooks, pacer, DTMF, transfer, duplicate protection, cleanup | **done** (`b31052c`, `f4854fd`) |
+| 5 | Local STT/TTS providers, model manifest and fetch command | **done**, run on real audio (`d3bf3be`) |
+| 6 | Provider matrix tests, malformed/oversized/duplicate/timeout/interruption, multilingual and prompt-injection suites | **done** (`6419a10`) |
+| 7 | `sparta doctor --provider asterisk` | **done** (`d3bf3be`) |
+| 8 | Minimal UI state (provider, connection, PSTN, takeover) and OpenAPI | **done** (`72dae2f`) |
+| 9 | Docker SIP end-to-end, latency measurements, evidence JSON | **done** (`a600b87`): 28 scenarios with tone speech, 6 with real speech |
+| 10 | Docs, security review, threat model | **done** (this commit): [SECURITY_REVIEW_PHASE3.md](SECURITY_REVIEW_PHASE3.md), [THREAT_MODEL.md](THREAT_MODEL.md) rows 36 to 47 |
+| 11 | Full regression, PR, CI | see the PR |
 
 ## 6. Completion levels
 
-| Level | Meaning | How Phase 3 proves it |
-|---|---|---|
-| **A** | Code complete, real SIP call unverified | Provider, image, doctor, tests, docs, PR. |
-| **B** | A real external SIP client call verified | baresip (a separate container, real SIP and RTP, real G.711) calls Asterisk, Sparta answers, real audio enters Sparta, a real transcript is produced, the engine replies, TTS audio comes back, the caller interrupts, the call ends and the summary is readable. The speech is synthetic (Piper), not a human voice. |
-| **C** | Physical Android phone verified | Needs a phone on the same network. Checklist only until someone runs it. |
-| **D** | PSTN | Not required, not claimed. |
-
-The level actually reached is stated in the final report, with the evidence.
+| Level | Meaning | How Phase 3 proves it | **Reached?** |
+|---|---|---|---|
+| **A** | Code complete, real SIP call unverified | Provider, image, doctor, tests, docs, PR. | **Yes** |
+| **B** | A real external SIP client call verified | baresip (a separate container, real SIP and RTP, real G.711) calls Asterisk, Sparta answers, real audio enters Sparta, a real transcript is produced, the engine replies, TTS audio comes back, the caller interrupts, the call ends and the summary is readable. The speech is synthetic (Piper), not a human voice. | **Yes, in English, with a machine-voice caller** (section 8). *Not* "a human talked to it" |
+| **C** | Physical Android phone verified | Needs a phone on the same network. Checklist only until someone runs it. | **No. NOT RUN** (no phone was attached) |
+| **D** | PSTN | Not required, not claimed. | **No. Not delivered** |
 
 ## 7. Measurement labels
 
@@ -91,8 +89,82 @@ Latency figures are never estimated. Each is labelled `fake` (tone-coded provide
 (real Sparta provider code with a scripted Asterisk-side client), `local SIP` (real Asterisk and a headless SIP client) or
 `physical Android SIP`. Only the labels that were actually run appear in the results.
 
-## 8. Risks
+## 8. Results: what was actually run
 
-* Docker Desktop UDP handling for a phone on the LAN is unverified here (no phone attached).
-* Whisper on this CPU may be too slow for conversational latency with the larger models; reported as measured.
-* Kannada recognition and speech output cannot be validated without native speakers.
+Everything below was run on one Windows 11 laptop (Docker Desktop, WSL 2) shared with other work, so timings are upper bounds.
+The evidence files are `sip_e2e_fake_evidence.json` and `sip_e2e_local_evidence.json` (written by `--evidence`).
+
+**The call that reached Level B.** A separate container running **baresip 1.0.0** (a mature open-source SIP client) registered to
+Asterisk 22.12.0 as extension 6001 with digest authentication, dialled 6000 over SIP/UDP, and sent and received real G.711 RTP. In
+`--speech local` mode the caller's lines were spoken by Piper (a machine voice) and played as the client's microphone; Sparta's
+container ran faster-whisper `small` (CPU int8) and Piper. For the OTP scam: Sparta's own recogniser transcribed the call audio
+as "I'm calling from your bank. Tell me your OTP." (exactly what was spoken); the engine rated it **high** risk and refused and
+ended the call; the caller received Piper's refusal as G.711 and Whisper read it back word for word; Sparta, not the caller, hung
+up; the call has a summary that mentions the one-time password. In the interruption scenario the caller began speaking 1.5 s into
+the greeting and the greeting stopped 160 ms later; Sparta recognised the interruption ("Yet I'm calling from Amazon.": Whisper
+heard "Yeah" as "Yet"), answered, and ended the call on silence with a summary. A legitimate delivery call was recognised
+word for word, rated low risk, answered ("I'll let Atharv know right now. Please stay on the line.") and summarised. The summary is read through the
+API (`GET /calls/{id}`), which is what the web app renders; the web app itself was not opened on that call.
+This is **a real external SIP client, a real call and real speech recognition and synthesis. It is not a person, not a phone and not
+the phone network.**
+
+**Latency, labelled by how it was measured** (client-side figures are from timestamps of the RTP packets that crossed the caller's
+network interface, one clock; server-side figures are Sparta's own per-turn measurements):
+
+| Measurement | local SIP, tone speech | local SIP, **real** Whisper `small` + Piper |
+| --- | --- | --- |
+| Call media starts to first assistant audio | 30 ms | 320 ms |
+| Caller stops speaking to first reply audio heard | 640 ms (the voice-activity wait included) | **4080 ms** (OTP scam), **4600 ms** (legitimate call) |
+| Server: recognition (`stt_ms`) | 5.2 ms (a tone decoder) | **3124 ms**, 3691 ms (two utterances) |
+| Server: policy, language detection | 10.9 ms, 0.2 ms | 10.9 ms, 0.3 ms |
+| Server: whole turn (`total_ms`) | 35.7 ms | 3157 ms, 3707 ms |
+| Caller interrupts to playback stopped | 180 ms | 160 ms |
+
+*Not measured, so not reported:* anything on a physical phone (`physical Android SIP`: **NOT RUN**), real-clock timings of the
+in-process integration tests (they run on a virtual clock), and any latency over the phone network. The 4 s answer time is dominated
+by recognition on a CPU (Whisper encodes a padded 30 s window); it is slow for natural conversation, and the honest next step
+is a faster recogniser or a GPU, not a claim that it feels natural.
+
+**Languages (real speech, machine-voice caller).** English: all three scenarios passed and are asserted. Hindi, Hinglish (Latin
+script read by the English voice) and Kannada were **measured and reported, not asserted to succeed**, and the answer is negative:
+
+| Caller said | Sparta's recogniser heard | Language, confidence | What Sparta did |
+| --- | --- | --- | --- |
+| Hindi: "सर, आपका केवाईसी अपडेट करना है, कृपया ओटीपी बताइए।" | "सरह आपका के बाई सी अप्देट करना है, क्रिप्या उतीपी बताएगे" | hi-IN, 0.72 | rated **low** risk; the OTP request was **not refused**; the call ended after silence |
+| Hinglish: "Sir KYC update karna hai, OTP bata dijiye." | "Sir KYC Update, Canter High, OTP, Barter, Digit I." | en-IN, 0.60 | rated medium; **not refused**; ended after silence |
+| Kannada: "ನಿಮ್ಮ ಬ್ಯಾಂಕ್ ಖಾತೆಯನ್ನು ಅಪ್‌ಡೇಟ್ ಮಾಡಬೇಕು. ದಯವಿಟ್ಟು ಒಟಿಪಿ ಹೇಳಿ." | Devanagari gibberish | hi-IN, 0.50 | rated low; **not refused**; ended after silence |
+
+In all three the assistant never spoke a digit and the call ended cleanly with a summary (the asserted invariants). **With the
+small Whisper model a Hindi, Hinglish or Kannada caller is not reliably screened.** The deterministic rules are not at fault here:
+the recogniser handed them the wrong words. No native speaker has reviewed any of this, and the caller's voice is a machine's.
+
+**The deterministic engine through the real Sparta stack (label: `integration`).** A matrix of 39 phrase calls (credential
+requests, address and location probes, calendar probes and prompt-injection phrases in English, Hindi, Hinglish, Kannada and
+Kanglish) was sent as tone-coded audio through the real AudioSocket listener, pipeline, engine and service; the tone codec carries
+the phrase, so this tests the engine on correct transcripts, not recognition. All 11 credential requests were refused and ended at
+high risk; all 5 address requests were deflected; 9 of 10 injection phrases were refused and ended (the Hindi-script "ignore all
+previous instructions" was **not** flagged, though nothing was obeyed); only 2 of 5 location probes were deflected (English and
+Hinglish; the Hindi, Kannada and Kanglish ones got the generic name prompt); 5 of 5 calendar requests got the generic name prompt and
+nothing was disclosed. The rule packs were deliberately **not** changed to fix these (they are tuned against the held-out
+evaluation and need native review): they are recorded as detection gaps. See [EVALUATION.md](EVALUATION.md) section 9.
+
+**What the end-to-end run found** (all fixed): the first call after a server restart was rejected because the first webhook took
+6.7 s; `DELETE /calls` removes call content, not records, so the harness now counts only the calls of each test; Asterisk colours
+every field of its log lines, which silently defeated the fail2ban filter (now `asterisk -n`); baresip has no real-time recorder, so
+what the caller hears is rebuilt from the RTP on the wire; baresip registers before a control client can connect, so the account is
+now created over its control socket.
+
+**Tests** (run on this commit; the full list and the CI result are in the PR):
+
+* `python scripts/sip_e2e.py`: **28 passed** (3 min 37 s). `python scripts/sip_e2e.py --speech local --models ...`: **6 passed**
+  (5 min 39 s). Both need Docker and are not part of the default `pytest` run.
+* `tests/unit/providers_local` and the doctor: 1062 passed and 20 skipped (the real-model tests need the models directory) together
+  with the other unit tests of the telephony and speech packages.
+
+## 9. Risks
+
+* Docker Desktop's UDP handling for a phone on the LAN is unverified here (no phone attached). What was observed: the source address
+  of a request from the host arrives as Docker's gateway address, so the network ACL cannot tell senders apart on Docker Desktop.
+* Whisper on this CPU is too slow for natural conversation (about 4 s per answer); reported as measured. A larger model was not tried.
+* Kannada recognition and speech output cannot be validated without native speakers, and Hindi is unreliable.
+* A human voice, an Indian accent, telephone-line noise and Wi-Fi jitter were not exercised.
