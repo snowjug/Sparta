@@ -296,3 +296,8 @@ Last verified on Windows 11 with JDK 17, Gradle 9.5.0 and AGP 9.3.1, from `apps/
 
 Not run, because no suitable device exists in the build environment: the release build on a device, `connectedDebugAndroidTest`,
 real call screening, TalkBack, push, real OIDC sign-in, and an end-to-end session against the running backend (see §10).
+
+Re-run for Phase 3 (local SIP state in the app) on `feat/asterisk-open-voice`, same machine and tools: `testDebugUnitTest`
+(forced to execute with `--rerun --no-build-cache`) **641 tests, 0 failures, 0 skipped**; `lintDebug` **0 errors, 21 warnings**;
+`assembleDebug` BUILD SUCCESSFUL, `app-debug.apk` 23,254,294 bytes. The release build and the instrumented tests were not
+re-run, and there was still no phone: the Linphone checklist in [ANDROID_SIP_TESTING.md](ANDROID_SIP_TESTING.md) is **NOT RUN**.

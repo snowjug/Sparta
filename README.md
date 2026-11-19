@@ -370,10 +370,36 @@ python -m sparta doctor --provider twilio --online     # or --provider azure; ad
 
 ## Testing
 
-Run the commands from the directory shown. Each tool reports its own result; the table below is the last verified run,
-pinned to a commit, and goes stale as the code changes.
+Run the commands from the directory shown. Each tool reports its own result; the tables below are the last verified runs,
+pinned to a commit, and go stale as the code changes.
 
-**Last verified** on branch `feat/real-world-telephony` (Phase 2) at commit `c8a56c4`, on one Windows 11 machine, with this
+**Last verified, Phase 3** (free local SIP), on branch `feat/asterisk-open-voice` at commit `a600b87`, the last commit that
+changes code, tests or infrastructure (the commits after it change documentation, one gitleaks allowlist and
+`scripts/verify_locks.py`; the rows marked "re-run" were repeated after those commits, on code identical to `a600b87`), on one
+Windows 11 machine, with this repository's own tools. The branch was cut from pull request 11's last verified commit
+(`4409ff9`), so every row also covers Phase 2. Phase 2's record and Phase 1's follow.
+
+| Check | Result |
+| --- | --- |
+| `scripts\check.ps1 -Security` (what CI runs) | all 13 steps passed (603 s) |
+| Backend `pytest`, with PostgreSQL 16 and Redis 7 | 2900 passed, 54 skipped (Phase 2: 2321 passed). The skips are 34 Docker end-to-end tests (next rows), 12 that need `numpy` and 8 that need the downloaded speech models; both of the last two are optional extras |
+| `pytest tests/unit/providers_local`, in the optional speech environment (`numpy`, faster-whisper, Piper, models in `SPARTA_LOCAL_MODEL_DIR`) | 279 passed, 0 skipped (49 s), including the 20 tests the row above skips |
+| `ruff check`, `ruff format --check`, `mypy src` | clean; no issues in 133 source files |
+| `python -m sparta openapi --check` | the contract is current |
+| `python -m sparta evaluate --split dev` | unchanged from Phase 2: scam recall 87.8%, precision 94.7%, protected requests refused 33/33, 0 violations, 0 fallbacks, deterministic. No rule was changed in Phase 3 and nothing was tuned on the test split |
+| `bandit`; `pip-audit` on the dev lock and on `requirements-local-speech.lock`; `python scripts/verify_locks.py` | no findings; no known vulnerabilities; all 5 lock files verified (111 pins, every hash published on PyPI) |
+| Web: `eslint`, `tsc`, `vitest`, `next build` | 0 problems, 0 errors, 318 tests passed, build OK (Phase 2: 310) |
+| Web: `npm run e2e` (re-run) | 112 of 112 passed against the real API and the production build (Chromium only), 7.4 min |
+| Android: `testDebugUnitTest --rerun --no-build-cache` (re-run) | 641 JVM tests passed, 0 failures, 0 skipped (Phase 2: 634) |
+| Android: `lintDebug assembleDebug` (re-run) | lint 0 errors and 21 warnings; debug APK 23,254,294 bytes. No device or emulator was available |
+| Docker Compose (PostgreSQL, Redis, API; the web service was not started) (re-run) | all three healthy; `/readyz` ready; `scripts\smoke.ps1` passed; `scripts\journey.py` passed (`PROBLEMS: none`) |
+| Trivy 0.76.2 (`--severity HIGH,CRITICAL --ignore-unfixed`) on the API image and on the Asterisk image (re-run) | no findings in either (Debian 13.7, 87 packages; Debian 12.15, 120 packages). It reads package databases, so it does not see Asterisk and PJPROJECT, which are compiled from pinned sources. CI scans only the API image |
+| `python scripts/sip_e2e.py` (re-run): Docker, real Asterisk 22.12.0, real SIP, RTP and G.711, a separate headless baresip client, tone-coded fake speech | 28 passed, 6 skipped (the six real-speech tests, which belong to the next row), 3 min 49 s. [Evidence](docs/evidence/phase3-sip-e2e-fake.json) |
+| `python scripts/sip_e2e.py --speech local --models DIR --python PY`: the same stack with real faster-whisper `small` and Piper | 6 passed, 5 min 39 s. English scam refusal, interruption and legitimate call asserted; Hindi, Hinglish and Kannada measured and reported, **not asserted: those OTP requests were not screened** ([docs/PHASE3_ASTERISK_PLAN.md](docs/PHASE3_ASTERISK_PLAN.md) section 8). [Evidence](docs/evidence/phase3-sip-e2e-local.json) |
+| `gitleaks` 8.30.1 (`gitleaks git`) on the branch since pull request 11's head | no leaks; Phase 3's dummy test secrets and public model hashes are allowlisted by exact value in `.gitleaks.toml` |
+| **Not run** | a physical phone (level C), the phone network (level D), a human voice, native-speaker review of any language, Azure or Twilio with real credentials |
+
+**Phase 2, last verified** on branch `feat/real-world-telephony` at commit `c8a56c4`, on one Windows 11 machine, with this
 repository's own tools. The commits after it change documentation, test names and the hash list of one lock file (below);
 GitHub re-ran the backend on them. The Android rows were measured at `ccec1c8`, the last commit that changed Android code.
 Phase 1's record on `main` follows the table.

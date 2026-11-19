@@ -118,3 +118,9 @@ Docker Desktop's real UDP behaviour (later observed: the source address is rewri
 from source rather than run (since then exercised by the end-to-end test, which found the log-colour and first-call problems);
 fuzzing of PJSIP and RTP parsing; three May-2026 pjproject advisories that were not opened individually (the Asterisk release
 used, 22.12.0, is the newest 22.x at the time of writing); physical-phone behaviour.
+
+**Image scanning.** Trivy 0.76.2 with CI's flags (`--severity HIGH,CRITICAL --ignore-unfixed`) found nothing in the locally built
+API image (Debian 13.7, 87 packages, plus its Python packages) or the Asterisk image (Debian 12.15, 120 packages). It reads package
+databases, so it **cannot see Asterisk and PJPROJECT, which are compiled from pinned source tarballs**: their security rests on
+the pinned versions and the advisory reading above, not on that scan. CI scans the API image only, so the Asterisk image is not
+scanned automatically.

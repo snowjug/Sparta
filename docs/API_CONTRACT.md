@@ -37,8 +37,11 @@ Raw numbers are only stored (encrypted) if `retention.store_full_caller_number` 
 ```text
 SystemStatus = {
   version, env, auth_mode: "dev"|"oidc", dev_banner: bool,
-  telephony: { provider: "simulator"|"azure"|"other", simulated: bool, live_calls_supported: bool,
-               forwarding_number: string|null, note: string },
+  telephony: { provider: "simulator"|"azure"|"asterisk"|"other", simulated: bool, live_calls_supported: bool,
+               forwarding_number: string|null, note: string,
+               connection: "simulated"|"local_sip"|"pstn",              // how calls reach Sparta
+               pstn: "not_applicable"|"not_configured"|"provider",      // can an ordinary phone number reach it?
+               takeover: "none"|"simulated"|"phone_number"|"sip_extension" },
   stt_provider, tts_provider, llm_provider, llm_model: string|null,
   features: { simulator: bool, personal_voice: bool, llm_summaries: bool, translation: bool, raw_audio_storage: false },
   policy_version, language_pack_version,
@@ -46,7 +49,8 @@ SystemStatus = {
   limits: { max_call_duration_s, max_audio_bytes, max_audio_seconds, daily_call_cap }
 }
 HomeSummary = {
-  protection: { status: "active"|"attention"|"degraded"|"setup_needed", headline, detail, provider, simulated, live_calls_supported },
+  protection: { status: "active"|"attention"|"degraded"|"setup_needed", headline, detail, provider, simulated, live_calls_supported,
+                connection: "simulated"|"local_sip"|"pstn", pstn: "not_applicable"|"not_configured"|"provider" },
   today: { handled, high_risk, escalations, ended_spam, minutes_handled },
   next_action: { kind: "finish_onboarding"|"review_escalation"|"review_call"|"run_simulator"|"none", label, route },
   attention: CallListItem[],   // calls that need the owner
@@ -90,6 +94,12 @@ CallSummary / FeedbackRecord / BlockedCaller / TrustedCaller / LatencyBreakdown:
 `CallDetail.capabilities` is authoritative for which owner controls are enabled. UIs must disable unsupported controls
 and show `takeover_note` / `audio_note`. For the simulator: `simulated: true`, `two_way_audio: false`, takeover is a
 labelled simulation. For Azure Communication Services: `two_way_audio: true` only if media streaming is connected.
+For local SIP through Asterisk (`TELEPHONY_PROVIDER=asterisk`): `two_way_audio: true` only while that call's media socket
+is attached, and `takeover_via: "sip_extension"` (Take Over rings the configured owner SIP extension on the local server,
+never a phone number, and only while the call's audio is connected). `takeover_via` is `"phone_number"` for the
+phone-network providers, `"simulated"` for the simulator and `"none"` for a provider that cannot transfer.
+`SystemStatus.telephony.connection = "local_sip"` with `pstn = "not_configured"` says that ordinary phone numbers cannot
+reach Sparta through this provider: that needs a carrier, a number and a trunk, which Sparta does not provide.
 
 `CallDetail.assistant_speaking` / `speaking_turn_id` say whether the assistant is mid-utterance *right now* (so a client
 that joins or reconnects during speech can show it; the turn's `speech.est_duration_ms` gives the length). Whenever a
@@ -190,6 +200,10 @@ access call audio.
 | `POST /webhooks/twilio/voice` | Twilio voice webhook for a call to the number: `X-Twilio-Signature` validated (HMAC-SHA1 of the configured public URL plus the sorted form fields); creates the call and answers with TwiML that streams its audio here (a per-call stream token travels as a `<Parameter>`), or `<Reject>` when a cost limit is reached; idempotent per `CallSid` |
 | `POST /webhooks/twilio/status` | Twilio call-status callback (optional): signature validated; a terminal status ends the call if the media stream did not already |
 | `WS /media/twilio/{call_id}` | Twilio Media Streams (G.711 mu-law 8 kHz, base64 JSON messages `connected`, `start`, `media`, `mark`, `stop`); the upgrade must carry Twilio's signature and the `start` message the per-call token |
+| `POST /webhooks/asterisk/incoming` | Asterisk dialplan `CURL()` callback for a call to the Sparta extension (form fields `channel`, `exten`, `caller`): HTTP Basic with the shared secret (constant-time compare), the peer must be Asterisk's allow-listed address, and a request carrying `X-Forwarded-For`, `Forwarded` or `X-Real-IP` is refused. Answers one plain-text line: `ACCEPT <single-use media id>` (the dialplan then opens the AudioSocket media connection) or `REJECT busy\|declined\|unavailable` (a call limit; another extension or a blocked caller; a provider or policy refusal); idempotent per channel |
+| `POST /webhooks/asterisk/next` | After the media socket ends: `DIAL <owner extension>` (a takeover) or `HANGUP`; same authentication |
+| `POST /webhooks/asterisk/ended` | The dialplan reports that the call is over (idempotent, Sparta may already know); same authentication |
+| AudioSocket TCP (port 8090, not HTTP) | The call's audio: signed 16-bit little-endian PCM, mono, 8 kHz, 20 ms frames, in Asterisk's AudioSocket framing; the connection must open with the single-use media id from `ACCEPT` and come from the allow-listed peer. It is listened on inside the Compose network only and is not an OpenAPI route (see `docs/TELEPHONY.md` §4.5) |
 | `POST /webhooks/generic` | HMAC-SHA256 signed (`X-Sparta-Signature`) events for other providers; replay-protected with timestamp + nonce |
 
 All webhook handlers are idempotent on the provider event id and never trust unsigned input. See `docs/TELEPHONY.md`.

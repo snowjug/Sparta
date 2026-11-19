@@ -1,0 +1,71 @@
+{
+ "kind": "sip_e2e",
+ "speech": "fake",
+ "label": "local SIP: real Asterisk, real SIP/RTP/G.711, headless baresip caller (a container on the same Docker network); fake tone-coded speech; NOT real speech recognition; NOT a physical phone",
+ "results": [
+  {
+   "scenario": "scam_refusal",
+   "label": "local SIP, fake speech",
+   "call_established_at_s": 0.244,
+   "media_start_to_first_assistant_audio_ms": 30,
+   "caller_stop_to_reply_heard_ms_client_side_approx": 840,
+   "server_side_stage_latency_ms": {
+    "audio_input_ms": null,
+    "vad_ms": null,
+    "stt_ms": 6.3,
+    "language_detect_ms": 0.43,
+    "policy_ms": 29.27,
+    "model_ms": null,
+    "tts_first_audio_ms": null,
+    "playback_start_ms": null,
+    "interruption_ms": null,
+    "total_ms": 102.7,
+    "simulated_stages": []
+   },
+   "heard_lines": [
+    [
+     30,
+     96
+    ],
+    [
+     7340,
+     80
+    ]
+   ],
+   "assistant_audio_total_ms": 14640
+  },
+  {
+   "scenario": "interruption",
+   "label": "local SIP, fake speech",
+   "caller_started_speaking_at_ms": 1500.0,
+   "greeting_audible_until_ms": 1680,
+   "interruption_to_playback_stopped_ms_client_side_approx": 180,
+   "uninterrupted_greeting_would_end_near_ms": 4400,
+   "server_side_stage_latency_ms": {
+    "audio_input_ms": null,
+    "vad_ms": null,
+    "stt_ms": 6.2,
+    "language_detect_ms": 0.321,
+    "policy_ms": 16.531,
+    "model_ms": null,
+    "tts_first_audio_ms": null,
+    "playback_start_ms": null,
+    "interruption_ms": null,
+    "total_ms": 40.5,
+    "simulated_stages": []
+   }
+  },
+  {
+   "scenario": "silent_caller",
+   "label": "local SIP, fake speech",
+   "call_closed_at_s": 27.871,
+   "assistant_lines": 3
+  },
+  {
+   "scenario": "absolute_call_limit",
+   "label": "local SIP, fake speech",
+   "limit_s": 30,
+   "held_s": 29.9
+  }
+ ]
+}

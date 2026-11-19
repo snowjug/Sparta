@@ -30,17 +30,20 @@ merged**. The branch was therefore created from PR #11's last verified commit (`
 compare link against `feat/real-world-telephony` shows only the Phase 3 commits. If PR #11 is merged first the diff
 shrinks to the Phase 3 commits; if it is closed, Phase 3 must be rebased.
 
-## 3. Baseline recorded before any change (commit `4409ff9`)
+## 3. Baseline recorded before any change (commit `4409ff9`), and the result at the end
 
-| Suite | Result |
-|---|---|
-| Backend pytest | 2321 passed |
-| Web vitest | 310 passed (from the Phase 2 README) |
-| Web Playwright | 112 passed (from the Phase 2 README) |
-| Android JVM unit tests | 634 passed; lint 0 errors, 21 warnings (from the Phase 2 README) |
-| Dev-split evaluation | recall 0.878, precision 0.9474, protected 33/33, 0 violations |
+| Suite | Baseline | Final (`a600b87`; later commits change documentation only) |
+|---|---|---|
+| Backend pytest | 2321 passed | **2900 passed**, 54 skipped (34 Docker end-to-end tests, 12 needing `numpy`, 8 needing the downloaded models) |
+| Web vitest | 310 passed (from the Phase 2 README) | **318 passed** |
+| Web Playwright | 112 passed (from the Phase 2 README) | **112 passed** |
+| Android JVM unit tests | 634 passed; lint 0 errors, 21 warnings (from the Phase 2 README) | **641 passed, 0 skipped** (forced re-run); lint 0 errors, 21 warnings |
+| Dev-split evaluation | recall 0.878, precision 0.9474, protected 33/33, 0 violations | **identical** (no rule was changed; the test split was not used) |
 
-The final numbers are in the PR description and the final report.
+Nothing that passed before fails now. No test file was deleted and no skip was added to an existing test: the only edits to
+existing tests add the new status fields to fixtures (and new cases next to them) and put `asterisk` in the expected provider
+list of one doctor test. The skips are in new tests that need Docker or the downloaded models, and say so. The
+command-by-command record is in the README's Testing section and the pull request.
 
 ## 4. Decisions
 
@@ -72,7 +75,7 @@ The final numbers are in the PR description and the final report.
 | 8 | Minimal UI state (provider, connection, PSTN, takeover) and OpenAPI | **done** (`72dae2f`) |
 | 9 | Docker SIP end-to-end, latency measurements, evidence JSON | **done** (`a600b87`): 28 scenarios with tone speech, 6 with real speech |
 | 10 | Docs, security review, threat model | **done** (this commit): [SECURITY_REVIEW_PHASE3.md](SECURITY_REVIEW_PHASE3.md), [THREAT_MODEL.md](THREAT_MODEL.md) rows 36 to 47 |
-| 11 | Full regression, PR, CI | see the PR |
+| 11 | Full regression, PR, CI | **regression done** (section 3 and the README's Testing section); PR and CI: see the pull request |
 
 ## 6. Completion levels
 
@@ -92,7 +95,12 @@ Latency figures are never estimated. Each is labelled `fake` (tone-coded provide
 ## 8. Results: what was actually run
 
 Everything below was run on one Windows 11 laptop (Docker Desktop, WSL 2) shared with other work, so timings are upper bounds.
-The evidence files are `sip_e2e_fake_evidence.json` and `sip_e2e_local_evidence.json` (written by `--evidence`).
+The evidence files are [evidence/phase3-sip-e2e-fake.json](evidence/phase3-sip-e2e-fake.json) and
+[evidence/phase3-sip-e2e-local.json](evidence/phase3-sip-e2e-local.json), written by `--evidence`; re-create them with
+`python scripts/sip_e2e.py --evidence FILE` and `python scripts/sip_e2e.py --speech local --models DIR --python PY --evidence FILE`.
+Timings vary from run to run on a shared laptop: three runs of the tone-speech scenarios on the same code gave 590 to 840 ms
+from the caller stopping to the reply being heard, and 21.7 to 102.7 ms for the server's whole turn. The committed evidence
+files are the ones quoted; treat the figures as indicative, not as a benchmark.
 
 **The call that reached Level B.** A separate container running **baresip 1.0.0** (a mature open-source SIP client) registered to
 Asterisk 22.12.0 as extension 6001 with digest authentication, dialled 6000 over SIP/UDP, and sent and received real G.711 RTP. In
@@ -114,10 +122,10 @@ network interface, one clock; server-side figures are Sparta's own per-turn meas
 | Measurement | local SIP, tone speech | local SIP, **real** Whisper `small` + Piper |
 | --- | --- | --- |
 | Call media starts to first assistant audio | 30 ms | 320 ms |
-| Caller stops speaking to first reply audio heard | 640 ms (the voice-activity wait included) | **4080 ms** (OTP scam), **4600 ms** (legitimate call) |
-| Server: recognition (`stt_ms`) | 5.2 ms (a tone decoder) | **3124 ms**, 3691 ms (two utterances) |
-| Server: policy, language detection | 10.9 ms, 0.2 ms | 10.9 ms, 0.3 ms |
-| Server: whole turn (`total_ms`) | 35.7 ms | 3157 ms, 3707 ms |
+| Caller stops speaking to first reply audio heard | 840 ms (the voice-activity wait included) | **4080 ms** (OTP scam), **4600 ms** (legitimate call) |
+| Server: recognition (`stt_ms`) | 6.3 ms (a tone decoder) | **3124 ms**, 3691 ms (two utterances) |
+| Server: policy, language detection | 29.3 ms, 0.4 ms | 10.9 ms, 0.3 ms |
+| Server: whole turn (`total_ms`) | 102.7 ms | 3157 ms, 3707 ms |
 | Caller interrupts to playback stopped | 180 ms | 160 ms |
 
 *Not measured, so not reported:* anything on a physical phone (`physical Android SIP`: **NOT RUN**), real-clock timings of the
