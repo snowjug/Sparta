@@ -432,7 +432,9 @@ Read [`docs/TELEPHONY.md`](TELEPHONY.md) and [`docs/research/`](research/). The 
   list no wider than a /8. It reaches no phone network: ordinary phone numbers need a paid carrier, a number and a trunk. See
   [TELEPHONY.md](TELEPHONY.md) section 4.5 and [SECURITY_REVIEW_PHASE3.md](SECURITY_REVIEW_PHASE3.md). Free local speech
   (`SPARTA_STT_PROVIDER=local`) adds a GPL-3.0 engine and non-commercial Hindi and Kannada voices: a licence decision before any
-  distribution ([MULTILINGUAL_SPEECH.md](MULTILINGUAL_SPEECH.md) section 11).
+  distribution ([MULTILINGUAL_SPEECH.md](MULTILINGUAL_SPEECH.md) section 11). The Compose API service always mounts
+  `SPARTA_MODELS_HOST_DIR` (default `./services/api/var/models`, git-ignored) read-only at `/models`; Docker creates the folder
+  empty on the first `docker compose up` if it does not exist, which is harmless without local speech (on Linux it is owned by root).
 * **Speech:** `en-IN`, `hi-IN` and `kn-IN` are supported for recognition and synthesis (use `centralindia`: `southindia`
   does not offer standalone Speech). The Speech SDK that streams recognition is part of the `azure` extra, imports in the
   runtime image without extra system packages (checked) and has not recognised a real caller. **Personal Voice** requires Microsoft
