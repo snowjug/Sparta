@@ -285,6 +285,21 @@ class VoiceActivityProvider(Protocol):
     def reset(self) -> None: ...
 
 
+# ------------------------------------------------------------------------------------------ capabilities
+
+
+def consumes_audio(stt: SpeechToTextProvider) -> bool:
+    """Whether ``stt`` can take live caller audio: real recognisers can, the simulator cannot, and a scripted fake that
+    reads the samples (``providers/stt/fake.py``) declares it with a ``consumes_audio`` attribute."""
+    return bool(getattr(stt, "consumes_audio", not stt.meta.simulated))
+
+
+def produces_audio(tts: TextToSpeechProvider) -> bool:
+    """Whether ``tts`` produces audio samples: real voices do, the simulator only reports durations, and the tone-coded fake
+    (``providers/tts/fake.py``) declares it with a ``produces_audio`` attribute."""
+    return bool(getattr(tts, "produces_audio", not tts.meta.simulated))
+
+
 __all__ = [
     "AudioChunk",
     "CallSummary",
@@ -311,4 +326,6 @@ __all__ = [
     "Usage",
     "VadEvent",
     "VoiceActivityProvider",
+    "consumes_audio",
+    "produces_audio",
 ]

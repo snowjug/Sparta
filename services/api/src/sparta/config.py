@@ -109,8 +109,8 @@ class Settings(BaseSettings):
         default="simulator",
         validation_alias=AliasChoices("TELEPHONY_PROVIDER", "SPARTA_TELEPHONY_PROVIDER"),
     )
-    stt_provider: Literal["simulator", "azure"] = "simulator"
-    tts_provider: Literal["simulator", "azure"] = "simulator"
+    stt_provider: Literal["simulator", "azure", "fake"] = "simulator"
+    tts_provider: Literal["simulator", "azure", "fake"] = "simulator"
     llm_provider: Literal["rules", "azure_openai"] = "rules"
 
     azure_speech_key: SecretStr | None = None
@@ -306,6 +306,11 @@ class Settings(BaseSettings):
                 "SPARTA_AZURE_OPENAI_KEY and SPARTA_AZURE_OPENAI_DEPLOYMENT"
             )
         if self.is_production:
+            if "fake" in (self.stt_provider, self.tts_provider):
+                out.append(
+                    "SPARTA_STT_PROVIDER=fake and SPARTA_TTS_PROVIDER=fake are test-only (they recognise and speak "
+                    "nothing real): forbidden when SPARTA_ENV=production"
+                )
             if self.telephony_provider in ("azure", "twilio") and self.stt_provider == "simulator":
                 out.append(
                     f"TELEPHONY_PROVIDER={self.telephony_provider} delivers the caller's audio, which needs speech "

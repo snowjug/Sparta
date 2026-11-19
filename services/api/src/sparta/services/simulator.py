@@ -346,6 +346,15 @@ class SimulatorService:
                 reason="Cannot transcribe audio: use typed turns, the browser microphone, or a transcript hint.",
             ),
             ProviderOption(
+                id="stt:fake",
+                kind="stt",
+                active=s.stt_provider == "fake",
+                available=True,
+                simulated=True,
+                label="Tone-coded fake speech-to-text (tests only)",
+                reason="Recognises no speech: it reads a tone-coded line id from the audio. Refused in production.",
+            ),
+            ProviderOption(
                 id="stt:azure",
                 kind="stt",
                 active=s.stt_provider == "azure",
@@ -362,6 +371,15 @@ class SimulatorService:
                 simulated=True,
                 label="Simulated text-to-speech",
                 reason="Timing only: no audio is produced.",
+            ),
+            ProviderOption(
+                id="tts:fake",
+                kind="tts",
+                active=s.tts_provider == "fake",
+                available=True,
+                simulated=True,
+                label="Tone-coded fake text-to-speech (tests only)",
+                reason="Speaks no words: it plays a tone-coded marker and a steady tone. Refused in production.",
             ),
             ProviderOption(
                 id="tts:azure",

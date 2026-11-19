@@ -82,6 +82,10 @@ def build_providers(settings: Settings, *, clock: Clock, metrics: Metrics) -> Pr
 
         rest_stt = AzureSpeechToText(settings, http=shared_http(), clock=clock, metrics=metrics)
         stt = register(build_stt(settings, rest_stt, clock=clock, metrics=metrics))
+    elif settings.stt_provider == "fake":
+        from sparta.providers.stt.fake import FakeToneSpeechToText
+
+        stt = FakeToneSpeechToText()
     else:
         stt = SimulatedSpeechToText()
 
@@ -90,6 +94,10 @@ def build_providers(settings: Settings, *, clock: Clock, metrics: Metrics) -> Pr
         from sparta.providers.tts.azure import AzureTextToSpeech
 
         tts = register(AzureTextToSpeech(settings, http=shared_http(), clock=clock, metrics=metrics))
+    elif settings.tts_provider == "fake":
+        from sparta.providers.tts.fake import FakeToneTextToSpeech
+
+        tts = FakeToneTextToSpeech()
     else:
         tts = SimulatedTextToSpeech()
 

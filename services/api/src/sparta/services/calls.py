@@ -74,6 +74,7 @@ from sparta.providers.base import (
     SummaryRequest,
     TextToSpeechProvider,
     TurnEvaluationRequest,
+    consumes_audio,
 )
 from sparta.providers.resilience import ResilientCaller
 from sparta.providers.vad.energy import EnergyVad
@@ -1448,11 +1449,12 @@ class CallService:
         """Providers that deliver the caller's media need recognition; the simulator hands over text instead."""
         if not rt.provider.capabilities.receives_caller_audio:
             return
-        if self.stt.meta.simulated:
+        if not consumes_audio(self.stt):
             problem = ProviderError(
                 self.stt.meta.provider,
                 "stt",
-                "Caller audio is arriving but speech recognition is simulated; set SPARTA_STT_PROVIDER=azure.",
+                "Caller audio is arriving but speech recognition is simulated; set SPARTA_STT_PROVIDER=azure "
+                "(or local).",
             )
             task = asyncio.create_task(self._report_provider_error(rt, problem, degraded=True))
             rt.background.add(task)
