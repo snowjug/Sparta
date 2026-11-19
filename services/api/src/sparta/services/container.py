@@ -180,6 +180,10 @@ class Container:
             await run_migrations(self.settings.database_url)
         await self.hub.start()
         self.calls.start()
+        if not self.hermetic:  # a replay container must not open a second media listener on the same port
+            start_media = getattr(self.providers.telephony, "start", None)
+            if callable(start_media):
+                await start_media()
         self.started = True
 
     async def stop(self) -> None:

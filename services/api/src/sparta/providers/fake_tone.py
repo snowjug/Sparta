@@ -95,25 +95,49 @@ def _symbol_at(samples: "array[int]", start: int, count: int, rate: int) -> int 
     return best
 
 
-def decode_line_id(pcm16: bytes, rate: int) -> int | None:
-    """The id carried by the first burst in ``pcm16``, or ``None`` when there is no intact burst."""
+def _burst_at(samples: "array[int]", start: int, window: int, rate: int) -> int | None:
+    """The line id of an intact burst that starts exactly at sample ``start``, else ``None``."""
+    if _dominance(samples, start, window, rate, SYNC_HZ) < _MIN_DOMINANCE:
+        return None
+    if _dominance(samples, start + window, window, rate, SYNC_HZ) < _MIN_DOMINANCE:
+        return None
+    hi = _symbol_at(samples, start + 2 * window, window, rate)
+    lo = _symbol_at(samples, start + 3 * window, window, rate)
+    check = _symbol_at(samples, start + 4 * window, window, rate)
+    if hi is None or lo is None or check is None or check != (hi ^ lo ^ 0x0A) & 0x0F:
+        return None
+    return (hi << 4) | lo
+
+
+def find_bursts(
+    pcm16: bytes, rate: int, *, max_scan_ms: int | None = None, first_only: bool = False
+) -> list[tuple[int, int]]:
+    """Every intact burst in ``pcm16`` as ``(offset in ms, line id)``, in order. A recording of a call shows which lines
+    were spoken and when."""
     samples = _samples(pcm16)
     window = rate * SYMBOL_MS // 1000
     hop = max(1, rate * 10 // 1000)
-    last = min(len(samples) - BURST_SYMBOLS * window, rate * MAX_SCAN_MS // 1000)
-    for start in range(0, last + 1, hop):
-        if _dominance(samples, start, window, rate, SYNC_HZ) < _MIN_DOMINANCE:
+    last = len(samples) - BURST_SYMBOLS * window
+    if max_scan_ms is not None:
+        last = min(last, rate * max_scan_ms // 1000)
+    found: list[tuple[int, int]] = []
+    start = 0
+    while start <= last:
+        line_id = _burst_at(samples, start, window, rate)
+        if line_id is None:
+            start += hop
             continue
-        if _dominance(samples, start + window, window, rate, SYNC_HZ) < _MIN_DOMINANCE:
-            continue
-        hi = _symbol_at(samples, start + 2 * window, window, rate)
-        lo = _symbol_at(samples, start + 3 * window, window, rate)
-        check = _symbol_at(samples, start + 4 * window, window, rate)
-        if hi is None or lo is None or check is None:
-            continue
-        if check == (hi ^ lo ^ 0x0A) & 0x0F:
-            return (hi << 4) | lo
-    return None
+        found.append((start * 1000 // rate, line_id))
+        if first_only:
+            break
+        start += BURST_SYMBOLS * window
+    return found
+
+
+def decode_line_id(pcm16: bytes, rate: int) -> int | None:
+    """The id carried by the first burst in ``pcm16``, or ``None`` when there is no intact burst."""
+    found = find_bursts(pcm16, rate, max_scan_ms=MAX_SCAN_MS, first_only=True)
+    return found[0][1] if found else None
 
 
 def tone_duration_ms(pcm16: bytes, rate: int, *, rms_threshold: float = 1_000.0) -> int:

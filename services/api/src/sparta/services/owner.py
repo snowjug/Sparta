@@ -70,6 +70,7 @@ from sparta.services.views import (
     TrustedFingerprint,
     VoiceConsentView,
     VoiceEnrollRequest,
+    connection_state,
 )
 
 log = logging.getLogger("sparta.owner")
@@ -141,6 +142,9 @@ class OwnerService:
     def system_status(self) -> SystemStatus:
         caps = self.providers.telephony.capabilities
         llm = self.providers.llm.meta
+        connection, pstn, takeover = connection_state(
+            self.settings.telephony_provider, simulated=caps.simulated, can_transfer=caps.can_transfer
+        )
         return SystemStatus(
             version=__version__,
             env=self.settings.env.value,
@@ -152,6 +156,9 @@ class OwnerService:
                 live_calls_supported=caps.live_calls_supported,
                 forwarding_number=self.settings.forwarding_number,
                 note=caps.note,
+                connection=connection,
+                pstn=pstn,
+                takeover=takeover,
             ),
             stt_provider=self.providers.stt.meta.provider,
             tts_provider=self.providers.tts.meta.provider,
@@ -205,6 +212,12 @@ class OwnerService:
         elif caps.simulated:
             level, headline = "active", "Protection is on (simulator)"
             detail = "Sparta is screening simulated calls. Connect a telephony provider to screen real calls."
+        elif self.settings.telephony_provider == "asterisk":
+            level, headline = "active", "Sparta is answering local SIP calls"
+            detail = (
+                "Calls from SIP phones on your own network reach your AI assistant. Calls from ordinary phone "
+                "numbers cannot reach it: that needs a carrier, a number and a SIP trunk."
+            )
         else:
             level, headline = "active", "Sparta is screening your calls"
             detail = "Unknown callers are answered by your AI assistant and summarised for you."
@@ -221,6 +234,9 @@ class OwnerService:
             action = NextAction(kind="run_simulator", label="Try a simulated scam call", route="/simulator")
         else:
             action = NextAction(kind="none", label="You are all caught up", route="/")
+        connection, pstn, _takeover = connection_state(
+            self.settings.telephony_provider, simulated=caps.simulated, can_transfer=caps.can_transfer
+        )
         return HomeSummary(
             protection=ProtectionView(
                 status=level,
@@ -229,6 +245,8 @@ class OwnerService:
                 provider=self.settings.telephony_kind,
                 simulated=caps.simulated,
                 live_calls_supported=caps.live_calls_supported,
+                connection=connection,
+                pstn=pstn,
             ),
             today=TodayView(
                 handled=int(stats["handled"]),

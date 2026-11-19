@@ -127,6 +127,10 @@ def build_providers(settings: Settings, *, clock: Clock, metrics: Metrics) -> Pr
         from sparta.telephony.twilio import build_twilio_provider
 
         telephony = register(build_twilio_provider(settings, tts=tts, http=shared_http(), clock=clock, metrics=metrics))
+    elif settings.telephony_provider == "asterisk":
+        from sparta.telephony.asterisk import build_asterisk_provider
+
+        telephony = register(build_asterisk_provider(settings, tts=tts, clock=clock, metrics=metrics))
     elif settings.telephony_provider == "other":
         assert settings.telephony_plugin is not None  # enforced by Settings.problems()
         telephony = register(_load_plugin(settings.telephony_plugin)(settings, tts=tts, clock=clock, metrics=metrics))

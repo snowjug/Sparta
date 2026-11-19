@@ -108,7 +108,7 @@ from sparta.telephony.base import IncomingCall, Playback, TelephonyProvider
 
 log = logging.getLogger("sparta.calls")
 ASSISTANT_PROFILE_DEFAULT_NAME = "the owner"
-DEFAULT_SOURCE_LABEL = {"simulator": "Simulated caller"}
+DEFAULT_SOURCE_LABEL = {"simulator": "Simulated caller", "asterisk": "Local SIP caller"}
 FAILURE_STAGES = frozenset(
     {"play", "tts", "stt", "media"}
 )  # without these a live call can be neither heard nor screened
@@ -1091,7 +1091,8 @@ class CallService:
                 prefs = await repo.get_preferences(principal.id)
             if action is OwnerActionType.CONTINUE and ctx.state is not CallState.ESCALATE:
                 raise Conflict("Sparta is not waiting for your decision on this call.")
-            destination = dial_number(prefs.takeover_number)
+            sip_destination = caps.takeover_destination  # a provider that rings a SIP extension needs no phone number
+            destination = sip_destination or dial_number(prefs.takeover_number)
             if action is OwnerActionType.TAKEOVER and not rt.simulated and not destination:
                 raise UnsupportedByProvider(
                     "Set the phone number Sparta should bridge you to, with its country code (Assistant Studio), "
@@ -1437,7 +1438,9 @@ class CallService:
         principal = Principal(
             id=owner, display_name=self.settings.dev_user_name if owner == self.settings.dev_user_id else ""
         )
-        detail = await self._create(principal, self.telephony, CreateCallRequest(), incoming=call)
+        detail = await self._create(
+            principal, self.telephony, CreateCallRequest(caller_label=call.display_name), incoming=call
+        )
         return detail.id
 
     async def caller_audio(self, call_id: str, pcm16: bytes, sample_rate: int) -> None:
@@ -1565,7 +1568,12 @@ class CallService:
     def _with_takeover_destination(caps: CallCapabilities, takeover_number: str | None) -> CallCapabilities:
         """A real provider can only hand a call over when the owner has said where to: no usable destination, no
         Take over. A number without its country code is not usable, because a call is never bridged to a guess."""
-        if caps.simulated or not caps.can_take_over or dial_number(takeover_number):
+        if (
+            caps.simulated
+            or not caps.can_take_over
+            or caps.takeover_via == "sip_extension"
+            or dial_number(takeover_number)
+        ):
             return caps
         note = (
             "Set the phone number Sparta should bridge you to (Assistant Studio) to enable Take Over."

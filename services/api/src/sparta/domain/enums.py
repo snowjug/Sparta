@@ -156,6 +156,7 @@ class ProviderKind(StrEnum):
     SIMULATOR = "simulator"
     AZURE = "azure"
     ANDROID_SCREENING = "android_screening"
+    ASTERISK = "asterisk"
     OTHER = "other"
 
 

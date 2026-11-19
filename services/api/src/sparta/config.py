@@ -4,6 +4,7 @@ Production guards fail fast with an actionable message instead of a stack trace.
 """
 
 import importlib.util
+import ipaddress
 import re
 from enum import StrEnum
 from functools import lru_cache
@@ -28,6 +29,18 @@ class ConfigurationError(RuntimeError):
 
 
 _BARE_HOST = re.compile(r"[A-Za-z0-9][A-Za-z0-9.\-]*")
+MIN_ASTERISK_SECRET_CHARS = 24
+
+
+def _peer_problem(entry: str) -> str | None:
+    """Why ``entry`` is not an acceptable media peer (an address, a network narrower than the whole internet, a host)."""
+    try:
+        network = ipaddress.ip_network(entry, strict=False)
+    except ValueError:
+        if _BARE_HOST.fullmatch(entry):
+            return None
+        return f"'{entry}' is neither an IP address, a CIDR range nor a host name"
+    return f"'{entry}' would allow every address" if network.prefixlen == 0 else None
 
 
 def _split_csv(value: object) -> object:
@@ -105,12 +118,12 @@ class Settings(BaseSettings):
     expose_metrics: bool = False
 
     # --- providers (selected by configuration) --------------------------------------
-    telephony_provider: Literal["simulator", "azure", "twilio", "other"] = Field(
+    telephony_provider: Literal["simulator", "azure", "twilio", "asterisk", "other"] = Field(
         default="simulator",
         validation_alias=AliasChoices("TELEPHONY_PROVIDER", "SPARTA_TELEPHONY_PROVIDER"),
     )
-    stt_provider: Literal["simulator", "azure", "fake"] = "simulator"
-    tts_provider: Literal["simulator", "azure", "fake"] = "simulator"
+    stt_provider: Literal["simulator", "azure", "local", "fake"] = "simulator"
+    tts_provider: Literal["simulator", "azure", "local", "fake"] = "simulator"
     llm_provider: Literal["rules", "azure_openai"] = "rules"
 
     azure_speech_key: SecretStr | None = None
@@ -173,6 +186,48 @@ class Settings(BaseSettings):
     provider_timeout_s: float = 6.0
     provider_max_retries: int = 2
     simulator_enabled: bool = True
+
+    # --- local SIP: Asterisk (no PSTN) ---------------------------------------------
+    asterisk_media_bind: str = Field(
+        default="127.0.0.1",
+        description="Address of the AudioSocket listener Asterisk connects to for each call. Use 0.0.0.0 only inside a "
+        "container network and keep SPARTA_ASTERISK_MEDIA_PEERS tight.",
+    )
+    asterisk_media_port: int = Field(default=8090, ge=0, le=65535, description="0 picks any free port (tests)")
+    asterisk_media_peers: Annotated[list[str], NoDecode] = Field(
+        default_factory=lambda: ["127.0.0.1", "::1"],
+        description="Peers allowed to open a media connection: IP addresses, CIDR ranges or host names (resolved when a "
+        "connection arrives; 'asterisk' in Docker Compose). Anything else is dropped before a byte is read.",
+    )
+    asterisk_webhook_secret: SecretStr | None = Field(
+        default=None,
+        description="Shared secret of the dialplan callbacks (HTTP Basic password). At least 24 random characters.",
+    )
+    asterisk_webhook_secret_file: str | None = Field(
+        default=None, description="Read the callback secret from this file instead (a mounted secret)"
+    )
+    asterisk_extension: str = Field(
+        default="6000", pattern=r"^[0-9]{2,8}$", description="Extension that reaches Sparta"
+    )
+    asterisk_owner_extension: str = Field(
+        default="6002", pattern=r"^[0-9]{2,8}$", description="Extension rung on Take Over (a SIP phone, never PSTN)"
+    )
+    asterisk_sip_host: str = Field(default="127.0.0.1", description="Where `sparta doctor` probes Asterisk's SIP port")
+    asterisk_sip_port: int = Field(default=5060, ge=1, le=65535)
+    asterisk_claim_ttl_s: float = Field(
+        default=10.0, gt=0, description="Seconds an issued media id stays valid before Asterisk must have used it"
+    )
+    asterisk_handshake_timeout_s: float = Field(default=3.0, gt=0)
+    asterisk_idle_timeout_s: float = Field(
+        default=10.0, gt=0, description="A media connection that sends nothing for this long is closed"
+    )
+    asterisk_playback_lead_ms: int = Field(
+        default=40,
+        ge=0,
+        le=200,
+        description="How far ahead of real time speech is sent. A stop cannot recall this much audio, so keep it small",
+    )
+    asterisk_max_media_connections: int = Field(default=8, ge=1, le=64)
     telephony_plugin: str | None = Field(
         default=None,
         description="With TELEPHONY_PROVIDER=other: 'package.module:factory' returning a TelephonyProvider",
@@ -230,7 +285,13 @@ class Settings(BaseSettings):
     otlp_endpoint: str | None = None
 
     @field_validator(
-        "cors_origins", "allowed_ws_origins", "trusted_hosts", "provider_only_hosts", "oidc_algorithms", mode="before"
+        "cors_origins",
+        "allowed_ws_origins",
+        "trusted_hosts",
+        "provider_only_hosts",
+        "oidc_algorithms",
+        "asterisk_media_peers",
+        mode="before",
     )
     @classmethod
     def _csv(cls, value: object) -> object:
@@ -241,9 +302,21 @@ class Settings(BaseSettings):
         return self.env is Environment.PRODUCTION
 
     @property
-    def telephony_kind(self) -> Literal["simulator", "azure", "other"]:
+    def telephony_kind(self) -> Literal["simulator", "azure", "asterisk", "other"]:
         """The provider kind the API contract knows: Twilio is reported as the generic ``other`` kind."""
         return "other" if self.telephony_provider == "twilio" else self.telephony_provider
+
+    def asterisk_secret(self) -> str | None:
+        """The dialplan callback secret: the value, else the first line of the mounted secret file."""
+        if self.asterisk_webhook_secret is not None:
+            return self.asterisk_webhook_secret.get_secret_value().strip() or None
+        if self.asterisk_webhook_secret_file:
+            try:
+                with open(self.asterisk_webhook_secret_file, encoding="utf-8") as handle:
+                    return handle.readline().strip() or None
+            except OSError:
+                return None
+        return None
 
     @property
     def ws_origins(self) -> list[str]:
@@ -272,6 +345,22 @@ class Settings(BaseSettings):
             )
         if self.telephony_provider == "other" and not self.telephony_plugin:
             out.append("TELEPHONY_PROVIDER=other requires SPARTA_TELEPHONY_PLUGIN='package.module:factory'")
+        if self.telephony_provider == "asterisk":
+            secret = self.asterisk_secret()
+            if not secret:
+                out.append(
+                    "TELEPHONY_PROVIDER=asterisk requires SPARTA_ASTERISK_WEBHOOK_SECRET (or "
+                    "SPARTA_ASTERISK_WEBHOOK_SECRET_FILE): the dialplan callbacks must be authenticated"
+                )
+            elif len(secret) < MIN_ASTERISK_SECRET_CHARS:
+                out.append(f"The Asterisk callback secret must be at least {MIN_ASTERISK_SECRET_CHARS} characters")
+            out.extend(
+                f"SPARTA_ASTERISK_MEDIA_PEERS: {why}" for why in map(_peer_problem, self.asterisk_media_peers) if why
+            )
+            if not self.asterisk_media_peers:
+                out.append("SPARTA_ASTERISK_MEDIA_PEERS must list at least one peer (Asterisk's address or host name)")
+            if self.asterisk_extension == self.asterisk_owner_extension:
+                out.append("SPARTA_ASTERISK_EXTENSION and SPARTA_ASTERISK_OWNER_EXTENSION must differ")
         if self.provider_only_hosts:
             if not all(_BARE_HOST.fullmatch(host) for host in self.provider_only_hosts):
                 out.append(
@@ -311,15 +400,21 @@ class Settings(BaseSettings):
                     "SPARTA_STT_PROVIDER=fake and SPARTA_TTS_PROVIDER=fake are test-only (they recognise and speak "
                     "nothing real): forbidden when SPARTA_ENV=production"
                 )
-            if self.telephony_provider in ("azure", "twilio") and self.stt_provider == "simulator":
+            if self.telephony_provider in ("azure", "twilio", "asterisk") and self.stt_provider in (
+                "simulator",
+                "fake",
+            ):
                 out.append(
                     f"TELEPHONY_PROVIDER={self.telephony_provider} delivers the caller's audio, which needs speech "
-                    "recognition: set SPARTA_STT_PROVIDER=azure"
+                    "recognition: set SPARTA_STT_PROVIDER=azure (or local)"
                 )
-            if self.telephony_provider in ("azure", "twilio") and self.tts_provider == "simulator":
+            if self.telephony_provider in ("azure", "twilio", "asterisk") and self.tts_provider in (
+                "simulator",
+                "fake",
+            ):
                 out.append(
                     f"TELEPHONY_PROVIDER={self.telephony_provider} speaks to the caller, which needs speech "
-                    "synthesis: set SPARTA_TTS_PROVIDER=azure"
+                    "synthesis: set SPARTA_TTS_PROVIDER=azure (or local)"
                 )
             if self.telephony_provider == "twilio" and not self.twilio_verify_media_signature:
                 out.append(

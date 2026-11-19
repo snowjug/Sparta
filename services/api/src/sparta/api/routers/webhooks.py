@@ -20,6 +20,7 @@ from sparta.providers.base import ProviderError
 from sparta.services.container import Container
 from sparta.services.errors import ServiceError
 from sparta.services.kv import KeyValueStore
+from sparta.telephony.asterisk import AsteriskTelephonyProvider, IncomingDecision
 from sparta.telephony.azure_acs import AzureAcsTelephonyProvider
 from sparta.telephony.base import IncomingCall
 from sparta.telephony.twilio import CALL_SID, STATUS_PATH, VOICE_PATH, TwilioTelephonyProvider, reject_twiml
@@ -244,6 +245,86 @@ async def twilio_media(ws: WebSocket, call_id: CallId) -> None:
         await provider.attach_media(call_id, ws)
     except ProviderError:
         await ws.close(code=1008)
+
+
+# --------------------------------------------------------------------------------------------- Asterisk
+def _asterisk(c: Container) -> AsteriskTelephonyProvider | None:
+    provider = c.providers.telephony
+    return provider if isinstance(provider, AsteriskTelephonyProvider) else None
+
+
+def _line(body: str) -> Response:
+    """The dialplan reads one short plain-text line."""
+    return Response(content=body, media_type="text/plain")
+
+
+async def _asterisk_form(
+    request: Request, provider: AsteriskTelephonyProvider, what: str
+) -> dict[str, str] | JSONResponse:
+    """The form fields of a dialplan callback, or the rejection. The secret and the peer are checked before anything
+    is read, and a request from anywhere but Asterisk's own address is refused even with the right secret."""
+    client = request.client.host if request.client else ""
+    if not provider.verify_callback(request.headers.get("authorization")):
+        return _rejected(WebhookRejected("callback secret mismatch"), what)
+    if not await provider.peer_allowed(client):
+        return _rejected(WebhookRejected("peer not allowed"), what)
+    body = await request.body()
+    try:
+        fields = parse_qsl(
+            body.decode("utf-8"), keep_blank_values=True, max_num_fields=MAX_FORM_FIELDS, strict_parsing=False
+        )
+    except (UnicodeDecodeError, ValueError):
+        return _rejected(WebhookRejected("malformed form", status_code=400), what)
+    return dict(fields)
+
+
+@router.post("/asterisk/incoming")
+async def asterisk_incoming(request: Request) -> Response:
+    """The dialplan asks whether to take a call: ``ACCEPT <single-use media id>`` or ``REJECT <reason>``."""
+    c = get_container(request)
+    provider = _asterisk(c)
+    if provider is None:
+        return _not_configured()
+    verified = await _asterisk_form(request, provider, "asterisk_incoming")
+    if isinstance(verified, JSONResponse):
+        return verified
+    try:
+        decision = await provider.handle_incoming(verified)
+    except ServiceError:
+        decision = IncomingDecision(False, reason="busy")  # over a call limit: refused without being answered
+    except ProviderError as exc:
+        return _rejected(WebhookRejected(exc.message, status_code=400), "asterisk_incoming")
+    if decision.call_id:
+        async with c.db.uow() as repo:
+            await repo.add_provider_event(
+                "asterisk", verified.get("channel", ""), "incoming_call", decision.call_id, None, c.clock.now()
+            )
+    return _line(decision.line())
+
+
+@router.post("/asterisk/next")
+async def asterisk_next(request: Request) -> Response:
+    """After the media socket ended: ``DIAL <owner extension>`` (a takeover) or ``HANGUP``."""
+    provider = _asterisk(get_container(request))
+    if provider is None:
+        return _not_configured()
+    verified = await _asterisk_form(request, provider, "asterisk_next")
+    if isinstance(verified, JSONResponse):
+        return verified
+    return _line(provider.handle_next(verified.get("channel", "")))
+
+
+@router.post("/asterisk/ended")
+async def asterisk_ended(request: Request) -> Response:
+    """The dialplan reports that the call is over (idempotent: Sparta may already know)."""
+    provider = _asterisk(get_container(request))
+    if provider is None:
+        return _not_configured()
+    verified = await _asterisk_form(request, provider, "asterisk_ended")
+    if isinstance(verified, JSONResponse):
+        return verified
+    await provider.handle_ended(verified.get("channel", ""), verified.get("status", "-"))
+    return _line("OK")
 
 
 # --------------------------------------------------------------------------------- generic (HMAC signed)
