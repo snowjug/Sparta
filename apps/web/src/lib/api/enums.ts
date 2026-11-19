@@ -118,7 +118,7 @@ export const TURN_SOURCES = [
 ] as const;
 export type TurnSource = (typeof TURN_SOURCES)[number];
 
-export const PROVIDER_KINDS = ["simulator", "azure", "android_screening", "other"] as const;
+export const PROVIDER_KINDS = ["simulator", "azure", "android_screening", "asterisk", "other"] as const;
 export type ProviderKind = (typeof PROVIDER_KINDS)[number];
 
 export const CALL_MODES = ["conversational", "screening_only"] as const;

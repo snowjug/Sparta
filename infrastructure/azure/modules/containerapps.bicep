@@ -69,12 +69,19 @@ param hasAcsConnectionString bool = false
 param acsResourceId string = ''
 param entraTenantId string = ''
 param eventGridAudience string = ''
+param eventGridAllowedAppIds string = ''
+param hasTwilioToken bool = false
+param twilioAccountSid string = ''
+param twilioCallerId string = ''
 param telephonyOwnerUserId string = ''
 param forwardingNumber string = ''
 param otlpEndpoint string = ''
 param logLevel string = 'INFO'
 param dailyCallCap int = 200
 param maxActiveCalls int = 5
+param dailyCallMinutesCap int = 240
+param perNumberDailyCallCap int = 10
+param providerFailureLimit int = 2
 
 resource workspace 'Microsoft.OperationalInsights/workspaces@2023-09-01' existing = {
   name: workspaceName
@@ -171,6 +178,15 @@ var optionalSecrets = concat(
         }
       ]
     : [],
+  hasTwilioToken
+    ? [
+        {
+          name: 'twilio-auth-token'
+          keyVaultUrl: '${vaultUri}secrets/sparta-twilio-auth-token'
+          identity: identityId
+        }
+      ]
+    : [],
   hasRegistryPassword
     ? [
         {
@@ -216,6 +232,9 @@ var baseEnv = [
   { name: 'SPARTA_LLM_PROVIDER', value: llmProvider }
   { name: 'SPARTA_DAILY_CALL_CAP', value: string(dailyCallCap) }
   { name: 'SPARTA_MAX_ACTIVE_CALLS', value: string(maxActiveCalls) }
+  { name: 'SPARTA_DAILY_CALL_MINUTES_CAP', value: string(dailyCallMinutesCap) }
+  { name: 'SPARTA_PER_NUMBER_DAILY_CALL_CAP', value: string(perNumberDailyCallCap) }
+  { name: 'SPARTA_PROVIDER_FAILURE_LIMIT', value: string(providerFailureLimit) }
 ]
 
 var optionalEnv = concat(
@@ -242,6 +261,15 @@ var optionalEnv = concat(
     : [],
   empty(entraTenantId) ? [] : [{ name: 'SPARTA_ENTRA_TENANT_ID', value: entraTenantId }],
   empty(eventGridAudience) ? [] : [{ name: 'SPARTA_EVENT_GRID_AUDIENCE', value: eventGridAudience }],
+  empty(eventGridAllowedAppIds) ? [] : [{ name: 'SPARTA_EVENT_GRID_ALLOWED_APP_IDS', value: eventGridAllowedAppIds }],
+  hasTwilioToken
+    ? [
+        { name: 'SPARTA_TWILIO_AUTH_TOKEN', secretRef: 'twilio-auth-token' }
+        { name: 'SPARTA_TWILIO_ACCOUNT_SID', value: twilioAccountSid }
+        { name: 'SPARTA_TWILIO_CALLBACK_BASE_URL', value: 'https://${apiFqdn}' }
+      ]
+    : [],
+  empty(twilioCallerId) ? [] : [{ name: 'SPARTA_TWILIO_CALLER_ID', value: twilioCallerId }],
   empty(telephonyOwnerUserId) ? [] : [{ name: 'SPARTA_TELEPHONY_OWNER_USER_ID', value: telephonyOwnerUserId }],
   empty(forwardingNumber) ? [] : [{ name: 'SPARTA_FORWARDING_NUMBER', value: forwardingNumber }],
   empty(otlpEndpoint) ? [] : [{ name: 'SPARTA_OTLP_ENDPOINT', value: otlpEndpoint }]

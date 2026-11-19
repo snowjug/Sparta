@@ -26,12 +26,42 @@ from sparta.domain.models import (
 # ----------------------------------------------------------------------------------------------------- system
 
 
+Connection = Literal["simulated", "local_sip", "pstn"]
+PstnState = Literal["not_applicable", "not_configured", "provider"]
+TakeoverKind = Literal["none", "simulated", "phone_number", "sip_extension"]
+
+
+def connection_state(
+    provider: str, *, simulated: bool, can_transfer: bool
+) -> tuple[Connection, PstnState, TakeoverKind]:
+    """How calls reach Sparta, whether a phone number can, and what Take Over rings: derived, never configured."""
+    if simulated:
+        return "simulated", "not_applicable", "simulated"
+    takeover: TakeoverKind = (
+        "none" if not can_transfer else ("sip_extension" if provider == "asterisk" else "phone_number")
+    )
+    if provider == "asterisk":
+        return "local_sip", "not_configured", takeover
+    return "pstn", "provider", takeover
+
+
 class TelephonyView(SpartaModel):
-    provider: Literal["simulator", "azure", "other"]
+    provider: Literal["simulator", "azure", "asterisk", "other"]
     simulated: bool
     live_calls_supported: bool
     forwarding_number: str | None = None
     note: str = ""
+    connection: Connection = Field(
+        default="pstn",
+        description="How calls reach Sparta with this provider: simulated typing, local SIP over IP (no phone number), "
+        "or a phone-network provider.",
+    )
+    pstn: PstnState = Field(
+        default="provider",
+        description="Whether ordinary mobile and landline numbers can reach Sparta: never with the simulator, not "
+        "configured with local SIP (that needs a carrier, a number and a trunk), else through the provider.",
+    )
+    takeover: TakeoverKind = Field(default="phone_number", description="What Take Over does with this provider.")
 
 
 class LanguageView(SpartaModel):
@@ -89,6 +119,8 @@ class ProtectionView(SpartaModel):
     provider: str
     simulated: bool
     live_calls_supported: bool
+    connection: Connection = "pstn"
+    pstn: PstnState = "provider"
 
 
 class TodayView(SpartaModel):

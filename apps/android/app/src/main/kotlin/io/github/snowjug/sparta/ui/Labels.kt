@@ -135,6 +135,7 @@ object Labels {
         ProviderKind.SIMULATOR -> R.string.provider_simulator
         ProviderKind.AZURE -> R.string.provider_azure
         ProviderKind.ANDROID_SCREENING -> R.string.provider_android_screening
+        ProviderKind.ASTERISK -> R.string.provider_asterisk
         ProviderKind.OTHER -> R.string.provider_other
         ProviderKind.UNKNOWN -> R.string.provider_unknown
     }

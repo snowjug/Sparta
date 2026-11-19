@@ -3,11 +3,11 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { DevBanner } from "./dev-banner";
 import { DisplayMenu } from "./display-menu";
-import { SystemProviderBadge, SimulationBadge } from "./provider-badge";
+import { SystemProviderBadge, SimulationBadge, speechName } from "./provider-badge";
 import { AppShell } from "./app-shell";
 import { renderWithApp } from "@/test/render";
 import { apiError, createFakeApi } from "@/test/fake-fetch";
-import { makePreferences, makeStatus } from "@/test/fixtures";
+import { makeLocalSipStatus, makePreferences, makeStatus } from "@/test/fixtures";
 import { makeAssistantRoutes } from "@/test/routes";
 import { findOpenDialog } from "@/test/dialog";
 
@@ -122,6 +122,33 @@ describe("provider badges (honesty: real vs simulated)", () => {
     renderWithApp(<SystemProviderBadge />);
     expect(await screen.findByText("Simulated")).toBeInTheDocument();
     expect(screen.getByText(/Calls are simulated; no real phone call is involved/)).toBeInTheDocument();
+  });
+
+  it("calls local SIP by its own name and never Real, while phone-network providers keep Real · provider", () => {
+    const { unmount } = renderWithApp(<SimulationBadge simulated={false} provider="asterisk" />);
+    expect(screen.getByText("Local SIP")).toBeInTheDocument();
+    expect(screen.queryByText(/Real/)).toBeNull();
+    unmount();
+    renderWithApp(<SimulationBadge simulated={false} provider="other" connection="pstn" />);
+    expect(screen.getByText("Real · Other provider")).toBeInTheDocument();
+    expect(screen.queryByText("Local SIP")).toBeNull();
+  });
+
+  it("says local SIP to screen readers too: SIP phones on the network, not ordinary phone numbers", async () => {
+    const api = createFakeApi({ "GET /api/v1/system/status": () => makeLocalSipStatus() });
+    renderWithApp(<SystemProviderBadge />, { api });
+    expect(await screen.findByText("Local SIP")).toBeInTheDocument();
+    expect(screen.getByText(/Telephony provider: Asterisk/)).toHaveTextContent(/over local SIP from phones on your network.*Ordinary phone numbers cannot reach Sparta/);
+    expect(screen.queryByText(/Real phone calls/)).toBeNull();
+  });
+
+  it("names the speech providers the way an owner would: Local, Azure, Simulated, Fake (test), or both when they differ", () => {
+    expect(speechName("local-faster-whisper", "local-piper")).toBe("Local");
+    expect(speechName("azure-speech", "azure-speech")).toBe("Azure");
+    expect(speechName("simulator", "simulator")).toBe("Simulated");
+    expect(speechName("fake-tone", "fake-tone")).toBe("Fake (test)");
+    expect(speechName("local-faster-whisper", "azure-speech")).toBe("Hearing: Local · Speaking: Azure");
+    expect(speechName("whisper-cloud", "whisper-cloud")).toBe("whisper-cloud");
   });
 
   it("says when the API is offline instead of guessing", async () => {

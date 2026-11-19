@@ -278,8 +278,14 @@ class FakeTts:
 
     async def synthesize_stream(self, request: SynthesisRequest) -> AsyncIterator[AudioChunk]:
         self.requests.append(request)
-        rate = {"pcm16_8k": 8000, "pcm16_16k": 16000, "pcm16_24k": 24000}[request.output_format]
-        frame = bytes([self.frame_value]) * (rate * 20 // 1000 * 2)
+        formats = {
+            "pcm16_8k": (8000, 2, "pcm16"),
+            "pcm16_16k": (16000, 2, "pcm16"),
+            "pcm16_24k": (24000, 2, "pcm16"),
+            "mulaw_8k": (8000, 1, "mulaw"),
+        }
+        rate, width, encoding = formats[request.output_format]
+        frame = bytes([self.frame_value]) * (rate * 20 // 1000 * width)
         try:
             if self.error is not None:
                 raise self.error
@@ -288,7 +294,7 @@ class FakeTts:
             while sent < self.frames:
                 count = min(self.chunk_frames, self.frames - sent)
                 sent += count
-                yield AudioChunk(frame * count, rate, "pcm16", seq, final=sent >= self.frames)
+                yield AudioChunk(frame * count, rate, encoding, seq, final=sent >= self.frames)
                 seq += 1
                 if self.gate is not None and seq == 1:
                     await self.gate.wait()

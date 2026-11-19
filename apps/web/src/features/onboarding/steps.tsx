@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import type { ScreeningStrictness } from "@/lib/api/enums";
 import { SCREENING_STRICTNESS } from "@/lib/api/enums";
 import { useApi } from "@/lib/api/provider";
@@ -16,7 +16,7 @@ import { Checkbox, Field, RangeField, SegmentedControl, Select, Switch, TextInpu
 import { Icon, type IconName } from "@/components/ui/icon";
 import { RiskBadge } from "@/components/call/badges";
 import { Transcript } from "@/components/call/transcript";
-import { SimulationBadge, providerName } from "@/components/shell/provider-badge";
+import { SimulationBadge, connectionName, isLocalSip, providerName, pstnName, speechName, takeoverName } from "@/components/shell/provider-badge";
 import { DisclosurePreviewBlock } from "./disclosure-block";
 
 export interface StepProps {
@@ -369,35 +369,59 @@ export function WalkthroughStep() {
   );
 }
 
+function TelephonyRow({ label, testId, children }: { label: string; testId?: string; children: ReactNode }) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-2 py-3">
+      <dt className="text-sm text-muted">{label}</dt>
+      <dd className="flex items-center gap-2 text-base font-semibold text-fg" data-testid={testId}>
+        {children}
+      </dd>
+    </div>
+  );
+}
+
 export function TelephonyStep() {
   const { data: status, isPending, error, refetch } = useSystemStatus();
   if (isPending) return <LoadingBlock label="Checking the phone connection" lines={3} />;
   if (error || !status) return <ErrorState error={error} onRetry={() => void refetch()} title="Couldn't check the phone connection" />;
   const t = status.telephony;
+  const localSip = isLocalSip(t.provider, t.connection);
   return (
     <div className="space-y-6" data-testid="telephony-step">
       <p className="text-pretty text-lg text-fg">This is how calls reach Sparta on this server. We show it plainly so there are no surprises.</p>
       <dl className="divide-y divide-line rounded-3xl border border-line bg-raised px-5">
-        <div className="flex flex-wrap items-center justify-between gap-2 py-3">
-          <dt className="text-sm text-muted">Telephony provider</dt>
-          <dd className="flex items-center gap-2 text-base font-semibold text-fg">
-            {providerName(t.provider)}
-            <SimulationBadge simulated={t.simulated} provider={t.provider} />
-          </dd>
-        </div>
-        <div className="flex flex-wrap items-center justify-between gap-2 py-3">
-          <dt className="text-sm text-muted">Real phone calls</dt>
-          <dd className="text-base font-semibold text-fg">{t.live_calls_supported ? "Supported" : "Not connected"}</dd>
-        </div>
-        <div className="flex flex-wrap items-center justify-between gap-2 py-3">
-          <dt className="text-sm text-muted">Forwarding number</dt>
-          <dd className="text-base font-semibold text-fg" data-testid="forwarding-number">
-            {t.forwarding_number ?? "Not set"}
-          </dd>
-        </div>
+        <TelephonyRow label="Telephony provider">
+          {providerName(t.provider)}
+          <SimulationBadge simulated={t.simulated} provider={t.provider} connection={t.connection} />
+        </TelephonyRow>
+        <TelephonyRow label="Connection" testId="telephony-connection">
+          {connectionName(t.connection)}
+        </TelephonyRow>
+        <TelephonyRow label={localSip ? "Local SIP calls" : "Real phone calls"}>{t.live_calls_supported ? "Supported" : "Not connected"}</TelephonyRow>
+        {t.pstn === "not_configured" ? (
+          <TelephonyRow label="Phone network (PSTN)" testId="telephony-pstn">
+            {pstnName(t.pstn)}
+          </TelephonyRow>
+        ) : null}
+        <TelephonyRow label="Speech" testId="telephony-speech">
+          {speechName(status.stt_provider, status.tts_provider)}
+        </TelephonyRow>
+        <TelephonyRow label="Take over" testId="telephony-takeover">
+          {takeoverName(t.takeover)}
+        </TelephonyRow>
+        <TelephonyRow label="Forwarding number" testId="forwarding-number">
+          {t.forwarding_number ?? (localSip ? "Not used with local SIP" : "Not set")}
+        </TelephonyRow>
       </dl>
       <p className="text-base text-muted">{t.note}</p>
-      {t.forwarding_number === null ? (
+      {localSip ? (
+        <p className="flex items-start gap-3 rounded-2xl bg-info-bg px-4 py-3 text-sm text-fg" data-testid="local-sip-explained">
+          <Icon name="info" size={18} className="mt-0.5 shrink-0 text-info" />
+          <span>
+            <strong className="font-semibold">Local SIP</strong> means SIP phones on your network can call Sparta. Normal phone numbers cannot reach it this way: that needs a carrier, a phone number and a SIP trunk.
+          </span>
+        </p>
+      ) : t.forwarding_number === null ? (
         <p className="flex items-start gap-3 rounded-2xl bg-info-bg px-4 py-3 text-sm text-fg" data-testid="forwarding-explained">
           <Icon name="info" size={18} className="mt-0.5 shrink-0 text-info" />
           <span>

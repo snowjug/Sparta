@@ -302,6 +302,7 @@ class SimulatorService:
         )
         openai_ready = bool(s.azure_openai_endpoint and s.azure_openai_key and s.azure_openai_deployment)
         acs_ready = bool(s.acs_connection_string and s.acs_callback_base_url)
+        twilio_ready = bool(s.twilio_account_sid and s.twilio_auth_token and s.twilio_callback_base_url)
         return [
             ProviderOption(
                 id="telephony:simulator",
@@ -324,6 +325,18 @@ class SimulatorService:
                 else "Needs SPARTA_ACS_CONNECTION_STRING and a public HTTPS SPARTA_ACS_CALLBACK_BASE_URL.",
             ),
             ProviderOption(
+                id="telephony:twilio",
+                kind="telephony",
+                active=s.telephony_provider == "twilio",
+                available=twilio_ready,
+                simulated=False,
+                label="Twilio Programmable Voice",
+                reason=""
+                if twilio_ready
+                else "Needs SPARTA_TWILIO_ACCOUNT_SID, SPARTA_TWILIO_AUTH_TOKEN and a public HTTPS "
+                "SPARTA_TWILIO_CALLBACK_BASE_URL.",
+            ),
+            ProviderOption(
                 id="stt:simulator",
                 kind="stt",
                 active=s.stt_provider == "simulator",
@@ -331,6 +344,15 @@ class SimulatorService:
                 simulated=True,
                 label="Simulated speech-to-text",
                 reason="Cannot transcribe audio: use typed turns, the browser microphone, or a transcript hint.",
+            ),
+            ProviderOption(
+                id="stt:fake",
+                kind="stt",
+                active=s.stt_provider == "fake",
+                available=True,
+                simulated=True,
+                label="Tone-coded fake speech-to-text (tests only)",
+                reason="Recognises no speech: it reads a tone-coded line id from the audio. Refused in production.",
             ),
             ProviderOption(
                 id="stt:azure",
@@ -349,6 +371,15 @@ class SimulatorService:
                 simulated=True,
                 label="Simulated text-to-speech",
                 reason="Timing only: no audio is produced.",
+            ),
+            ProviderOption(
+                id="tts:fake",
+                kind="tts",
+                active=s.tts_provider == "fake",
+                available=True,
+                simulated=True,
+                label="Tone-coded fake text-to-speech (tests only)",
+                reason="Speaks no words: it plays a tone-coded marker and a steady tone. Refused in production.",
             ),
             ProviderOption(
                 id="tts:azure",

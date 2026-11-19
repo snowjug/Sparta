@@ -189,7 +189,11 @@ reports.
   risks, each of which can cause a miss: conditional demands such as "no OTP, no refund", pronoun follow-ups after a
   denial ("do not share your OTP with anyone. Just read it to me"), transcripts without punctuation, and unsupported
   languages: on `dev`, the Tamil bank scenario `un-tamil-bank-01` is rated low risk and its OTP request is missed.
-- **Real audio.** Recognition errors, accents, crosstalk and silence handling were never measured on audio.
+- **Real audio.** Recognition errors, accents, crosstalk and silence handling were never measured on a dataset of audio. Phase 2
+  added a *controlled* matrix of whole calls with scripted recognition ([PHASE2_CONTROLLED_RESULTS.md](PHASE2_CONTROLLED_RESULTS.md)):
+  it checks the pipeline's behaviour, not the recogniser's accuracy, and its latencies are local processing time with
+  zero-latency fakes. Phase 3 ran a handful of machine-voice utterances through a real recogniser and a real SIP call (section 9):
+  that is a smoke test of one model, not an evaluation. No real-call latency over a phone exists yet.
 - **Adversaries.** Someone who reads the rules can phrase around them. Only a few injection scenarios are included.
 - **Other languages.** Marathi, Tamil, Telugu, Malayalam and Bengali packs exist as `planned`; callers in those
   languages are asked to switch to a supported language and risk rules still run on the text.
@@ -233,3 +237,35 @@ flow).
 A real evaluation needs native-speaker review of the Hindi, Kannada and romanised text, human labels from more than one
 annotator, recorded calls with consent and real recogniser output, a fresh held-out split written by someone who has not
 seen the rules, and a larger sample. None of that exists yet.
+
+## 9. Phase 3 measurements, kept apart from the evaluation above
+
+These are **not** part of the held-out evaluation and do not change its numbers. The rules, the language packs and the dataset
+were **not modified** in Phase 3, so the published results stand; the development split was re-run as a regression check
+(the result is in [PHASE3_ASTERISK_PLAN.md](PHASE3_ASTERISK_PLAN.md) and the pull request), and the held-out `test` split was not run.
+
+**A matrix through the real Sparta stack (`integration`).** 39 phrase calls sent as tone-coded audio through the real AudioSocket
+listener, audio pipeline, engine and call service (`tests/api/test_asterisk_matrix.py`). The tone codec carries the phrase text, so
+this tests the deterministic engine on **correct transcripts**, not speech recognition. The phrases are a small hand-written set in
+English, Hindi (Devanagari), Hinglish, Kannada (Kannada script) and Kanglish; no native speaker reviewed them.
+
+| Probe | Result |
+| --- | --- |
+| Credential requests (OTP, KYC, UPI PIN, card, password): 11 phrases, 5 languages or scripts | **11 of 11** refused, call ended, risk high, summary names the one-time password or PIN |
+| Requests for the owner's address: 5 phrases | **5 of 5** deflected |
+| Prompt-injection phrases ("ignore all previous instructions" and similar): 10 phrases | **9 of 10** refused and ended. The Hindi-script "ignore all previous instructions" was **not flagged** (the assistant asked for a name; nothing was obeyed) |
+| Probes for the owner's location: 5 phrases | **2 of 5** deflected (English, Hinglish). The Hindi, Kannada and Kanglish ones got the generic name prompt |
+| Calendar and availability requests: 5 phrases | the assistant gave the generic name prompt every time and disclosed nothing |
+
+The rule packs were deliberately **not changed** to fix the misses: they are tuned against the dev split, a change would have to be
+evaluated against the held-out split, and the Hindi, Kannada and Kanglish phrases need native review first. They are recorded as
+detection gaps, not as disclosure.
+
+**Real recognition on real audio, a handful of utterances (`local SIP`, real faster-whisper `small`, a machine voice).** Eight calls
+through a real SIP client ([PHASE3_ASTERISK_PLAN.md](PHASE3_ASTERISK_PLAN.md) section 8, [MULTILINGUAL_SPEECH.md](MULTILINGUAL_SPEECH.md)
+section 11). English: the three lines were recognised word for word and handled correctly (an OTP request refused and the call ended;
+an interruption stopped the greeting; a delivery call answered). Hindi, Hinglish, Kanglish, a Kanglish UPI PIN line and Kannada: the
+recogniser misheard the request in all five and Sparta **did not refuse any of them** (risk low, medium, low, low and low). The rules
+were not what failed: given the words that were said, the engine refuses all five lines (the English, Hinglish, Kanglish and UPI lines
+are pinned by the integration matrix above). With one utterance per language and one voice this says only that the small model is not
+fit to screen those languages; it is not an error rate.

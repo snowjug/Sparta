@@ -27,6 +27,8 @@ class TelephonyCapabilities:
     simulated: bool
     live_calls_supported: bool  # can the product receive *real* calls with this provider right now?
     note: str = ""
+    takeover_destination: str | None = None  # a fixed destination the provider rings (a SIP extension), not a number
+    takeover_note: str | None = None  # what Take Over really does here, when that is not "bridge your phone number"
 
     def call_capabilities(self, *, ended: bool = False) -> CallCapabilities:
         """Owner-control availability for one call, with honest explanations."""
@@ -35,10 +37,21 @@ class TelephonyCapabilities:
             takeover_note = "This provider cannot bridge the call to you."
         elif self.simulated:
             takeover_note = "Takeover is simulated: no real phone call is being bridged."
+        elif self.takeover_note:
+            takeover_note = self.takeover_note
         audio_note = (
             "Simulated call: no cellular audio is involved."
             if self.simulated
             else (None if self.two_way_audio else "Two-way audio is not connected for this call.")
+        )
+        takeover_via = (
+            "none"
+            if not self.can_transfer
+            else "simulated"
+            if self.simulated
+            else "sip_extension"
+            if self.takeover_destination
+            else "phone_number"
         )
         return CallCapabilities(
             can_take_over=self.can_transfer and not ended,
@@ -46,6 +59,7 @@ class TelephonyCapabilities:
             can_end=self.can_hangup and not ended,
             can_block=True,
             takeover_note=takeover_note,
+            takeover_via=takeover_via,
             simulated=self.simulated,
             two_way_audio=self.two_way_audio,
             audio_note=audio_note,

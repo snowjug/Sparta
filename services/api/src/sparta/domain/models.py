@@ -264,6 +264,11 @@ class CallCapabilities(SpartaModel):
     can_end: bool = False
     can_block: bool = True
     takeover_note: str | None = None
+    takeover_via: Literal["none", "simulated", "phone_number", "sip_extension"] = Field(
+        default="phone_number",
+        description="What Take Over does with this provider: nothing, a simulated bridge, a call to the owner's phone "
+        "number, or a ring of a SIP extension on the local server (never a PSTN number).",
+    )
     simulated: bool = False
     two_way_audio: bool = False
     audio_note: str | None = None

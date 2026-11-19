@@ -5,6 +5,7 @@ misconfigured selection fails at startup with an actionable message instead of a
 """
 
 import importlib
+import importlib.util
 import logging
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
@@ -55,6 +56,18 @@ def _load_plugin(spec: str) -> Callable[..., TelephonyProvider]:
     return factory  # type: ignore[no-any-return]
 
 
+def _require_local_package(module: str, package: str, setting: str) -> None:
+    """Fail at startup, with the fix, when an optional local-speech engine is not installed (like the Azure SDK check)."""
+    try:
+        present = importlib.util.find_spec(module) is not None
+    except (ImportError, ValueError):
+        present = False
+    if not present:
+        raise ConfigurationError(
+            [f"{setting}=local requires the {package} package: pip install 'sparta-api[local-speech]'"]
+        )
+
+
 def build_providers(settings: Settings, *, clock: Clock, metrics: Metrics) -> ProviderSet:
     """Instantiate the configured adapters. The simulator telephony adapter is always present (Simulator Lab)."""
     closers: list[Callable[[], Awaitable[None]]] = []
@@ -78,8 +91,19 @@ def build_providers(settings: Settings, *, clock: Clock, metrics: Metrics) -> Pr
     stt: SpeechToTextProvider
     if settings.stt_provider == "azure":
         from sparta.providers.stt.azure import AzureSpeechToText
+        from sparta.providers.stt.azure_sdk import build_stt
 
-        stt = register(AzureSpeechToText(settings, http=shared_http(), clock=clock, metrics=metrics))
+        rest_stt = AzureSpeechToText(settings, http=shared_http(), clock=clock, metrics=metrics)
+        stt = register(build_stt(settings, rest_stt, clock=clock, metrics=metrics))
+    elif settings.stt_provider == "fake":
+        from sparta.providers.stt.fake import FakeToneSpeechToText
+
+        stt = FakeToneSpeechToText()
+    elif settings.stt_provider == "local":
+        _require_local_package("faster_whisper", "faster-whisper", "SPARTA_STT_PROVIDER")
+        from sparta.providers.stt.local import LocalSpeechToText
+
+        stt = register(LocalSpeechToText(settings, metrics=metrics))
     else:
         stt = SimulatedSpeechToText()
 
@@ -88,6 +112,15 @@ def build_providers(settings: Settings, *, clock: Clock, metrics: Metrics) -> Pr
         from sparta.providers.tts.azure import AzureTextToSpeech
 
         tts = register(AzureTextToSpeech(settings, http=shared_http(), clock=clock, metrics=metrics))
+    elif settings.tts_provider == "fake":
+        from sparta.providers.tts.fake import FakeToneTextToSpeech
+
+        tts = FakeToneTextToSpeech()
+    elif settings.tts_provider == "local":
+        _require_local_package("piper", "piper-tts", "SPARTA_TTS_PROVIDER")
+        from sparta.providers.tts.local import LocalTextToSpeech
+
+        tts = register(LocalTextToSpeech(settings, metrics=metrics))
     else:
         tts = SimulatedTextToSpeech()
 
@@ -95,7 +128,16 @@ def build_providers(settings: Settings, *, clock: Clock, metrics: Metrics) -> Pr
     if settings.llm_provider == "azure_openai":
         from sparta.providers.llm.azure_openai import AzureOpenAIConversationModel
 
-        llm = register(AzureOpenAIConversationModel(settings, http=shared_http(), clock=clock, metrics=metrics))
+        llm = register(
+            AzureOpenAIConversationModel(
+                settings,
+                http=shared_http(),
+                clock=clock,
+                metrics=metrics,
+                temperature=0.0 if settings.azure_openai_send_temperature else None,
+                output_limit_param=settings.azure_openai_output_limit_param,
+            )
+        )
     else:
         llm = RulesConversationModel()
 
@@ -104,6 +146,14 @@ def build_providers(settings: Settings, *, clock: Clock, metrics: Metrics) -> Pr
         from sparta.telephony.azure_acs import build_acs_provider
 
         telephony = register(build_acs_provider(settings, tts=tts, http=shared_http(), clock=clock, metrics=metrics))
+    elif settings.telephony_provider == "twilio":
+        from sparta.telephony.twilio import build_twilio_provider
+
+        telephony = register(build_twilio_provider(settings, tts=tts, http=shared_http(), clock=clock, metrics=metrics))
+    elif settings.telephony_provider == "asterisk":
+        from sparta.telephony.asterisk import build_asterisk_provider
+
+        telephony = register(build_asterisk_provider(settings, tts=tts, clock=clock, metrics=metrics))
     elif settings.telephony_provider == "other":
         assert settings.telephony_plugin is not None  # enforced by Settings.problems()
         telephony = register(_load_plugin(settings.telephony_plugin)(settings, tts=tts, clock=clock, metrics=metrics))

@@ -33,4 +33,14 @@ regexes = [
   '''sparta-ci-only''',                                    # CI service-container password
   '''ci-placeholder-0123456789''',                         # ci.yml: placeholder so main.bicepparam compiles (not a password)
   '''4633458b-17de-408a-b874-0445c86b69e6''',              # public built-in Azure role id "Key Vault Secrets User" (secretaccess.bicep)
+  '''speech-key-SENTINEL-9f3a''',                           # services/api/tests/unit/test_doctor.py: fake Speech key the leak tests assert is never printed
+  '''fedcba9876543210fedcba9876543210''',                   # services/api/tests/unit/test_doctor.py: fake Twilio auth token the leak tests assert is never printed
+  '''asterisk-test-secret-0123456789abcdef''',              # services/api/tests/api/asterisk_kit.py: dummy callback secret of the in-process Asterisk tests
+  '''Zq8mK3vR7tYb2NcX5wLd9HpA4sGe6JfU''',                   # services/api/tests/e2e_sip/test_local_sip.py: dummy secret fed to the Asterisk entrypoint checks
+  '''Qe4rT7yU2iO9pA5sD8fG3hJ6kL1zXc0V''',                   # same file: dummy SIP password
+  '''Bn5mV8cX2zL4kJ7hG1fD9sA3pO6iU0yT''',                   # same file: dummy SIP password
+  '''Zq8mK3vR7tYb2NcX''',                                  # same file: the 16-character prefix of the first one (the old minimum the entrypoint now refuses)
+  '''fb7b63191e9bb045082c79fd742a3106a12c99513ab30df4a0d47fa6cb6fd0ab''',  # providers/local_models.py: SHA-256 of a public model file (Whisper small tokenizer.json)
+  '''297b13372ac43916285644fb9687add3cc62ee2a1adb60da3dc25cc94c1871fd''',  # providers/local_models.py: SHA-256 of a public model file (Whisper large-v3-turbo tokenizer.json)
+  '''large-v3-turbo''',                                     # providers/local_models.py: a model name that follows `key=`
 ]

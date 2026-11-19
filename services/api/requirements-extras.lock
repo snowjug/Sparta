@@ -118,6 +118,16 @@ asyncpg==0.32.0 \
     # via
     #   -c requirements-dev.lock
     #   sparta-api (pyproject.toml)
+azure-cognitiveservices-speech==1.53.1 \
+    --hash=sha256:51d437cf90f7f838e494111e391c2e6fd35b5be3d3020b13f0edf5932b617236 \
+    --hash=sha256:64b6b4ea96646066dfb53b56e50ce8229ac6d22e8e188a73827ccb50136d2a78 \
+    --hash=sha256:6ca1a8a0a52937776203a7b1de6acb9eee213efe7375bb91844976e4467c5481 \
+    --hash=sha256:7aea6e52fa828c2e0991a682c6f601a543b72bf4f35adfff00971bcf8d651418 \
+    --hash=sha256:9322a366001f9a353ee46bf498daf4768129f2b1dcf77866ffaae28c3a64b140 \
+    --hash=sha256:afe9e6859ebff6d6a9b303be02fbd1da1e64362baa60148b410b936ed1271a93
+    # via
+    #   -c requirements-dev.lock
+    #   sparta-api (pyproject.toml)
 azure-communication-callautomation==1.6.1 \
     --hash=sha256:150008289db1d8492fe6b4f787546e26faa2fc46e3c749f3c3796c465e243622 \
     --hash=sha256:d071717b88bcaf99c15bd3bf6473fb109d1c26f7ff374cfb67128ec39490bdbb
@@ -129,6 +139,7 @@ azure-core==1.41.0 \
     --hash=sha256:f46ff5dfcd230f25cf1c19e8a34b8dc08a337b2503e268bb600a16c00db8ad5a
     # via
     #   -c requirements-dev.lock
+    #   azure-cognitiveservices-speech
     #   azure-communication-callautomation
 certifi==2026.10.23 \
     --hash=sha256:a9895e6e2758b371e0545e321a3a8fd1fcfd9829ada8824a936dfb16aaaf36cd \

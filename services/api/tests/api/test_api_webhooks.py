@@ -318,6 +318,7 @@ async def test_an_incoming_call_event_creates_a_call_answers_it_and_is_idempoten
         assert r.status_code == 200 and r.json() == {"handled": 1}
         items = await phone_calls(env)
         assert len(items) == 1 and items[0]["provider"] == "azure" and items[0]["simulated"] is False
+        assert "Mr Caller" not in items[0]["caller_display"]  # the carrier-supplied name is not shown beside the number
         call_id = items[0]["id"]
 
         assert len(kit.acs_client.answered) == 1

@@ -24,6 +24,7 @@ from sparta.api.errors import ERROR_RESPONSES
 from sparta.api.middleware import (
     BodyLimitMiddleware,
     ErrorGuardMiddleware,
+    ProviderOnlyHostsMiddleware,
     RequestContextMiddleware,
     SecurityHeadersMiddleware,
 )
@@ -87,6 +88,7 @@ def create_app(settings: Settings | None = None, *, container: Container | None 
             setup_tracing(settings)
             built = await Container.build(settings)
             await built.start()
+            await built.warm_up()  # best effort and logged: the first call must not pay for it
             app.state.container = built
             http = httpx.AsyncClient(timeout=5.0, follow_redirects=False)
             app.state.authenticator = build_authenticator(settings, http)
@@ -171,6 +173,8 @@ def create_app(settings: Settings | None = None, *, container: Container | None 
         ],
         max_age=600,
     )
+    if settings.provider_only_hosts:
+        app.add_middleware(ProviderOnlyHostsMiddleware, hosts=settings.provider_only_hosts)
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.trusted_hosts)
     app.add_middleware(SecurityHeadersMiddleware, hsts=settings.is_production)
     app.add_middleware(RequestContextMiddleware)

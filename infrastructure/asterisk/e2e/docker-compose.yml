@@ -1,0 +1,95 @@
+# Sparta local-SIP end-to-end stack: a REAL Asterisk, the Sparta API (SQLite, no Postgres/Redis: this tests the telephony path,
+# not the database) and a headless SIP caller (baresip) that is started per scenario. Nothing is mocked: SIP, RTP and G.711 are
+# real. Driven by services/api/tests/e2e_sip (pytest, `SPARTA_SIP_E2E=1`); run it with `python scripts/sip_e2e.py`.
+#
+# It uses its own project name, its own random secrets (passed in the environment by the test, never stored) and random
+# published ports on 127.0.0.1, so it can run next to the normal dev stack.
+name: sparta-sip-e2e
+
+services:
+  api:
+    build:
+      context: ../../../services/api
+      args:
+        SPARTA_EXTRAS: ${E2E_EXTRAS-}
+        SPARTA_LOCAL_SPEECH: ${E2E_LOCAL_SPEECH:-0}
+        PIP_INDEX_URL: ${PIP_INDEX_URL:-https://pypi.org/simple}
+    init: true
+    environment:
+      SPARTA_ENV: development
+      SPARTA_AUTH_MODE: dev
+      SPARTA_ALLOW_NETWORK_DEV_AUTH: "true"
+      SPARTA_LOG_JSON: "false"
+      SPARTA_TELEPHONY_PROVIDER: asterisk
+      SPARTA_STT_PROVIDER: ${E2E_STT:-fake}
+      SPARTA_TTS_PROVIDER: ${E2E_TTS:-fake}
+      SPARTA_ASTERISK_WEBHOOK_SECRET: ${E2E_WEBHOOK_SECRET:?set by the test}
+      SPARTA_ASTERISK_MEDIA_BIND: 0.0.0.0
+      SPARTA_ASTERISK_MEDIA_PEERS: asterisk
+      SPARTA_LOCAL_MODEL_DIR: /models
+      SPARTA_RATE_LIMIT_PER_MINUTE: "100000"
+    command:
+      - sh
+      - -c
+      - python -m sparta migrate && python -m sparta seed && exec python -m sparta serve --host 0.0.0.0 --port 8000
+    ports:
+      - "127.0.0.1::8000"
+    volumes:
+      - ${E2E_MODELS_DIR:-./no-models}:/models:ro
+    healthcheck:
+      test: ["CMD", "sparta-healthcheck"]
+      interval: 3s
+      timeout: 5s
+      retries: 40
+      start_period: 5s
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/lib/sparta:uid=10001,gid=10001,mode=0700
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+  asterisk:
+    build:
+      context: ..
+    image: sparta-asterisk:local
+    init: true
+    environment:
+      SPARTA_WEBHOOK_SECRET: ${E2E_WEBHOOK_SECRET:?set by the test}
+      SIP_PASSWORD_6001: ${E2E_SIP_PASSWORD_6001:?set by the test}
+      SIP_PASSWORD_6002: ${E2E_SIP_PASSWORD_6002:?set by the test}
+      SPARTA_API_HOST: api
+      SPARTA_API_PORT: "8000"
+      SPARTA_MEDIA_PORT: "8090"
+      ASTERISK_MAX_CALLS: "2"
+      ASTERISK_MAX_CALL_SECONDS: ${E2E_MAX_CALL_SECONDS:-60}
+    ports:
+      - "127.0.0.1::5060/udp"
+    depends_on:
+      api:
+        condition: service_healthy
+    read_only: true
+    tmpfs:
+      - /etc/asterisk:uid=10001,gid=10001,mode=0750
+      - /run/asterisk:uid=10001,gid=10001,mode=0750
+      - /var/lib/asterisk:uid=10001,gid=10001,mode=0750
+      - /var/log/asterisk:uid=10001,gid=10001,mode=0750
+      - /var/spool/asterisk:uid=10001,gid=10001,mode=0750
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+  # One headless SIP caller per scenario: `docker compose run --rm sipclient /data/scenario.json`.
+  sipclient:
+    profiles: ["client"]
+    build:
+      context: ./sipclient
+    volumes:
+      - ${E2E_DATA_DIR:-./data}:/data
+    depends_on:
+      asterisk:
+        condition: service_healthy

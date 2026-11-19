@@ -168,6 +168,12 @@ Gaps in this release, stated plainly:
   writes audio.
 * Audio is not stored by Sparta; when Azure Speech is configured the audio **is sent to Azure** for recognition (section
   11). What Azure does with it is governed by Microsoft's terms and your Azure configuration; Sparta has not verified it.
+* **Local SIP and local speech (Phase 3).** With `TELEPHONY_PROVIDER=asterisk` the call's audio passes from the SIP phone to the
+  Asterisk container and from there over a TCP connection on the compose network to Sparta, in memory. The dialplan never calls a
+  recording application and Asterisk's call-detail and event logs are switched off, so Asterisk writes no recording and no call
+  record. With `SPARTA_STT_PROVIDER=local` and `SPARTA_TTS_PROVIDER=local` the audio is recognised and synthesised on the machine
+  and goes nowhere else. SIP and RTP between the phone and Asterisk are **not encrypted**: anyone who can read that network can hear
+  the call.
 
 ## 9. Logs, metrics and telemetry
 
@@ -233,10 +239,13 @@ This list is from the code; Microsoft's own retention and processing terms were 
 
 | Service | Enabled by | What Sparta sends | Code |
 | --- | --- | --- | --- |
-| Azure AI Speech (speech-to-text) | `SPARTA_STT_PROVIDER=azure` | Caller audio (live utterances wrapped as WAV; uploaded clips as uploaded) and the candidate locales | `providers/stt/azure.py` |
+| Azure AI Speech (speech-to-text) | `SPARTA_STT_PROVIDER=azure` | Caller audio: live utterances streamed through the Speech SDK (PCM16, 8 or 16 kHz, one connection per utterance) or, without the SDK, wrapped as WAV over REST; uploaded clips as uploaded; and the candidate locales | `providers/stt/azure_sdk.py`, `providers/stt/azure.py` |
 | Azure AI Speech (text-to-speech) | `SPARTA_TTS_PROVIDER=azure` | Assistant reply text as SSML and the voice name; the replies can contain the owner's display name | `providers/tts/azure.py` |
 | Azure OpenAI | `SPARTA_LLM_PROVIDER=azure_openai` | Per turn: the caller's text (at most 600 characters), up to six earlier turns of **both** speakers (at most 300 characters each), already-detected signal codes and the language. The owner's display name is replaced by "the owner" in the caller's text, the earlier turns and the summary inputs before they reach the provider (`redact_owner_name` in `risk/matchers.py`, called from `services/calls.py`; `tests/integration/test_model_provider_input.py`). Words are compared in the detectors' canonical form, so accented names, repeated letters, a nukta spelled either way and possessives are found, and a full name becomes one "the owner". Name words shorter than three letters are not replaced, and a name written in another script than the profile's is sent as written. For a summary (`SPARTA_FEATURE_LLM_SUMMARIES=true`): the rules summary, which can contain the caller's claimed name and organisation, and up to 12 turns. An LLM summary is rejected if it contains a number, link or e-mail address that is not in the source | `providers/llm/azure_openai.py`, `services/calls.py` |
 | Azure Communication Services and Event Grid | `TELEPHONY_PROVIDER=azure` | Call signalling and media for the call; Event Grid delivers the caller number, display name and call identifiers to Sparta's webhook | `telephony/azure_acs.py` |
+| Twilio | `TELEPHONY_PROVIDER=twilio` | Twilio is the carrier of the call: it holds the caller's and the dialled number and the audio in transit and streams the caller's audio to Sparta (mu-law over a WebSocket). Sparta sends back the assistant's speech and, for a takeover, the owner's `takeover_number` and the caller id in TwiML. Sparta does not request a Twilio recording. Twilio's own logs, retention and recording defaults are Twilio's and were not checked | `telephony/twilio.py` |
+| Asterisk (a container you run) | `TELEPHONY_PROVIDER=asterisk` | Nothing leaves your network: the SIP phone, Asterisk and Sparta are all on it. Asterisk sees the SIP signalling and audio and sends Sparta the extension number (as a label such as "SIP 6001"), a channel id and the 8 kHz audio. Its container log holds IP addresses, extension numbers and failed-login lines, and no audio or transcript | `telephony/asterisk/`, `infrastructure/asterisk/` |
+| faster-whisper and Piper (on this machine) | `SPARTA_STT_PROVIDER=local`, `SPARTA_TTS_PROVIDER=local` | Nothing: recognition and synthesis run locally. The models are fetched once by `python -m sparta models fetch` from Hugging Face (pinned, SHA-256 checked); the providers never download. ONNX Runtime's telemetry is disabled by an environment variable; what it would transmit otherwise was not captured or verified | `providers/stt/local.py`, `providers/tts/local.py`, `providers/local_models.py` |
 | Identity provider (OIDC) | `SPARTA_AUTH_MODE=oidc` | Sparta fetches the issuer's public signing keys over HTTPS; users' tokens are sent to Sparta, not by Sparta | `api/auth.py` |
 | OpenTelemetry collector | `SPARTA_OTLP_ENDPOINT` and the `otlp` extra | Traces only. Sparta's spans carry route templates, status codes, timings, request ids, provider and stage names and call ids; FastAPI's own spans, which would carry the raw path and query string, are switched off (section 9) | `observability/tracing.py`, `api/main.py` |
 | Push providers (FCM, APNs) | none | Not implemented: push notifications are not sent | `services/notifier.py` |
@@ -246,7 +255,7 @@ Region, data-processing agreements and cross-border transfer for these services 
 
 ## 12. What Sparta does not do
 
-* It does not record calls and does not store raw audio.
+* It does not record calls and does not store raw audio. (The Asterisk container is not told to record either.)
 * It does not use caller audio or transcripts to train or fine-tune any model, and no code path does so. The optional
   research note in [experiments/unsloth/README.md](../experiments/unsloth/README.md) sets the conditions under which that
   could ever be considered; it ships no training code.
@@ -260,7 +269,29 @@ Region, data-processing agreements and cross-border transfer for these services 
 
 ## 13. Legal review
 
-Do not handle real calls before a legal review. Topics to cover, from the product brief: AI disclosure, call-recording
-consent, call-interception rules, telephone-number acquisition, spam-reporting rules, data retention, cross-border data
-transfer, personalised voice, India-specific telecommunications and privacy obligations, and every additional launch
-region. The deployment checklist is in [DEPLOYMENT.md](DEPLOYMENT.md).
+Do not handle real calls before a legal review. **This project makes no legal claim, and no lawyer has reviewed it.**
+Topics to cover, from the product brief: AI disclosure, call-recording consent, call-interception rules,
+telephone-number acquisition, spam-reporting rules, data retention, cross-border data transfer, personalised voice,
+India-specific telecommunications and privacy obligations, and every additional launch region. The deployment checklist
+is in [DEPLOYMENT.md](DEPLOYMENT.md).
+
+A checklist to bring to that review (each line is a question for a lawyer, not an answer):
+
+- [ ] **Wording.** The assistant's first line says it is an AI assistant (`services` templates, not configurable). Is that
+      wording, in English, Hindi and Kannada, and its timing before any question, sufficient where the caller and the
+      owner are?
+- [ ] **Transcription without recording.** Sparta keeps no audio, but it recognises speech and stores a transcript (default
+      7 days). Does that need the caller's consent or a notice, and where?
+- [ ] **A provider in the middle.** The call is answered by a provider's number, not the owner's own line (Twilio or ACS),
+      and the provider processes the audio. Is answering a forwarded call this way lawful for each route in use, and what
+      do the provider's terms require?
+- [ ] **A number in another country.** A first test may use a number from another country than the owner's. Which rules apply
+      to the caller, the owner and the provider?
+- [ ] **Takeover.** The call is bridged to the owner's phone. Any additional rules for connecting a caller to a person after
+      screening?
+- [ ] **Caller data.** Numbers are stored masked and as keyed fingerprints; the full number only if the owner opts in. What
+      are the retention and erasure obligations for numbers, claims and transcripts?
+- [ ] **Data location.** Speech and the model run in an Azure region of the owner's choice (`centralindia` for Speech); the
+      provider routes audio through its own network. Which transfer rules apply?
+- [ ] **Real-call testing.** Test calls must use consenting participants and numbers the tester controls. Never use a
+      stranger's or a customer's number; never record without permission.

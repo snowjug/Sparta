@@ -292,6 +292,7 @@ class JwtVerifier:
         max_lifetime_s: float | None = None,
         required_claims: Sequence[str] = ("exp", "iss", "aud"),
         required_role: str | None = None,
+        allowed_app_ids: Sequence[str] = (),
     ) -> None:
         if not issuers or not audiences or not all(issuers) or not all(audiences):
             raise ValueError("issuers and audiences must be non-empty")
@@ -305,6 +306,7 @@ class JwtVerifier:
         self._max_lifetime_s = max_lifetime_s
         self._required = sorted({"exp", "iss", "aud", *required_claims})
         self._required_role = required_role
+        self._allowed_app_ids = frozenset(app_id.lower() for app_id in allowed_app_ids)
 
     async def verify(self, token: str) -> dict[str, Any]:
         if not token or len(token) > MAX_TOKEN_CHARS:
@@ -355,6 +357,7 @@ class JwtVerifier:
             raise WebhookRejected("invalid token") from None
         self._check_lifetime(claims)
         self._check_role(claims)
+        self._check_caller(claims)
         return claims
 
     def _check_lifetime(self, claims: dict[str, Any]) -> None:
@@ -370,6 +373,15 @@ class JwtVerifier:
         roles = claims.get("roles")
         if not isinstance(roles, list) or self._required_role not in roles:
             raise WebhookRejected("missing required role")
+
+    def _check_caller(self, claims: dict[str, Any]) -> None:
+        """The calling application: ``azp`` in v2 tokens, ``appid`` in v1. The Event Grid role is also granted to the
+        subscription-writer app, so the role alone does not show that Event Grid is the caller."""
+        if not self._allowed_app_ids:
+            return
+        callers = {str(claims[name]).lower() for name in ("azp", "appid") if claims.get(name) is not None}
+        if not callers or not callers <= self._allowed_app_ids:
+            raise WebhookRejected("caller application not allowed")
 
 
 def _csv(value: str | None) -> list[str]:
@@ -418,11 +430,14 @@ def event_grid_verifier(
     """
     tenant = (settings.entra_tenant_id or "").strip()
     audiences = _csv(settings.event_grid_audience)
+    app_ids = _csv(settings.event_grid_allowed_app_ids)
     problems: list[str] = []
     if not _TENANT_GUID.fullmatch(tenant):
         problems.append("SPARTA_ENTRA_TENANT_ID must be the tenant GUID to verify Event Grid deliveries")
     if not audiences:
         problems.append("SPARTA_EVENT_GRID_AUDIENCE is required to verify Event Grid deliveries")
+    if not all(_TENANT_GUID.fullmatch(app_id) for app_id in app_ids):
+        problems.append("SPARTA_EVENT_GRID_ALLOWED_APP_IDS must list application (client) id GUIDs")
     if problems:
         raise ConfigurationError(problems)
     jwks = HttpJwksProvider(f"https://login.microsoftonline.com/{tenant}/discovery/v2.0/keys", http, clock=clock)
@@ -434,6 +449,7 @@ def event_grid_verifier(
         algorithms=("RS256",),
         max_lifetime_s=EVENT_GRID_MAX_LIFETIME_S,
         required_role=required_role,
+        allowed_app_ids=app_ids,
     )
 
 

@@ -25,6 +25,8 @@ flowchart LR
   subgraph Providers["Telephony providers"]
     SIM["Built-in simulator"]
     ACS["Azure Communication Services<br/>(live behaviour UNVERIFIED)"]
+    TWI["Twilio Media Streams<br/>(live behaviour UNVERIFIED)"]
+    AST["Asterisk, local SIP<br/>(a SIP client verified in Docker; no PSTN)"]
     OTH["Other provider<br/>(plugin + signed webhooks)"]
   end
   subgraph API["services/api, package sparta"]
@@ -51,14 +53,27 @@ flowchart LR
   PORTS --> AZ
   SIM --- PORTS
   ACS -->|"signed webhooks, media socket"| HTTP
+  TWI -->|"signed webhooks, media socket"| HTTP
+  AST -->|"dialplan callbacks, AudioSocket media"| HTTP
   OTH -->|"signed webhooks"| HTTP
   PORTS -->|"answer, play, hang up, transfer"| ACS
+  PORTS -->|"TwiML answer, REST hang up, redirect"| TWI
+  PORTS -->|"paced audio frames, hang up, ring the owner extension"| AST
 ```
 
 The native Android screening role (`CallScreeningService`) is a separate capability: it can allow, silence or reject a
 call on the phone and report the decision to the backend, but it cannot answer, bridge, record or hear a call
 ([TELEPHONY.md](TELEPHONY.md), [ANDROID_SETUP.md](ANDROID_SETUP.md)). The AI conversation happens only for calls that
-reach a telephony provider (the simulator, or a provider that delivers real calls).
+reach a telephony provider (the simulator, a provider that delivers real calls, or a SIP phone through the local Asterisk).
+
+**Local SIP (Phase 3).** Asterisk is a separate container, not part of the Python service: it registers SIP phones and routes
+extension 6000 to Sparta, which sees it as one more `TelephonyProvider` (`telephony/asterisk/`). Two channels connect them: three
+authenticated HTTP callbacks from the dialplan (`/webhooks/asterisk/incoming|next|ended`) and one AudioSocket TCP connection per
+call (Sparta listens, Asterisk connects) carrying 8 kHz PCM both ways. Everything after the audio arrives is the same code as for
+every other provider ([TELEPHONY.md](TELEPHONY.md) section 4.5, [DECISIONS/ADR-ASTERISK-MEDIA-BRIDGE.md](DECISIONS/ADR-ASTERISK-MEDIA-BRIDGE.md)).
+The recogniser and the voice behind it can be local (faster-whisper and Piper), Azure, or a test-only tone-coded `fake`
+([MULTILINGUAL_SPEECH.md](MULTILINGUAL_SPEECH.md) section 11). At server start `Container.warm_up` builds the telephony owner's
+matchers and loads any local model, so the first call does not wait for them inside the provider's webhook.
 
 ## 2. Packages
 
@@ -70,8 +85,8 @@ All paths are under `services/api/src/sparta/`.
 | `language/` | Language packs (`packs/*.toml`), registry, script and lexicon detector, text normalisation | `domain` |
 | `risk/` | Safety policy (`policies/default-v1.toml`), signal matchers, risk scoring, claim extraction | `domain`, `language` |
 | `orchestrator/` | `ConversationEngine` (pure, deterministic), state machine, reply planner, output validator, summary | `clock`, `domain`, `language`, `providers` (the SSML duration estimate only), `risk` |
-| `providers/` | Ports and adapters for speech-to-text, text-to-speech, conversation model and voice-activity detection; simulators; Azure adapters; resilience wrapper | `clock`, `config`, `domain`, `observability` |
-| `telephony/` | Telephony port, simulator, Azure Communication Services adapter, webhook verification | `clock`, `config`, `domain`, `observability`, `providers` |
+| `providers/` | Ports and adapters for speech-to-text, text-to-speech, conversation model and voice-activity detection; simulators; Azure adapters; the optional local faster-whisper and Piper adapters, their hash-checked model manifest and the test-only tone-coded `fake` speech; resilience wrapper | `clock`, `config`, `domain`, `observability` |
+| `telephony/` | Telephony port, simulator, Azure Communication Services adapter, Twilio adapter (and its mu-law codec), the Asterisk provider with its AudioSocket media layer (`telephony/asterisk/`), webhook verification | `clock`, `config`, `domain`, `observability`, `providers` |
 | `db/` | SQLAlchemy models, repository, field encryption, async sessions, Alembic runner | `config`, `domain` |
 | `services/` | Application services that apply side effects: `CallService`, `OwnerService`, `SimulatorService`, `AudioService`, `AudioPipeline`, retention, background jobs, live hub, key-value store, rate limiter, composition root (`container.py`) | `clock`, `config`, `db`, `domain`, `language`, `logging_setup`, `observability`, `orchestrator`, `providers`, `risk` (the owner-name replacement before a model call), `telephony` |
 | `api/` | FastAPI app factory, middleware, authentication, routers | `config`, `db`, `domain`, `logging_setup`, `observability`, `providers`, `services`, `telephony` |
@@ -108,8 +123,9 @@ above) matches these rules.
 3. **The caller speaks.** The text reaches `CallService._submit_turn` in one of these ways: typed or scripted turns
    from the simulator, a browser speech result (`POST /calls/{id}/turns`), an uploaded clip
    (`POST /calls/{id}/audio`, transcribed in memory), or provider audio. Provider audio (Azure Communication Services
-   media streaming) goes through `services/audio_pipeline.py`: energy-based voice-activity detection, a 300 ms
-   pre-roll, one recognition stream per utterance, strictly ordered delivery, and barge-in when speech starts while the
+   or Twilio media streaming, or the Asterisk AudioSocket connection) goes through `services/audio_pipeline.py`: energy-based voice-activity detection, a 300 ms
+   pre-roll, one recognition stream per utterance (streaming through the Speech SDK when installed, so partials arrive as
+   live captions), strictly ordered delivery, and barge-in when speech starts while the
    assistant is talking.
 4. **The engine decides.** `ConversationEngine.on_caller_turn` runs, in order: language detection, deterministic
    signals (including phrases split across the previous turn), optional model signals, claim extraction, risk
@@ -205,7 +221,7 @@ reports `meta.simulated`, and every failure is a `ProviderError` with a sanitise
 | `TextToSpeechProvider` | `providers/base.py` | `synthesize_stream`, `stop_playback`, `list_voices` | `providers/tts/simulator.py`: timing only, no audio | `providers/tts/azure.py`: SSML over REST. Chunked-transfer streaming is UNVERIFIED |
 | `ConversationModelProvider` | `providers/base.py` | `evaluate_turn`, `generate_safe_reply`, `summarize_call`, `classify_call`, `translate` | `providers/llm/rules.py`: no model (default) | `providers/llm/azure_openai.py`: chat completions with a strict JSON schema; advisory only ([SAFETY_MODEL.md](SAFETY_MODEL.md)). `evaluate_turn` and `summarize_call` are used by the call path; `generate_safe_reply` and `translate` are implemented but nothing calls them; `classify_call` returns `None` |
 | `VoiceActivityProvider` | `providers/base.py` | `process`, `reset` | `providers/vad/energy.py` is the only implementation: energy based, 20 ms frames, 500 ms hangover, deterministic | none |
-| `TelephonyProvider` and `TelephonyEventSink` | `telephony/base.py` | `answer`, `play`, `stop_playback`, `hangup`, `transfer`, `status`, `bind`; the sink receives `incoming_call`, `caller_audio`, `caller_dtmf`, `playback_finished`, `remote_hangup`, `provider_error` | `telephony/simulator.py`: `simulated: true`, no caller audio, `live_calls_supported: false`, takeover is a labelled simulation | `telephony/azure_acs.py`: Call Automation with bidirectional PCM media streaming; webhook verification in `telephony/webhooks.py`. Live behaviour UNVERIFIED |
+| `TelephonyProvider` and `TelephonyEventSink` | `telephony/base.py` | `answer`, `play`, `stop_playback`, `hangup`, `transfer`, `status`, `bind`; the sink receives `incoming_call`, `caller_audio`, `caller_dtmf`, `playback_finished`, `remote_hangup`, `provider_error` | `telephony/simulator.py`: `simulated: true`, no caller audio, `live_calls_supported: false`, takeover is a labelled simulation | `telephony/azure_acs.py`: Call Automation with bidirectional PCM media streaming; webhook verification in `telephony/webhooks.py`. `telephony/twilio.py`: voice webhook answering with `<Connect><Stream>`, mu-law 8 kHz media socket, `mark`/`clear`, REST hang-up and `<Dial>` redirect; stored as provider kind `other`. Live behaviour of both UNVERIFIED |
 | `PushNotifier` | `services/notifier.py` | `notify` | `NullPushNotifier`, `LoggingPushNotifier`, `RecordingPushNotifier` (test double) | none: push delivery (FCM) is not implemented |
 | `KeyValueStore` | `services/kv.py` | counters, TTL values, atomic get-and-delete, locks, publish and subscribe | `MemoryKV` (single instance) | `RedisKV` (shared across instances) |
 
@@ -397,16 +413,16 @@ sequenceDiagram
 | Failure | What happens | Where |
 | --- | --- | --- |
 | Telephony provider unreachable or erroring | Calls through `ResilientCaller` time out, retry within limits and then fail fast while the breaker is open. A `provider.error` event with `degraded: true` is emitted. `/readyz` stays ready but reports the provider's health, and the Home summary shows "Calls are not being screened right now". Transfers are never retried | `providers/resilience.py`, `telephony/azure_acs.py`, `api/routers/health.py`, `services/owner.py` |
-| Speech synthesis fails | The failing line is not spoken, a degraded `provider.error` is emitted, the call stays open and the silence timer is re-armed (or the call is finalised if it was ending) | `CallService._play` |
-| Speech recognition fails or is slow | The pipeline reports a degraded `provider.error`, drops the utterance and goes back to waiting; no transcript is invented. At most four finished utterances wait for the recogniser; a recogniser silent for 20 s is abandoned | `services/audio_pipeline.py` |
+| Speech synthesis fails | Simulated calls: the failing line is not spoken, a degraded `provider.error` is emitted, the call stays open and the silence timer is re-armed (or the call is finalised if it was ending). **Real calls (Phase 2):** a provider that fails to speak reports `provider.error` for stage `play`, which also releases the playback the service was waiting for (so the silence timer resumes and the reaper can act); after `SPARTA_PROVIDER_FAILURE_LIMIT` (default 2) failures in a row the call is ended with reason `provider_failure` and a summary saying Sparta could not screen it and the caller may not have heard the AI disclosure. A line that is heard resets the count | `CallService._play`, `provider_error`, `_abandon_playback`, `_count_stage_failure`, `orchestrator/summary.py` |
+| Speech recognition fails or is slow | The pipeline reports a degraded `provider.error`, drops the utterance and goes back to waiting; no transcript is invented. At most four finished utterances wait for the recogniser; a recogniser silent for 20 s is abandoned. On a real call, consecutive failures end the call as above (a transcript with words resets the count) | `services/audio_pipeline.py`, `services/calls.py` |
 | Model (Azure OpenAI) unavailable, filtered or returns invalid output | Timeouts, errors and content-filter blocks degrade to the deterministic engine (`provider.error`, `degraded: true`). The adapter validates the JSON with Pydantic and drops unknown, invalid and legitimacy signals; the engine accepts only 13 context codes with a capped weight | `services/calls.py` `_model_signals`, `providers/llm/azure_openai.py`, `orchestrator/engine.py` |
 | Speech recognition confidence low | Below 0.55 the assistant asks the caller to repeat (at most twice per call) unless a signal was just raised; low confidence reduces the assessment's confidence, not its risk. Dangerous content in a noisy transcript is still acted on (`test_dangerous_content_is_acted_on_even_when_the_transcript_is_noisy`) | `orchestrator/engine.py`, `risk/engine.py` |
 | Database unavailable | `/healthz` stays 200 and `/readyz` returns 503. Requests fail with the standard 500 error envelope (`ErrorGuardMiddleware`); nothing is cached to serve instead. No events are emitted because they are persisted first. After recovery, calls that nobody has driven for `SPARTA_ABANDONED_CALL_TIMEOUT_S` are closed by the reaper | `db/session.py`, `api/middleware.py`, `services/calls.py` `reap_abandoned` |
 | Database behind the code (a new release before `python -m sparta migrate`) | `/readyz` returns 503 with `checks.database` set to `migrations_pending`, so a platform that gates traffic on readiness sends none to the new instance until the migration has run. A database ahead of the code (a rollback) and one created without Alembic stay ready. Tests: `tests/api/test_api_flows.py::test_readiness_waits_for_the_migrations_this_release_needs`, `tests/unit/test_migrations.py::test_schema_state_follows_the_migration_history` | `db/session.py` `schema_state`, `api/routers/health.py` |
 | Redis unavailable (production) | `/readyz` reports `shared_state: unavailable` (503). Rate limits, tickets and locks use the same store and raise; there is no in-memory fallback at runtime | `services/kv.py`, `api/routers/health.py` |
 | Process restart | In-memory timers and playback are lost. Conversation state is in the database, so a call can be served again from its stored state; a call nobody drives is closed by the reaper after the idle timeout | `services/runtime.py`, `CallService._runtime_from_row` |
-| Replayed or forged webhook | Event Grid and ACS callbacks and the media socket must carry a valid RS256 JWT (issuer, audience, expiry, key id, lifetime checked, keys from one pinned HTTPS JWKS URL). The generic route needs an HMAC over timestamp, nonce and body, a timestamp within 300 s and an unused nonce (replay key kept for 601 s). Failures return a generic 401 and log only a static reason | `telephony/webhooks.py`, `api/routers/webhooks.py` |
-| Duplicate delivery of a provider event | Event ids are stored with a unique `(provider, external_id)` constraint, so a redelivery is skipped (also across restarts). ACS callbacks keep the last 256 event ids per call. Concurrent `IncomingCall` deliveries for one `serverCallId` share one task, so one call is created | `db/models.py` `ProviderEventRow`, `telephony/azure_acs.py` |
+| Replayed or forged webhook | Event Grid and ACS callbacks and the media socket must carry a valid RS256 JWT (issuer, audience, expiry, key id, lifetime checked, keys from one pinned HTTPS JWKS URL; with `SPARTA_EVENT_GRID_ALLOWED_APP_IDS` set, the calling application too). Twilio's voice and status webhooks must carry a valid `X-Twilio-Signature` and its media socket the signature plus the per-call token. The generic route needs an HMAC over timestamp, nonce and body, a timestamp within 300 s and an unused nonce (replay key kept for 601 s). Failures return a generic 401 and log only a static reason | `telephony/webhooks.py`, `telephony/twilio.py`, `api/routers/webhooks.py` |
+| Duplicate delivery of a provider event | Event ids are stored with a unique `(provider, external_id)` constraint, so a redelivery is skipped (also across restarts). ACS callbacks keep the last 256 event ids per call. Concurrent `IncomingCall` deliveries for one `serverCallId`, and concurrent Twilio voice webhooks for one `CallSid`, share one task, so one call is created and a retry gets the same TwiML | `db/models.py` `ProviderEventRow`, `telephony/azure_acs.py`, `telephony/twilio.py` |
 | Duplicate client request | Mutating routes that accept `Idempotency-Key` (1 to 64 characters) replay the stored response (`Idempotent-Replayed: true`) for the same key, owner and route: for 24 hours, or for 15 minutes on `/calls/{id}/turns`, `audio`, `silence` and `feedback` (today only `turns` and `feedback` take the header), where only a 409 marker is kept when the owner stores no transcripts. A stored response is deleted with the call or its content when its route names the call or it is the response that created the call (`idempotency_keys.call_id`), and removing a blocked or trusted entry deletes the cached `POST` responses of that list (`forget_cached_creations`); the same key with a different body is a 409, decided by a request fingerprint that is an HMAC keyed with the pepper and scoped to the owner (`_request_fingerprint`). Android screening events are idempotent on `client_event_id`; feedback is unique per call and kind | `api/deps.py`, `api/routers/safety.py`, `services/owner.py`, `db/models.py`, `db/repository.py` |
 | Slow WebSocket consumer | Each subscriber has a 256-event queue; on overflow the backlog is dropped and a `stream.resync` frame tells the client to refill from the persisted event log | `services/live.py` |
 | Abandoned call (closed tab, dropped media socket) | The reaper ends calls idle for more than 180 s (not while the assistant is speaking) with reason `abandoned` | `services/jobs.py`, `services/calls.py` |

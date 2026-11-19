@@ -1,0 +1,292 @@
+{
+  "controlled": true,
+  "caveat": "Fake Twilio, fake recognition and synthesis with zero latency and no language model: these are Sparta's own local processing times, not what a real call would measure.",
+  "rows": [
+    {
+      "scenario": "A English legitimate delivery, owner takes over",
+      "call_id": "call_9526445501e4",
+      "provider_correlation": "fake CallSid (controlled test)",
+      "state_timeline": [
+        "State: IDENTIFY_CALLER",
+        "State: ESCALATE",
+        "State: OWNER_TAKEOVER",
+        "Risk low (16%)"
+      ],
+      "risk_level": "low",
+      "risk_category": "legitimate_delivery",
+      "risk_signals": [
+        "LEGIT_DELIVERY_COORDINATION",
+        "IMPERSONATION_COURIER"
+      ],
+      "action_taken": "owner_took_over",
+      "summary": "Caller Suresh claimed to represent a courier company (Amazon delivery) and was coordinating a delivery. The owner took over the call.",
+      "spoken_lines": 4,
+      "turn_end_to_first_assistant_audio_ms": 204.5,
+      "result": "PASS",
+      "notes": ""
+    },
+    {
+      "scenario": "A English legitimate delivery, Sparta continues",
+      "call_id": "call_ad2a46f2ad41",
+      "provider_correlation": "fake CallSid (controlled test)",
+      "state_timeline": [
+        "State: IDENTIFY_CALLER",
+        "State: ESCALATE",
+        "State: IDENTIFY_PURPOSE",
+        "State: SAFE_CONTINUE",
+        "Risk low (16%)"
+      ],
+      "risk_level": "low",
+      "risk_category": "legitimate_delivery",
+      "risk_signals": [
+        "LEGIT_DELIVERY_COORDINATION",
+        "IMPERSONATION_COURIER"
+      ],
+      "action_taken": "took_message",
+      "summary": "Caller Suresh claimed to represent a courier company (Amazon delivery) and was coordinating a delivery. Sparta alerted the owner. The owner let Sparta continue. The owner may want to call back.",
+      "spoken_lines": 4,
+      "turn_end_to_first_assistant_audio_ms": 130.8,
+      "result": "PASS",
+      "notes": ""
+    },
+    {
+      "scenario": "B English OTP scam",
+      "call_id": "call_b58ea4c586cd",
+      "provider_correlation": "fake CallSid (controlled test)",
+      "state_timeline": [
+        "State: IDENTIFY_CALLER",
+        "State: END_SPAM",
+        "Risk high (98%)"
+      ],
+      "risk_level": "high",
+      "risk_category": "possible_financial_impersonation",
+      "risk_signals": [
+        "OTP_REQUEST",
+        "FAKE_KYC_URGENCY",
+        "IMPERSONATION_BANK",
+        "URGENCY_PRESSURE"
+      ],
+      "action_taken": "refused_and_ended",
+      "summary": "Caller Rahul claimed to represent a bank (State Bank of India) and asked for a one-time password (OTP) and pressed for an urgent KYC update. Sparta refused and ended the call. No owner action is required; blocking this number is recommended.",
+      "spoken_lines": 2,
+      "turn_end_to_first_assistant_audio_ms": 96.1,
+      "result": "PASS",
+      "notes": ""
+    },
+    {
+      "scenario": "C Hinglish KYC scam",
+      "call_id": "call_5c2972506b74",
+      "provider_correlation": "fake CallSid (controlled test)",
+      "state_timeline": [
+        "State: IDENTIFY_CALLER",
+        "State: END_SPAM",
+        "Risk high (99%)"
+      ],
+      "risk_level": "high",
+      "risk_category": "possible_financial_impersonation",
+      "risk_signals": [
+        "OTP_REQUEST",
+        "FAKE_KYC_URGENCY",
+        "ACCOUNT_CLOSURE_THREAT",
+        "IMPERSONATION_BANK"
+      ],
+      "action_taken": "refused_and_ended",
+      "summary": "Caller claimed to represent a bank (SBI bank) and asked for a one-time password (OTP) and pressed for an urgent KYC update. Sparta refused and ended the call. No owner action is required; blocking this number is recommended.",
+      "spoken_lines": 2,
+      "turn_end_to_first_assistant_audio_ms": 106.3,
+      "result": "PASS",
+      "notes": ""
+    },
+    {
+      "scenario": "D Kannada/Kanglish UPI PIN request",
+      "call_id": "call_65566deb0f34",
+      "provider_correlation": "fake CallSid (controlled test)",
+      "state_timeline": [
+        "State: IDENTIFY_CALLER",
+        "State: END_SPAM",
+        "Risk high (99%)"
+      ],
+      "risk_level": "high",
+      "risk_category": "possible_financial_impersonation",
+      "risk_signals": [
+        "PIN_REQUEST",
+        "FAKE_KYC_URGENCY",
+        "ACCOUNT_CLOSURE_THREAT",
+        "IMPERSONATION_BANK"
+      ],
+      "action_taken": "refused_and_ended",
+      "summary": "Caller claimed to represent a bank and asked for a PIN and pressed for an urgent KYC update. Sparta refused and ended the call. No owner action is required; blocking this number is recommended.",
+      "spoken_lines": 2,
+      "turn_end_to_first_assistant_audio_ms": 80.1,
+      "result": "PASS",
+      "notes": ""
+    },
+    {
+      "scenario": "E low-confidence caller",
+      "call_id": "call_39358be12f2c",
+      "provider_correlation": "fake CallSid (controlled test)",
+      "state_timeline": [
+        "State: IDENTIFY_CALLER",
+        "State: CLARIFY",
+        "Risk unknown (0%)"
+      ],
+      "risk_level": "unknown",
+      "risk_category": "unknown",
+      "risk_signals": [],
+      "action_taken": "asked_to_repeat",
+      "summary": "",
+      "spoken_lines": 2,
+      "turn_end_to_first_assistant_audio_ms": 50.0,
+      "result": "PASS",
+      "notes": ""
+    },
+    {
+      "scenario": "F barge-in",
+      "call_id": "call_14e5d85f3da6",
+      "provider_correlation": "fake CallSid (controlled test)",
+      "state_timeline": [
+        "State: IDENTIFY_CALLER",
+        "State: ESCALATE",
+        "Risk low (16%)"
+      ],
+      "risk_level": "low",
+      "risk_category": "legitimate_delivery",
+      "risk_signals": [
+        "LEGIT_DELIVERY_COORDINATION",
+        "IMPERSONATION_COURIER"
+      ],
+      "action_taken": "escalated_to_owner",
+      "summary": "",
+      "spoken_lines": 2,
+      "turn_end_to_first_assistant_audio_ms": 83.9,
+      "result": "PASS",
+      "notes": "1 clear message(s) sent"
+    },
+    {
+      "scenario": "G speech recognition down",
+      "call_id": "call_ec4973a69b14",
+      "provider_correlation": "fake CallSid (controlled test)",
+      "state_timeline": [
+        "State: IDENTIFY_CALLER"
+      ],
+      "risk_level": "unknown",
+      "risk_category": null,
+      "risk_signals": [],
+      "action_taken": "introduced_as_ai_assistant",
+      "summary": "Sparta could not hear or speak reliably on this call because a speech service failed, so it ended the call without screening it. The caller may not have heard the AI disclosure. Please review this call.",
+      "spoken_lines": 1,
+      "turn_end_to_first_assistant_audio_ms": null,
+      "result": "PASS",
+      "notes": ""
+    },
+    {
+      "scenario": "G speech synthesis down",
+      "call_id": "call_6a6834c091d1",
+      "provider_correlation": "fake CallSid (controlled test)",
+      "state_timeline": [
+        "State: IDENTIFY_CALLER",
+        "Risk unknown (0%)"
+      ],
+      "risk_level": "unknown",
+      "risk_category": "unknown",
+      "risk_signals": [],
+      "action_taken": "reprompted_after_silence",
+      "summary": "Sparta could not hear or speak reliably on this call because a speech service failed, so it ended the call without screening it. The caller may not have heard the AI disclosure. Please review this call.",
+      "spoken_lines": 2,
+      "turn_end_to_first_assistant_audio_ms": null,
+      "result": "PASS",
+      "notes": ""
+    },
+    {
+      "scenario": "G language model down",
+      "call_id": "call_328585046903",
+      "provider_correlation": "fake CallSid (controlled test)",
+      "state_timeline": [
+        "State: IDENTIFY_CALLER",
+        "State: END_SPAM",
+        "Risk high (98%)"
+      ],
+      "risk_level": "high",
+      "risk_category": "possible_financial_impersonation",
+      "risk_signals": [
+        "OTP_REQUEST",
+        "FAKE_KYC_URGENCY",
+        "IMPERSONATION_BANK",
+        "URGENCY_PRESSURE"
+      ],
+      "action_taken": "refused_and_ended",
+      "summary": "Caller Rahul claimed to represent a bank (State Bank of India) and asked for a one-time password (OTP) and pressed for an urgent KYC update. Sparta refused and ended the call. No owner action is required; blocking this number is recommended.",
+      "spoken_lines": 2,
+      "turn_end_to_first_assistant_audio_ms": 89.0,
+      "result": "PASS",
+      "notes": "the engine decides; the model is advisory"
+    },
+    {
+      "scenario": "H duplicate webhook / media / takeover / status events",
+      "call_id": "call_85f0c6a42396",
+      "provider_correlation": "fake CallSid (controlled test)",
+      "state_timeline": [
+        "State: IDENTIFY_CALLER",
+        "State: ESCALATE",
+        "State: OWNER_TAKEOVER",
+        "Risk low (16%)"
+      ],
+      "risk_level": "low",
+      "risk_category": "legitimate_delivery",
+      "risk_signals": [
+        "LEGIT_DELIVERY_COORDINATION",
+        "IMPERSONATION_COURIER"
+      ],
+      "action_taken": "owner_took_over",
+      "summary": "Caller claimed to represent a courier company (Amazon delivery) and was coordinating a delivery. The owner took over the call.",
+      "spoken_lines": 3,
+      "turn_end_to_first_assistant_audio_ms": null,
+      "result": "PASS",
+      "notes": ""
+    }
+  ],
+  "latency_ms": {
+    "final_transcript_ms": {
+      "count": 11,
+      "p50": 0.0,
+      "p95": 0.0,
+      "max": 0.0
+    },
+    "engine_decision_ms": {
+      "count": 11,
+      "p50": 21.7,
+      "p95": 68.11,
+      "max": 68.11
+    },
+    "model_ms": {
+      "count": 1,
+      "p50": 0.2,
+      "p95": 0.2,
+      "max": 0.2
+    },
+    "tts_first_audio_ms": {
+      "count": 24,
+      "p50": 0.0,
+      "p95": 0.0,
+      "max": 0.0
+    },
+    "service_turn_total_ms": {
+      "count": 11,
+      "p50": 40.4,
+      "p95": 88.3,
+      "max": 88.3
+    },
+    "interruption_stop_ms": {
+      "count": 1,
+      "p50": 1.1,
+      "p95": 1.1,
+      "max": 1.1
+    },
+    "turn_end_to_first_assistant_audio_ms": {
+      "count": 8,
+      "p50": 92.55,
+      "p95": 204.5,
+      "max": 204.5
+    }
+  }
+}

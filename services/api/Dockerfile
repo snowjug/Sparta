@@ -4,11 +4,13 @@
 #   docker build -t sparta-api .
 #   docker build -t sparta-api:slim --build-arg SPARTA_EXTRAS= .          # simulator-only, no Azure/OTLP SDKs
 #   docker build -t sparta-api --build-arg PIP_INDEX_URL=https://my.mirror/simple/ .
+#   docker build -t sparta-api:local-speech --build-arg SPARTA_LOCAL_SPEECH=1 .   # + free local speech (GPL-3.0 Piper), see below
 #
 # Every third-party package comes from a sha256-pinned lock and is installed with --require-hashes, so a package index
 # (or a mirror) cannot substitute a different file: requirements-build.lock (uv and the hatchling build backend, in a
-# throwaway environment that is not shipped), requirements.lock (runtime dependencies) and requirements-extras.lock
-# (runtime + the azure and otlp extras). Regenerate them with scripts/lock.ps1 or scripts/lock.sh. Only the application's own
+# throwaway environment that is not shipped), requirements.lock (runtime dependencies), requirements-extras.lock
+# (runtime + the azure and otlp extras) and, for the optional local-speech build only, requirements-local-speech.lock
+# (linux/amd64, see below). Regenerate them with scripts/lock.ps1 or scripts/lock.sh. Only the application's own
 # wheel is built from the source in this build context.
 #
 # Run. The development identity has no sign-in, so the server refuses to listen on a non-loopback address (0.0.0.0 inside
@@ -63,6 +65,22 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     /opt/tools/bin/uv venv --python /usr/local/bin/python /opt/venv; \
     /opt/tools/bin/uv pip install --python /opt/venv/bin/python --require-hashes --no-deps -r "$lock"
 
+# Optional free local speech: faster-whisper (MIT) recognises and Piper (GPL-3.0-or-later) speaks, both on this machine's CPU.
+# Off by default: with SPARTA_LOCAL_SPEECH=0 nothing is added and the image is what it always was. Building it with 1 is a
+# licensing decision (Piper's engine is copyleft). requirements-local-speech.lock is hash-pinned for linux/amd64 on Python
+# 3.12 (manylinux wheels, glibc 2.28 or newer: python:3.12-slim has 2.36) and installed on top of the lock chosen above, with
+# the same --require-hashes discipline. It carries the code only: models are never baked into an image or downloaded at run
+# time, mount a volume and fetch them into it (`python -m sparta models fetch`, SPARTA_LOCAL_MODEL_DIR).
+ARG SPARTA_LOCAL_SPEECH=0
+COPY requirements-local-speech.lock ./
+RUN --mount=type=cache,target=/root/.cache/uv \
+    set -eu; \
+    case "${SPARTA_LOCAL_SPEECH}" in \
+      0) ;; \
+      1) /opt/tools/bin/uv pip install --python /opt/venv/bin/python --require-hashes --no-deps -r requirements-local-speech.lock ;; \
+      *) echo "SPARTA_LOCAL_SPEECH must be 0 or 1 (got '${SPARTA_LOCAL_SPEECH}')." >&2; exit 1 ;; \
+    esac
+
 # Layer 2: the application wheel, built from this build context with the hash-pinned backend (no network, no isolated
 # build environment) and installed (not editable) together with its package data: language packs (*.toml), the safety
 # policy (default-v1.toml), the curated simulator scenarios (curated.json) and, through the hatch force-include in
@@ -83,6 +101,9 @@ RUN set -eu; \
     /opt/tools/bin/uv pip check --python /opt/venv/bin/python; \
     if [ -n "${SPARTA_EXTRAS}" ]; then \
       /opt/venv/bin/python -c "import azure.communication.callautomation, opentelemetry.exporter.otlp.proto.http.trace_exporter"; \
+    fi; \
+    if [ "${SPARTA_LOCAL_SPEECH}" = "1" ]; then \
+      /opt/venv/bin/python -c "import ctranslate2, faster_whisper, onnxruntime, piper"; \
     fi
 
 # --------------------------------------------------------------------------------------------------------------------

@@ -83,6 +83,7 @@ export function makeCaps(overrides: Partial<CallCapabilities> = {}): CallCapabil
     can_end: true,
     can_block: true,
     takeover_note: "Takeover is simulated: no real phone call is being bridged.",
+    takeover_via: "simulated",
     simulated: true,
     two_way_audio: false,
     audio_note: "Simulated call: no cellular audio is involved.",
@@ -195,7 +196,16 @@ export function makeStatus(overrides: Partial<SystemStatus> = {}): SystemStatus 
     env: "test",
     auth_mode: "dev",
     dev_banner: true,
-    telephony: { provider: "simulator", simulated: true, live_calls_supported: false, forwarding_number: null, note: "Built-in simulator." },
+    telephony: {
+      provider: "simulator",
+      simulated: true,
+      live_calls_supported: false,
+      forwarding_number: null,
+      note: "Built-in simulator.",
+      connection: "simulated",
+      pstn: "not_applicable",
+      takeover: "simulated",
+    },
     stt_provider: "simulator",
     tts_provider: "simulator",
     llm_provider: "rules",
@@ -212,6 +222,25 @@ export function makeStatus(overrides: Partial<SystemStatus> = {}): SystemStatus 
     limits: { max_call_duration_s: 600, max_audio_bytes: 8_000_000, max_audio_seconds: 120, daily_call_cap: 200 },
     ...overrides,
   };
+}
+
+/** What /system/status reports with the Asterisk provider: local SIP, no phone network, Take over rings a SIP extension. */
+export function makeLocalSipStatus(overrides: Partial<SystemStatus> = {}): SystemStatus {
+  return makeStatus({
+    telephony: {
+      provider: "asterisk",
+      simulated: false,
+      live_calls_supported: true,
+      forwarding_number: null,
+      note: "Local SIP through Asterisk: voice over IP on a trusted network, with no phone-number (PSTN) connection.",
+      connection: "local_sip",
+      pstn: "not_configured",
+      takeover: "sip_extension",
+    },
+    stt_provider: "local-faster-whisper",
+    tts_provider: "local-piper",
+    ...overrides,
+  });
 }
 
 let seqCounter = 0;

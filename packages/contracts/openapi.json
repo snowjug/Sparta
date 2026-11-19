@@ -263,6 +263,18 @@
             ],
             "title": "Takeover Note"
           },
+          "takeover_via": {
+            "default": "phone_number",
+            "description": "What Take Over does with this provider: nothing, a simulated bridge, a call to the owner's phone number, or a ring of a SIP extension on the local server (never a PSTN number).",
+            "enum": [
+              "none",
+              "simulated",
+              "phone_number",
+              "sip_extension"
+            ],
+            "title": "Takeover Via",
+            "type": "string"
+          },
           "two_way_audio": {
             "default": false,
             "title": "Two Way Audio",
@@ -2219,6 +2231,16 @@
       },
       "ProtectionView": {
         "properties": {
+          "connection": {
+            "default": "pstn",
+            "enum": [
+              "simulated",
+              "local_sip",
+              "pstn"
+            ],
+            "title": "Connection",
+            "type": "string"
+          },
           "detail": {
             "title": "Detail",
             "type": "string"
@@ -2233,6 +2255,16 @@
           },
           "provider": {
             "title": "Provider",
+            "type": "string"
+          },
+          "pstn": {
+            "default": "provider",
+            "enum": [
+              "not_applicable",
+              "not_configured",
+              "provider"
+            ],
+            "title": "Pstn",
             "type": "string"
           },
           "simulated": {
@@ -2317,6 +2349,7 @@
           "simulator",
           "azure",
           "android_screening",
+          "asterisk",
           "other"
         ],
         "title": "ProviderKind",
@@ -3336,6 +3369,17 @@
       },
       "TelephonyView": {
         "properties": {
+          "connection": {
+            "default": "pstn",
+            "description": "How calls reach Sparta with this provider: simulated typing, local SIP over IP (no phone number), or a phone-network provider.",
+            "enum": [
+              "simulated",
+              "local_sip",
+              "pstn"
+            ],
+            "title": "Connection",
+            "type": "string"
+          },
           "forwarding_number": {
             "anyOf": [
               {
@@ -3360,14 +3404,38 @@
             "enum": [
               "simulator",
               "azure",
+              "asterisk",
               "other"
             ],
             "title": "Provider",
             "type": "string"
           },
+          "pstn": {
+            "default": "provider",
+            "description": "Whether ordinary mobile and landline numbers can reach Sparta: never with the simulator, not configured with local SIP (that needs a carrier, a number and a trunk), else through the provider.",
+            "enum": [
+              "not_applicable",
+              "not_configured",
+              "provider"
+            ],
+            "title": "Pstn",
+            "type": "string"
+          },
           "simulated": {
             "title": "Simulated",
             "type": "boolean"
+          },
+          "takeover": {
+            "default": "phone_number",
+            "description": "What Take Over does with this provider.",
+            "enum": [
+              "none",
+              "simulated",
+              "phone_number",
+              "sip_extension"
+            ],
+            "title": "Takeover",
+            "type": "string"
           }
         },
         "required": [
