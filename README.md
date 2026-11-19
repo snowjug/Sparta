@@ -54,7 +54,7 @@ B here is *not* a phone-network (PSTN) call and not a human on a phone.
 | --- | --- | --- |
 | Simulator-based product (engine, rules, replies, apps, API) | **Verified** | Backend tests, web tests, Playwright, Android unit tests, CI; evaluation on synthetic scenarios |
 | Real-call path through the Twilio and ACS adapters, streaming speech recognition, owner takeover, cost caps, failure handling | **Verified against fakes only** | Adapter and API tests, plus a controlled matrix of whole calls over a real WebSocket with scripted speech services ([docs/PHASE2_CONTROLLED_RESULTS.md](docs/PHASE2_CONTROLLED_RESULTS.md)) |
-| **Local SIP (Asterisk): a separate SIP client registers, calls Sparta, hears the AI disclosure, is refused an OTP, interrupts the assistant, hangs up** | **Verified in Docker, with a machine voice** | `python scripts/sip_e2e.py` (28 tests, real Asterisk 22, real SIP, RTP and G.711, headless baresip) and `python scripts/sip_e2e.py --speech local` (8 tests with real faster-whisper and Piper: [docs/PHASE3_ASTERISK_PLAN.md](docs/PHASE3_ASTERISK_PLAN.md)) |
+| **Local SIP (Asterisk): a separate SIP client registers, calls Sparta, hears the AI disclosure, is refused an OTP, interrupts the assistant, hangs up** | **Verified in Docker, with a machine voice** | `python scripts/sip_e2e.py` (28 tests, real Asterisk 22, real SIP, RTP and G.711, headless baresip) and `python scripts/sip_e2e.py --speech local` (8 tests with real faster-whisper and Piper: [docs/PHASE3_ASTERISK_PLAN.md](docs/PHASE3_ASTERISK_PLAN.md)); the documented `docker compose --profile asterisk` flow was also run once, and the call, transcript and summary were read in the real web app |
 | Local SIP on a physical Android phone (Linphone) | **Not run** | No phone was attached. [docs/ANDROID_SIP_TESTING.md](docs/ANDROID_SIP_TESTING.md) is the checklist |
 | Free local speech: English | **Verified**, with limits | A Piper voice's English line was recognised word for word by Whisper `small`; about 3 to 5 s per utterance on CPU (two runs). Telephone-band audio and accents were not measured |
 | Free local speech: Hindi, Hinglish, Kanglish, Kannada | **Unreliable (Hindi, Hinglish, Kanglish), not usable (Kannada)** | Measured: the OTP or UPI PIN requests in all five lines were misheard and **not refused**, although the rules refuse them when given the right words ([docs/MULTILINGUAL_SPEECH.md](docs/MULTILINGUAL_SPEECH.md) section 11) |
@@ -244,7 +244,9 @@ Three different things can reach Sparta. Do not confuse them:
 | **LOCAL SIP** | A SIP phone (Linphone on Android, a desk phone, `baresip`) on **your own network** calls an open-source [Asterisk](https://www.asterisk.org/) PBX in Docker, which streams real two-way audio to Sparta. No Twilio, no phone number, no account | free, open source | A real SIP client has completed calls in Docker (see [Product status](#product-status)); **never tried on a physical phone** |
 | **PSTN** | Ordinary mobile and landline numbers reaching Sparta | **paid**: a carrier, a phone number (DID) and a SIP trunk | **Not delivered.** Local SIP is not "phone-call support": a friend dialling your number cannot reach it this way |
 
-Prerequisites: Docker with Compose v2.24 or newer, and Python 3.12 for the helper scripts. From the repository root:
+Prerequisites: Docker with Compose v2.24 or newer, and Python 3.12 for the helper scripts. Behind a proxy that blocks pypi.org or
+registry.npmjs.org (a web image build that stops at `npm ci` with "Exit handler never called!" is that), set `PIP_INDEX_URL` and
+`NPM_REGISTRY` to your mirrors first ([docs/DEPLOYMENT.md](docs/DEPLOYMENT.md), troubleshooting). From the repository root:
 
 ```bash
 python scripts/sip_local.py init                 # random secrets -> .env and .env.sip (git-ignored); prints nothing secret
@@ -262,8 +264,11 @@ published on `127.0.0.1` only (a client on the same computer); to reach it from 
 
 * **No speech models?** `python scripts/sip_local.py init --speech fake` uses a test-only tone-coded voice. It exercises the whole
   path but cannot understand a person.
-* **Check the set-up:** `python -m sparta doctor --provider asterisk` (from `services/api`) prints PASS, WARNING, BLOCKED or
-  UNVERIFIED per check and never prints a secret.
+* **Check the set-up:** `python -m sparta doctor --provider asterisk --env-file ../../.env` (from `services/api`; `init` wrote the
+  `.env` in the repository root, and the doctor reads only the working directory's `.env` unless told otherwise) prints PASS,
+  WARNING, BLOCKED or UNVERIFIED per check and never prints a secret. It checks the configuration of **its own process**, not of
+  the running containers: with Compose it reports the database as SQLite and Redis as unset, because Compose sets those inside the
+  API container; the media listener shows UNVERIFIED because Compose does not publish port 8090.
 * **Test it without a phone** (Docker only): `python scripts/sip_e2e.py` runs a real Asterisk and a headless SIP client through
   28 scenarios with tone speech; `python scripts/sip_e2e.py --speech local --models services/api/var/models --python <python with the
   local-speech extra>` does the same call with real Whisper and Piper.
@@ -398,6 +403,7 @@ Windows 11 machine, with this repository's own tools. The branch was cut from pu
 | `python scripts/sip_e2e.py` (re-run): Docker, real Asterisk 22.12.0, real SIP, RTP and G.711, a separate headless baresip client, tone-coded fake speech | 28 passed, 8 skipped (the eight real-speech tests, which belong to the next row), 3 min 49 s. [Evidence](docs/evidence/phase3-sip-e2e-fake.json) |
 | `python scripts/sip_e2e.py --speech local --models DIR --python PY` (re-run): the same stack with real faster-whisper `small` and Piper | 8 passed, 6 min 1 s. English scam refusal, interruption and legitimate call asserted; Hindi, Hinglish, Kanglish, a Kanglish UPI PIN line and Kannada measured and reported, **not asserted: none of those five was screened** ([docs/PHASE3_ASTERISK_PLAN.md](docs/PHASE3_ASTERISK_PLAN.md) section 8). [Evidence](docs/evidence/phase3-sip-e2e-local.json) |
 | `gitleaks` 8.30.1 (`gitleaks git`) on the branch since pull request 11's head | no leaks; Phase 3's dummy test secrets and public model hashes are allowlisted by exact value in `.gitleaks.toml` |
+| **The documented local-SIP flow, verbatim, with the web app** (re-run): `python scripts/sip_local.py init`; `docker compose --profile asterisk up --build`; `python -m sparta doctor --provider asterisk --env-file ../../.env --online`; a baresip call from a container on the Compose `sip` network; then the real web app opened with Playwright | all five services healthy; the doctor reports no blockers and "SIP service answers" passes; a 27 s call from extension 6001 to 6000 was answered, the OTP request refused and the call ended by Sparta; the web app shows the call (`LOCAL SIP`, High risk, the exact opening line, the caller's words, the refusal, an accurate summary) and the first-run step that says Local SIP, PSTN not configured. No warning or error in the container logs and none of the three generated secrets in them. The caller was a Piper voice in a container, not a phone ([docs/PHASE3_ASTERISK_PLAN.md](docs/PHASE3_ASTERISK_PLAN.md) section 8). It found, and this branch fixes, a doctor that read the wrong `.env` |
 | **Not run** | a physical phone (level C), the phone network (level D), a human voice, native-speaker review of any language, Azure or Twilio with real credentials |
 
 **Phase 2, last verified** on branch `feat/real-world-telephony` at commit `c8a56c4`, on one Windows 11 machine, with this

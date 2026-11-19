@@ -1317,6 +1317,57 @@ def test_provider_asterisk_is_a_choice_and_the_help_says_what_it_uses(capsys):
     help_text = " ".join(capsys.readouterr().out.split())
     assert "{azure,twilio,asterisk,simulator,all}" in help_text
     assert "SPARTA_STT_PROVIDER" in help_text and "SIP OPTIONS" in help_text
+    assert "--env-file" in help_text and "sip_local.py init" in help_text
     with pytest.raises(SystemExit) as invalid:
         cli.main(["doctor", "--provider", "plivo"])
     assert invalid.value.code == 2
+
+
+def test_env_file_reads_the_repository_root_env_that_init_writes_when_run_from_another_directory(
+    monkeypatch, tmp_path, capsys
+):
+    # `scripts/sip_local.py init` writes .env at the repository root, but the doctor runs from services/api (where the
+    # models directory is relative), and the working directory's own .env is the only one it reads by default.
+    root = tmp_path / "root"
+    root.mkdir()
+    env_file = root / ".env"
+    env_file.write_text(
+        "\n".join(
+            (
+                "SPARTA_TELEPHONY_PROVIDER=asterisk",
+                "SPARTA_STT_PROVIDER=local",
+                "SPARTA_TTS_PROVIDER=local",
+                f"SPARTA_ASTERISK_WEBHOOK_SECRET={SECRET}",
+            )
+        ),
+        encoding="utf-8",
+    )
+    work = tmp_path / "services_api"
+    work.mkdir()
+    for name in (
+        "SPARTA_TELEPHONY_PROVIDER",
+        "SPARTA_STT_PROVIDER",
+        "SPARTA_TTS_PROVIDER",
+        "SPARTA_ASTERISK_WEBHOOK_SECRET",
+    ):
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv("SPARTA_ENV", "test")
+    monkeypatch.chdir(work)
+    directory = write_config(tmp_path)
+    monkeypatch.setattr(conf, "find_directory", lambda explicit=None: directory)
+
+    assert cli.main(["doctor", "--provider", "asterisk", "--json"]) == 1  # the working directory has no .env
+    without = {c["id"]: c for c in json.loads(capsys.readouterr().out)["checks"]}
+    assert without["asterisk.callback_secret"]["status"] == "BLOCKED"
+
+    assert cli.main(["doctor", "--provider", "asterisk", "--env-file", str(env_file), "--json"]) == 0
+    out = capsys.readouterr().out
+    with_file = {c["id"]: c for c in json.loads(out)["checks"]}
+    assert with_file["asterisk.callback_secret"]["status"] == "PASS"
+    assert SECRET not in out
+
+
+def test_a_missing_env_file_is_an_error_and_not_a_silent_default(monkeypatch, tmp_path, capsys):
+    cli_environment(monkeypatch, tmp_path)
+    assert cli.main(["doctor", "--provider", "asterisk", "--env-file", str(tmp_path / "nope.env")]) == 2
+    assert "no such file" in capsys.readouterr().err

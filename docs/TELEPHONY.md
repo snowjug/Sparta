@@ -291,7 +291,8 @@ do. DTMF is received and ignored.
 `SPARTA_ASTERISK_WEBHOOK_SECRET` (at least 24 characters), `SPARTA_ASTERISK_MEDIA_BIND`/`_PORT`/`_PEERS` (who may open the media
 connection: an address, a range no wider than a /8, or a host name), `SPARTA_ASTERISK_EXTENSION` and
 `SPARTA_ASTERISK_OWNER_EXTENSION`, and the speech providers (`local` for free local speech). `python scripts/sip_local.py init` writes
-a working set; `python -m sparta doctor --provider asterisk [--online]` checks it, including the shipped Asterisk files.
+a working set; `python -m sparta doctor --provider asterisk --env-file ../../.env [--online]` (from `services/api`) checks it,
+including the shipped Asterisk files.
 
 **Verified, in Docker, with a headless baresip client and a machine voice** (`python scripts/sip_e2e.py`, 28 scenarios; and
 `--speech local`, 8 scenarios with real Whisper and Piper): registration with the right password and refusal of a wrong one or an

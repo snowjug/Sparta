@@ -106,6 +106,7 @@ def cmd_init(args: argparse.Namespace) -> int:
     else:
         print("Next: docker compose --profile asterisk up --build")
     print("Then register a SIP client: python scripts/sip_local.py show --reveal")
+    print("Optional preflight (from services/api): python -m sparta doctor --provider asterisk --env-file ../../.env")
     return 0
 
 

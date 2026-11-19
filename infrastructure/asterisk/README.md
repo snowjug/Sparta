@@ -25,7 +25,7 @@ in [docs/DECISIONS/ADR-ASTERISK-MEDIA-BRIDGE.md](../../docs/DECISIONS/ADR-ASTERI
 python scripts/sip_local.py init                 # random secrets -> .env and .env.sip (both git-ignored); prints nothing secret
 docker compose --profile asterisk up --build     # first build compiles Asterisk: about 5-15 minutes, cached afterwards
 python scripts/sip_local.py show --reveal        # server address, extension numbers and the SIP passwords for your phone
-python -m sparta doctor --provider asterisk      # preflight (run from services/api)
+python -m sparta doctor --provider asterisk --env-file ../../.env       # preflight; run from services/api (init wrote .env in the repository root)
 ```
 
 Register a SIP client as extension **6001** (password from `show --reveal`), then dial **6000**. The step-by-step phone setup
@@ -102,7 +102,7 @@ Written as threats and answers in [docs/THREAT_MODEL.md](../../docs/THREAT_MODEL
 ```bash
 docker compose --profile asterisk ps                                     # asterisk should be "healthy"
 docker compose exec asterisk asterisk -rx "pjsip show contacts"          # your phone, once registered
-python -m sparta doctor --provider asterisk [--online]                   # from services/api; never prints a secret
+python -m sparta doctor --provider asterisk --env-file ../../.env [--online]   # from services/api; never prints a secret
 python scripts/sip_e2e.py                                                # the real-SIP end-to-end test (Docker, no account)
 ```
 

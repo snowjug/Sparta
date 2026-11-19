@@ -112,10 +112,35 @@ up; the call has a summary that mentions the one-time password. In the interrupt
 the greeting and the greeting stopped 240 ms later (160 ms in the previous run); Sparta recognised the interruption ("Yet I'm
 calling from Amazon.": Whisper heard "Yeah" as "Yet"), answered, and ended the call on silence with a summary. A legitimate
 delivery call was recognised word for word, rated low risk, answered ("Thanks. I'll let Atharv know right now. Please stay on the
-line.") and summarised. The summary is read through the API (`GET /calls/{id}`), which is what the web app renders; the web app
-itself was not opened on that call.
+line.") and summarised. In those automated runs the summary is read through the API (`GET /calls/{id}`), which is what the web app
+renders; the web app was not opened on those calls (see the next paragraph for the call where it was).
 This is **a real external SIP client, a real call and real speech recognition and synthesis. It is not a person, not a phone and not
 the phone network.**
+
+**The documented flow, end to end, including the web app.** The test stack above is not the stack a user runs, so the user's own
+commands were followed once, verbatim: `python scripts/sip_local.py init`, then `docker compose --profile asterisk up --build`
+(PostgreSQL, Redis, the API with local speech, the **web app** and Asterisk, all healthy after 78 s on a retry: a first attempt had
+built the API and Asterisk images and failed only on the web image's `npm ci`, see below), then
+`python -m sparta doctor --provider asterisk --env-file ../../.env --online` (with `SPARTA_LOCAL_MODEL_DIR` pointing at the
+downloaded models: no blockers, and "SIP service answers" passed against the running Asterisk), then a baresip call (container on the
+Compose `sip` network, extension 6001 to 6000) with the English OTP line in a
+Piper voice. Result: registered, answered after 0.4 s, audio flowing, 27 s, ended by Sparta; the caller heard the greeting and the
+refusal (Whisper read the recording back); the API logged no warning or error and none of the three generated secrets appears in any
+container log. **The real web app then showed the call:** Home lists it (`SIP 6001`, `LOCAL SIP`, 0:27, High risk, "Possible bank or
+financial impersonation", English) with the summary "Caller claimed to represent a bank and asked for a one-time password (OTP).
+Sparta refused and ended the call. No owner action is required; blocking this number is recommended."; the call page shows the
+exact opening line, the caller's words (recognised with 77% confidence), the refusal, risk high (95%) with the two pieces of
+evidence, and the timeline with `Provider: asterisk`; the first-run phone-connection step reads Connection **Local SIP**, Phone
+network **Not configured**, Speech **Local**, Take over **SIP extension**, and says that ordinary mobile and landline callers cannot
+reach Sparta this way. The checks were scripted with Playwright against `http://localhost:3000`; the call used was `call_8a3d1be3c0a3`.
+Screenshots: [Home](evidence/phase3-localsip-web-home.png), [the call](evidence/phase3-localsip-web-call-detail.png) and
+[the phone-connection step](evidence/phase3-localsip-web-onboarding-phone-step.png).
+Differences from what a user will do: the caller was that container (not the host, not a phone); the models came from an existing
+folder (`SPARTA_MODELS_HOST_DIR`) instead of `models fetch`; and this machine needed `NPM_REGISTRY` and `PIP_INDEX_URL` set to its
+package mirrors for the image builds (the first attempt's web build died in `npm ci` with "Exit handler never called" until
+`NPM_REGISTRY` pointed at the mirror; the compose file already passes that variable through). **Found by doing this** (fixed): the
+doctor read only the working directory's `.env`, so run as the README said it reported BLOCKED for a stack that was working; it now
+takes `--env-file`.
 
 **Latency, labelled by how it was measured** (client-side figures are from timestamps of the RTP packets that crossed the caller's
 network interface, one clock; server-side figures are Sparta's own per-turn measurements; the real-speech column is the committed

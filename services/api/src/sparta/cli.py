@@ -145,7 +145,10 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     from sparta.doctor import run_doctor
     from sparta.doctor.runner import load_settings
 
-    settings = load_settings()
+    if args.env_file and not Path(args.env_file).is_file():
+        print(f"error: --env-file {args.env_file}: no such file", file=sys.stderr)
+        return 2
+    settings = load_settings(args.env_file)
     try:
         report = asyncio.run(
             run_doctor(
@@ -363,6 +366,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="with --online: also run tiny probes that cost a fraction of a cent (a speech round trip, one model turn)",
     )
     doctor.add_argument("--callback-url", default=None, help="check this public https origin instead of the setting")
+    doctor.add_argument(
+        "--env-file",
+        default=None,
+        help="read the settings from this .env file instead of ./.env (from services/api, ../../.env is the file "
+        "that scripts/sip_local.py init writes in the repository root); variables already set in the environment still win",
+    )
     doctor.add_argument("--timeout", type=float, default=8.0, help="seconds per network request (default 8)")
     doctor.add_argument("--json", action="store_true", help="machine-readable output")
     doctor.set_defaults(func=cmd_doctor)

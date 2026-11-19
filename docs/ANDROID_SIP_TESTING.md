@@ -142,7 +142,7 @@ Collect only what helps, and read it before sharing.
 | Registered, call connects, **no audio either way** | RTP is blocked or advertised wrongly | open UDP 10000-10019; set `SPARTA_ASTERISK_EXTERNAL_IP` to the LAN address; make sure Linphone's ICE/STUN are off |
 | **One-way audio**: you hear Sparta but it never hears you (or the reverse) | RTP flows in one direction only: a firewall, a VPN or a phone on another subnet | same checks; disconnect VPNs; Docker Desktop rewrites the source address of published UDP, which Asterisk handles (`rtp_symmetric`, `force_rport`), so check the firewall first; confirm with `docker compose exec asterisk asterisk -rx "core show channels verbose"` |
 | The call drops after about a minute | no RTP from the phone for 60 s (`rtp_timeout`) | same as above; also keep Linphone in the foreground |
-| It answers but stays silent | the speech provider cannot speak (no TTS audio) | `python -m sparta doctor --provider asterisk`; with `local` speech run `python -m sparta models fetch` first; the web app shows a provider error on the call |
+| It answers but stays silent | the speech provider cannot speak (no TTS audio) | `python -m sparta doctor --provider asterisk --env-file ../../.env` (from `services/api`); with `local` speech run `python -m sparta models fetch` first; the web app shows a provider error on the call |
 | It hears you but replies "could you repeat that?" | the recogniser's confidence is low (Kannada with the small model always is) | see MULTILINGUAL_SPEECH.md; try English first, then a larger model |
 | Works on Wi-Fi, not on mobile data | expected: this is a local SIP call | stay on the same Wi-Fi; there is no PSTN or internet exposure by design |
 

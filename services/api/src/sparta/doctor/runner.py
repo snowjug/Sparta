@@ -31,9 +31,9 @@ class ReportingSettings(Settings):
         return self
 
 
-def load_settings() -> Settings:
-    """The settings of this process from the environment and ``.env``, without the fail-fast production guard."""
-    return ReportingSettings()
+def load_settings(env_file: str | None = None) -> Settings:
+    """The settings of this process from the environment and ``.env`` (or ``env_file``), without the fail-fast production guard."""
+    return ReportingSettings(_env_file=env_file) if env_file else ReportingSettings()
 
 
 def normalise_providers(requested: Sequence[str]) -> tuple[str, ...]:
