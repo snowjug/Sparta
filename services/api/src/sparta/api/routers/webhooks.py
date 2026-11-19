@@ -262,7 +262,12 @@ async def _asterisk_form(
     request: Request, provider: AsteriskTelephonyProvider, what: str
 ) -> dict[str, str] | JSONResponse:
     """The form fields of a dialplan callback, or the rejection. The secret and the peer are checked before anything
-    is read, and a request from anywhere but Asterisk's own address is refused even with the right secret."""
+    is read, and a request from anywhere but Asterisk's own address is refused even with the right secret.
+
+    Asterisk calls the API directly, so a request that carries proxy headers is refused: behind a proxy that the server
+    trusts for ``X-Forwarded-For`` the peer address below would be whatever the sender claims it is."""
+    if any(name in request.headers for name in ("x-forwarded-for", "forwarded", "x-real-ip")):
+        return _rejected(WebhookRejected("proxied request"), what)
     client = request.client.host if request.client else ""
     if not provider.verify_callback(request.headers.get("authorization")):
         return _rejected(WebhookRejected("callback secret mismatch"), what)

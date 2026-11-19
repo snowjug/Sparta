@@ -215,6 +215,9 @@ def test_only_provider_callbacks_are_hidden_from_the_api_document():
         f"{API}/webhooks/acs/callbacks/{{call_id}}",
         f"{API}/webhooks/twilio/voice",
         f"{API}/webhooks/twilio/status",
+        f"{API}/webhooks/asterisk/incoming",
+        f"{API}/webhooks/asterisk/next",
+        f"{API}/webhooks/asterisk/ended",
         f"{API}/webhooks/generic",
     }
 

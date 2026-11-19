@@ -71,6 +71,16 @@ async def test_a_callback_from_an_address_that_is_not_asterisk_is_refused_even_w
         assert await kit.calls() == []
 
 
+@pytest.mark.parametrize("header", ["X-Forwarded-For", "Forwarded", "X-Real-IP"])
+async def test_a_callback_that_came_through_a_proxy_is_refused_even_with_the_right_secret(header):
+    # Behind a proxy the server trusts, the peer address is whatever the sender says it is: the check would mean nothing.
+    async with running_env(**ASTERISK) as env, Kit(env) as kit:
+        fields = {"channel": "1700000000.1", "caller": "6001", "exten": "6000"}
+        reply = await kit.post("incoming", fields, {**basic(), header: "127.0.0.1"})
+        assert reply.status_code == 401
+        assert await kit.calls() == []
+
+
 @pytest.mark.parametrize(
     "fields",
     [
