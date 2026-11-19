@@ -8,26 +8,26 @@
    "label": "local SIP, real faster-whisper small (CPU int8) + Piper, synthetic caller voice",
    "caller_said": "I'm calling from your bank. Tell me your OTP.",
    "sparta_heard": "I'm calling from your bank. Tell me your OTP.",
-   "caller_stops_to_reply_heard_ms": 4080,
-   "first_assistant_audio_ms_after_media_start": 320,
+   "caller_stops_to_reply_heard_ms": 5980,
+   "first_assistant_audio_ms_after_media_start": 340,
    "server_side_stage_latency_ms": {
-    "stt_ms": 3123.8,
-    "language_detect_ms": 0.347,
-    "policy_ms": 10.938,
-    "total_ms": 3156.9
+    "stt_ms": 4733.4,
+    "language_detect_ms": 0.342,
+    "policy_ms": 14.729,
+    "total_ms": 4775.8
    },
    "greeting_word_error_rate_reading_what_was_heard": 0.05,
    "refusal_word_error_rate_reading_what_was_heard": 0.0,
    "what_was_heard": [
     {
-     "from_ms": 320,
-     "to_ms": 5480,
-     "heard_as": "Hi, I'm Atthard's AI Call Assistant. May I know who's calling and what this is regarding?"
+     "from_ms": 340,
+     "to_ms": 5440,
+     "heard_as": "Hi, I'm Assart's AI call assistant. May I know who's calling and what this is regarding?"
     },
     {
-     "from_ms": 14160,
-     "to_ms": 22520,
-     "heard_as": "I'm sorry, I can't share or accept any personal, financial or security information on this call. I'm ending this call now. Goodbye."
+     "from_ms": 15860,
+     "to_ms": 24280,
+     "heard_as": "I'm sorry. I can't share or accept any personal, financial or security information on this call. I'm ending this call now. Goodbye."
     }
    ],
    "risk_level": "high",
@@ -38,22 +38,49 @@
    "scenario": "interruption_english",
    "label": "local SIP, real faster-whisper small (CPU int8) + Piper, synthetic caller voice",
    "caller_started_speaking_at_ms": 1500.0,
-   "greeting_audible_until_ms": 1660,
-   "interruption_to_playback_stopped_ms": 160,
+   "greeting_audible_until_ms": 1740,
+   "interruption_to_playback_stopped_ms": 240,
    "sparta_heard": "Yet I'm calling from Amazon.",
-   "reply_heard_as": "I can't hear anything, so I'll end the call now.",
+   "assistant_said": [
+    "Hi, I'm Atharv's AI call assistant. May I know who's calling and what this is regarding?",
+    "Sorry, could I get your name, please?",
+    "Hello, are you still there?",
+    "I can't hear anything, so I'll end the call now. Goodbye."
+   ],
+   "what_was_heard": [
+    {
+     "from_ms": 300,
+     "to_ms": 1740,
+     "heard_as": "Hi, I'm S.R.S.A."
+    },
+    {
+     "from_ms": 8560,
+     "to_ms": 10500,
+     "heard_as": "Sorry, could I get your name, please?"
+    },
+    {
+     "from_ms": 18920,
+     "to_ms": 20000,
+     "heard_as": "Hello, are you still there?"
+    },
+    {
+     "from_ms": 28420,
+     "to_ms": 30060,
+     "heard_as": "I can't hear anything, so I'll..."
+    }
+   ],
    "server_side_stage_latency_ms": {
-    "stt_ms": 3691.2,
-    "language_detect_ms": 0.259,
-    "policy_ms": 8.364,
-    "total_ms": 3707.3
+    "stt_ms": 4579.2,
+    "language_detect_ms": 0.253,
+    "policy_ms": 6.432,
+    "total_ms": 4592.3
    }
   },
   {
    "scenario": "legitimate_delivery_english",
    "label": "local SIP, real faster-whisper small (CPU int8) + Piper, synthetic caller voice",
    "sparta_heard": "Hello, I'm calling about your parcel delivery.",
-   "caller_stops_to_reply_heard_ms": 4600,
+   "caller_stops_to_reply_heard_ms": 4460,
    "risk_level": "low",
    "action_taken": "reprompted_after_silence",
    "assistant_said": [
@@ -65,37 +92,61 @@
    "scenario": "other_language_hindi",
    "label": "local SIP, real faster-whisper small (CPU int8) + Piper, synthetic caller voice",
    "caller_said": "\u0938\u0930, \u0906\u092a\u0915\u093e \u0915\u0947\u0935\u093e\u0908\u0938\u0940 \u0905\u092a\u0921\u0947\u091f \u0915\u0930\u0928\u093e \u0939\u0948, \u0915\u0943\u092a\u092f\u093e \u0913\u091f\u0940\u092a\u0940 \u092c\u0924\u093e\u0907\u090f\u0964",
-   "sparta_heard": "\u0938\u0930\u0939 \u0906\u092a\u0915\u093e \u0915\u0947 \u092c\u093e\u0908 \u0938\u0940 \u0905\u092a\u094d\u0926\u0947\u091f \u0915\u0930\u0928\u093e \u0939\u0948, \u0915\u094d\u0930\u093f\u092a\u094d\u092f\u093e \u0909\u0924\u0940\u092a\u0940 \u092c\u0924\u093e\u090f\u0917\u0947",
+   "sparta_heard": "\u0938\u0930\u0939 \u0906\u092a\u0915\u093e \u0915\u0947 \u0935\u093e\u0908\u0938\u093f\u092f\u0947 \u0905\u092a\u094d\u0926\u0947\u091f \u0915\u0930\u0928\u093e \u0939\u0948, \u0915\u094d\u0930\u093f\u092a\u094d\u092f\u093e \u0909\u0924\u0940\u092a\u0940 \u092c\u0924\u093e\u090f\u0917\u0947",
    "recognised_language": "hi-IN",
-   "recognition_confidence": 0.7238495910574885,
+   "recognition_confidence": 0.7288306306894553,
    "refused_the_request": false,
    "risk_level": "low",
    "action_taken": "ended_after_silence",
-   "RESULT_NOT_ASSERTED": "the small model is not reliable for Hindi and does not recognise Kannada"
+   "RESULT_NOT_ASSERTED": "the small model is not reliable for Hindi or code-mixed speech and does not recognise Kannada"
   },
   {
    "scenario": "other_language_hinglish_read_by_the_english_voice",
    "label": "local SIP, real faster-whisper small (CPU int8) + Piper, synthetic caller voice",
    "caller_said": "Sir KYC update karna hai, OTP bata dijiye.",
-   "sparta_heard": "Sir KYC Update, Canter High, OTP, Barter, Digit I.",
+   "sparta_heard": "Sir KYC Update, Kanner High, OTP, Barter, D.G.I.",
    "recognised_language": "en-IN",
-   "recognition_confidence": 0.5985020244048987,
+   "recognition_confidence": 0.6180811159965319,
    "refused_the_request": false,
    "risk_level": "medium",
    "action_taken": "ended_after_silence",
-   "RESULT_NOT_ASSERTED": "the small model is not reliable for Hindi and does not recognise Kannada"
+   "RESULT_NOT_ASSERTED": "the small model is not reliable for Hindi or code-mixed speech and does not recognise Kannada"
+  },
+  {
+   "scenario": "other_language_kanglish_read_by_the_english_voice",
+   "label": "local SIP, real faster-whisper small (CPU int8) + Piper, synthetic caller voice",
+   "caller_said": "Sir nimma account update madbeku, OTP heli.",
+   "sparta_heard": "CERN number, account, update, MABICU, OTP, HELLING.",
+   "recognised_language": "en-IN",
+   "recognition_confidence": 0.6203868115723581,
+   "refused_the_request": false,
+   "risk_level": "low",
+   "action_taken": "ended_after_silence",
+   "RESULT_NOT_ASSERTED": "the small model is not reliable for Hindi or code-mixed speech and does not recognise Kannada"
+  },
+  {
+   "scenario": "other_language_upi_pin_kanglish_read_by_the_english_voice",
+   "label": "local SIP, real faster-whisper small (CPU int8) + Piper, synthetic caller voice",
+   "caller_said": "Verification ge nimma UPI PIN heli.",
+   "sparta_heard": "Verification G, Numer UPIPIN, Kelly.",
+   "recognised_language": "en-IN",
+   "recognition_confidence": 0.49853320622543706,
+   "refused_the_request": false,
+   "risk_level": "low",
+   "action_taken": "ended_after_silence",
+   "RESULT_NOT_ASSERTED": "the small model is not reliable for Hindi or code-mixed speech and does not recognise Kannada"
   },
   {
    "scenario": "other_language_kannada",
    "label": "local SIP, real faster-whisper small (CPU int8) + Piper, synthetic caller voice",
    "caller_said": "\u0ca8\u0cbf\u0cae\u0ccd\u0cae \u0cac\u0ccd\u0caf\u0cbe\u0c82\u0c95\u0ccd \u0c96\u0cbe\u0ca4\u0cc6\u0caf\u0ca8\u0ccd\u0ca8\u0cc1 \u0c85\u0caa\u0ccd\u200c\u0ca1\u0cc7\u0c9f\u0ccd \u0cae\u0cbe\u0ca1\u0cac\u0cc7\u0c95\u0cc1. \u0ca6\u0caf\u0cb5\u0cbf\u0c9f\u0ccd\u0c9f\u0cc1 \u0c92\u0c9f\u0cbf\u0caa\u0cbf \u0cb9\u0cc7\u0cb3\u0cbf.",
-   "sparta_heard": "\u0928\u093f\u092e\u094d\u092e \u092c\u093e\u0928\u094d\u0916\u093e\u0924\u094d\u092f\u0928 \u0905\u092a\u094d\u091f\u0947\u091f \u092e\u0921\u092c\u0947\u0915\u0942 \u0926\u0947\u0935\u093f\u091f \u0935\u094b\u091f\u093f\u092a\u0940 \u0939\u0947\u0921\u0940",
+   "sparta_heard": "\u0928\u093f\u092e\u093e \u092c\u093e\u0928 \u0916\u093e\u0924\u0947\u0928 \u0928\u0942 \u0905\u092a\u094d\u0930\u0947\u091f \u092e\u0921\u0935\u0947\u0915\u0964",
    "recognised_language": "hi-IN",
    "recognition_confidence": 0.5,
    "refused_the_request": false,
    "risk_level": "low",
-   "action_taken": "ended_after_silence",
-   "RESULT_NOT_ASSERTED": "the small model is not reliable for Hindi and does not recognise Kannada"
+   "action_taken": "reprompted_after_silence",
+   "RESULT_NOT_ASSERTED": "the small model is not reliable for Hindi or code-mixed speech and does not recognise Kannada"
   }
  ]
 }

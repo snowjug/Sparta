@@ -54,10 +54,10 @@ B here is *not* a phone-network (PSTN) call and not a human on a phone.
 | --- | --- | --- |
 | Simulator-based product (engine, rules, replies, apps, API) | **Verified** | Backend tests, web tests, Playwright, Android unit tests, CI; evaluation on synthetic scenarios |
 | Real-call path through the Twilio and ACS adapters, streaming speech recognition, owner takeover, cost caps, failure handling | **Verified against fakes only** | Adapter and API tests, plus a controlled matrix of whole calls over a real WebSocket with scripted speech services ([docs/PHASE2_CONTROLLED_RESULTS.md](docs/PHASE2_CONTROLLED_RESULTS.md)) |
-| **Local SIP (Asterisk): a separate SIP client registers, calls Sparta, hears the AI disclosure, is refused an OTP, interrupts the assistant, hangs up** | **Verified in Docker, with a machine voice** | `python scripts/sip_e2e.py` (28 tests, real Asterisk 22, real SIP, RTP and G.711, headless baresip) and `python scripts/sip_e2e.py --speech local` (6 tests with real faster-whisper and Piper: [docs/PHASE3_ASTERISK_PLAN.md](docs/PHASE3_ASTERISK_PLAN.md)) |
+| **Local SIP (Asterisk): a separate SIP client registers, calls Sparta, hears the AI disclosure, is refused an OTP, interrupts the assistant, hangs up** | **Verified in Docker, with a machine voice** | `python scripts/sip_e2e.py` (28 tests, real Asterisk 22, real SIP, RTP and G.711, headless baresip) and `python scripts/sip_e2e.py --speech local` (8 tests with real faster-whisper and Piper: [docs/PHASE3_ASTERISK_PLAN.md](docs/PHASE3_ASTERISK_PLAN.md)) |
 | Local SIP on a physical Android phone (Linphone) | **Not run** | No phone was attached. [docs/ANDROID_SIP_TESTING.md](docs/ANDROID_SIP_TESTING.md) is the checklist |
-| Free local speech: English | **Verified**, with limits | A Piper voice's English line was recognised word for word by Whisper `small`; about 3 to 4 s per utterance on CPU. Telephone-band audio and accents were not measured |
-| Free local speech: Hindi, Hinglish, Kannada | **Unreliable (Hindi), not usable (Kannada)** | Measured: the OTP requests in all three were misheard and **not refused** ([docs/MULTILINGUAL_SPEECH.md](docs/MULTILINGUAL_SPEECH.md) section 11) |
+| Free local speech: English | **Verified**, with limits | A Piper voice's English line was recognised word for word by Whisper `small`; about 3 to 5 s per utterance on CPU (two runs). Telephone-band audio and accents were not measured |
+| Free local speech: Hindi, Hinglish, Kanglish, Kannada | **Unreliable (Hindi, Hinglish, Kanglish), not usable (Kannada)** | Measured: the OTP or UPI PIN requests in all five lines were misheard and **not refused**, although the rules refuse them when given the right words ([docs/MULTILINGUAL_SPEECH.md](docs/MULTILINGUAL_SPEECH.md) section 11) |
 | A real call from the **phone network** (ordinary mobile or landline numbers) | **Not delivered** | Needs a paid carrier, a phone number and a SIP trunk; Twilio and ACS remain unverified live ([docs/PHASE2_REAL_WORLD_PLAN.md](docs/PHASE2_REAL_WORLD_PLAN.md), section 6) |
 | Azure deployment | **Unverified** | The Bicep compiles and lints; it has never been deployed |
 | Android: build, unit tests, lint | **Verified** | 641 JVM unit tests, lint, debug APK |
@@ -267,9 +267,10 @@ published on `127.0.0.1` only (a client on the same computer); to reach it from 
 * **Test it without a phone** (Docker only): `python scripts/sip_e2e.py` runs a real Asterisk and a headless SIP client through
   28 scenarios with tone speech; `python scripts/sip_e2e.py --speech local --models services/api/var/models --python <python with the
   local-speech extra>` does the same call with real Whisper and Piper.
-* **What local speech can do:** English works; Hindi is unreliable; Kannada is not usable with the small model, so a Hindi or
-  Kannada caller is **not reliably screened** ([docs/MULTILINGUAL_SPEECH.md](docs/MULTILINGUAL_SPEECH.md) section 11). Recognition
-  takes about 3 to 4 seconds per utterance on a CPU, so the assistant answers about 4 seconds after the caller stops.
+* **What local speech can do:** English works; Hindi, Hinglish and Kanglish are unreliable; Kannada is not usable with the small
+  model, so a Hindi, Hinglish, Kanglish or Kannada caller is **not reliably screened** ([docs/MULTILINGUAL_SPEECH.md](docs/MULTILINGUAL_SPEECH.md)
+  section 11). Recognition takes about 3 to 5 seconds per utterance on a CPU, so the assistant answered 4 to 6 seconds after the
+  caller stopped (two runs).
 * **Licences:** Piper is GPL-3.0 (an opt-in extra, never in the default image), and its Hindi and Kannada voices are
   non-commercial. Asterisk is GPL-2.0 and is only talked to over the network. Details in
   [infrastructure/asterisk/README.md](infrastructure/asterisk/README.md) and the speech document.
@@ -382,7 +383,7 @@ Windows 11 machine, with this repository's own tools. The branch was cut from pu
 | Check | Result |
 | --- | --- |
 | `scripts\check.ps1 -Security` (what CI runs) | all 13 steps passed (603 s) |
-| Backend `pytest`, with PostgreSQL 16 and Redis 7 | 2900 passed, 54 skipped (Phase 2: 2321 passed). The skips are 34 Docker end-to-end tests (next rows), 12 that need `numpy` and 8 that need the downloaded speech models; both of the last two are optional extras |
+| Backend `pytest`, with PostgreSQL 16 and Redis 7 (re-run on the final tree) | 2900 passed, 56 skipped in 7 min 34 s (Phase 2: 2321 passed; the 13-step run above had 54 skipped, before two real-speech cases were added to the Docker tests). The skips are 36 Docker end-to-end tests (28 with tone speech and 8 with real speech, next rows), 12 that need `numpy` and 8 that need the downloaded speech models; both of the last two are optional extras |
 | `pytest tests/unit/providers_local`, in the optional speech environment (`numpy`, faster-whisper, Piper, models in `SPARTA_LOCAL_MODEL_DIR`) | 279 passed, 0 skipped (49 s), including the 20 tests the row above skips |
 | `ruff check`, `ruff format --check`, `mypy src` | clean; no issues in 133 source files |
 | `python -m sparta openapi --check` | the contract is current |
@@ -394,8 +395,8 @@ Windows 11 machine, with this repository's own tools. The branch was cut from pu
 | Android: `lintDebug assembleDebug` (re-run) | lint 0 errors and 21 warnings; debug APK 23,254,294 bytes. No device or emulator was available |
 | Docker Compose (PostgreSQL, Redis, API; the web service was not started) (re-run) | all three healthy; `/readyz` ready; `scripts\smoke.ps1` passed; `scripts\journey.py` passed (`PROBLEMS: none`) |
 | Trivy 0.76.2 (`--severity HIGH,CRITICAL --ignore-unfixed`) on the API image and on the Asterisk image (re-run) | no findings in either (Debian 13.7, 87 packages; Debian 12.15, 120 packages). It reads package databases, so it does not see Asterisk and PJPROJECT, which are compiled from pinned sources. CI scans only the API image |
-| `python scripts/sip_e2e.py` (re-run): Docker, real Asterisk 22.12.0, real SIP, RTP and G.711, a separate headless baresip client, tone-coded fake speech | 28 passed, 6 skipped (the six real-speech tests, which belong to the next row), 3 min 49 s. [Evidence](docs/evidence/phase3-sip-e2e-fake.json) |
-| `python scripts/sip_e2e.py --speech local --models DIR --python PY`: the same stack with real faster-whisper `small` and Piper | 6 passed, 5 min 39 s. English scam refusal, interruption and legitimate call asserted; Hindi, Hinglish and Kannada measured and reported, **not asserted: those OTP requests were not screened** ([docs/PHASE3_ASTERISK_PLAN.md](docs/PHASE3_ASTERISK_PLAN.md) section 8). [Evidence](docs/evidence/phase3-sip-e2e-local.json) |
+| `python scripts/sip_e2e.py` (re-run): Docker, real Asterisk 22.12.0, real SIP, RTP and G.711, a separate headless baresip client, tone-coded fake speech | 28 passed, 8 skipped (the eight real-speech tests, which belong to the next row), 3 min 49 s. [Evidence](docs/evidence/phase3-sip-e2e-fake.json) |
+| `python scripts/sip_e2e.py --speech local --models DIR --python PY` (re-run): the same stack with real faster-whisper `small` and Piper | 8 passed, 6 min 1 s. English scam refusal, interruption and legitimate call asserted; Hindi, Hinglish, Kanglish, a Kanglish UPI PIN line and Kannada measured and reported, **not asserted: none of those five was screened** ([docs/PHASE3_ASTERISK_PLAN.md](docs/PHASE3_ASTERISK_PLAN.md) section 8). [Evidence](docs/evidence/phase3-sip-e2e-local.json) |
 | `gitleaks` 8.30.1 (`gitleaks git`) on the branch since pull request 11's head | no leaks; Phase 3's dummy test secrets and public model hashes are allowlisted by exact value in `.gitleaks.toml` |
 | **Not run** | a physical phone (level C), the phone network (level D), a human voice, native-speaker review of any language, Azure or Twilio with real credentials |
 
@@ -549,9 +550,11 @@ Not verified against any live service:
   physical Android phone and a real SIP app (Linphone), a human voice, an Indian accent, telephone-line noise, Wi-Fi and
   firewall behaviour, a second registered phone for take-over, and a longer or busier session. Its measured numbers
   ([docs/PHASE3_ASTERISK_PLAN.md](docs/PHASE3_ASTERISK_PLAN.md)) are local-Docker figures, not device figures.
-* **Local speech** recognises English but not reliably Hindi, and not Kannada, with the small model: the OTP requests in Hindi,
-  Hinglish and Kannada were **missed** in the Docker test. Answers come about 4 seconds after the caller stops, because recognition
-  takes 3 to 4 seconds on a CPU. Telephone-band audio and accents were not measured, and no native speaker has heard any of it.
+* **Local speech** recognises English but not reliably Hindi, Hinglish or Kanglish, and not Kannada, with the small model: the OTP
+  requests in Hindi, Hinglish, Kanglish and Kannada, and a Kanglish UPI PIN request, were **missed** in the Docker test (the rules
+  refuse all five when given the words that were said: the recogniser is what failed). Answers came 4 to 6 seconds after the caller
+  stopped in two runs, because recognition takes 3 to 5 seconds on a CPU. Telephone-band audio and accents were not measured, and no
+  native speaker has heard any of it.
 * SIP and RTP are not encrypted; the Asterisk container does not limit failed logins; the network filter cannot see real source
   addresses on Docker Desktop ([docs/SECURITY_REVIEW_PHASE3.md](docs/SECURITY_REVIEW_PHASE3.md)). The Phase 3 security review was
   automated, not a penetration test.

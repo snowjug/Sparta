@@ -294,7 +294,7 @@ connection: an address, a range no wider than a /8, or a host name), `SPARTA_AST
 a working set; `python -m sparta doctor --provider asterisk [--online]` checks it, including the shipped Asterisk files.
 
 **Verified, in Docker, with a headless baresip client and a machine voice** (`python scripts/sip_e2e.py`, 28 scenarios; and
-`--speech local`, 6 scenarios with real Whisper and Piper): registration with the right password and refusal of a wrong one or an
+`--speech local`, 8 scenarios with real Whisper and Piper): registration with the right password and refusal of a wrong one or an
 unknown user; a call that is answered with the AI disclosure; an OTP request refused by voice with the call ended and a summary; a
 caller who talks over the greeting stopping it; a legitimate caller; noise and silence; Asterisk's own call limit; six numbers that
 cannot be dialled; an unauthenticated INVITE and OPTIONS answered with nothing but a challenge; a host that is not Asterisk unable

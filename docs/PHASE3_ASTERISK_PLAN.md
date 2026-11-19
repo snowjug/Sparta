@@ -34,7 +34,7 @@ shrinks to the Phase 3 commits; if it is closed, Phase 3 must be rebased.
 
 | Suite | Baseline | Final (`a600b87`; later commits change documentation only) |
 |---|---|---|
-| Backend pytest | 2321 passed | **2900 passed**, 54 skipped (34 Docker end-to-end tests, 12 needing `numpy`, 8 needing the downloaded models) |
+| Backend pytest | 2321 passed | **2900 passed**, 56 skipped (36 Docker end-to-end tests, 12 needing `numpy`, 8 needing the downloaded models) |
 | Web vitest | 310 passed (from the Phase 2 README) | **318 passed** |
 | Web Playwright | 112 passed (from the Phase 2 README) | **112 passed** |
 | Android JVM unit tests | 634 passed; lint 0 errors, 21 warnings (from the Phase 2 README) | **641 passed, 0 skipped** (forced re-run); lint 0 errors, 21 warnings |
@@ -73,7 +73,7 @@ command-by-command record is in the README's Testing section and the pull reques
 | 6 | Provider matrix tests, malformed/oversized/duplicate/timeout/interruption, multilingual and prompt-injection suites | **done** (`6419a10`) |
 | 7 | `sparta doctor --provider asterisk` | **done** (`d3bf3be`) |
 | 8 | Minimal UI state (provider, connection, PSTN, takeover) and OpenAPI | **done** (`72dae2f`) |
-| 9 | Docker SIP end-to-end, latency measurements, evidence JSON | **done** (`a600b87`): 28 scenarios with tone speech, 6 with real speech |
+| 9 | Docker SIP end-to-end, latency measurements, evidence JSON | **done** (`a600b87`; Kanglish and UPI added to the real-speech run afterwards): 28 scenarios with tone speech, 8 with real speech |
 | 10 | Docs, security review, threat model | **done** (this commit): [SECURITY_REVIEW_PHASE3.md](SECURITY_REVIEW_PHASE3.md), [THREAT_MODEL.md](THREAT_MODEL.md) rows 36 to 47 |
 | 11 | Full regression, PR, CI | **regression done** (section 3 and the README's Testing section); PR and CI: see the pull request |
 
@@ -109,42 +109,53 @@ container ran faster-whisper `small` (CPU int8) and Piper. For the OTP scam: Spa
 as "I'm calling from your bank. Tell me your OTP." (exactly what was spoken); the engine rated it **high** risk and refused and
 ended the call; the caller received Piper's refusal as G.711 and Whisper read it back word for word; Sparta, not the caller, hung
 up; the call has a summary that mentions the one-time password. In the interruption scenario the caller began speaking 1.5 s into
-the greeting and the greeting stopped 160 ms later; Sparta recognised the interruption ("Yet I'm calling from Amazon.": Whisper
-heard "Yeah" as "Yet"), answered, and ended the call on silence with a summary. A legitimate delivery call was recognised
-word for word, rated low risk, answered ("I'll let Atharv know right now. Please stay on the line.") and summarised. The summary is read through the
-API (`GET /calls/{id}`), which is what the web app renders; the web app itself was not opened on that call.
+the greeting and the greeting stopped 240 ms later (160 ms in the previous run); Sparta recognised the interruption ("Yet I'm
+calling from Amazon.": Whisper heard "Yeah" as "Yet"), answered, and ended the call on silence with a summary. A legitimate
+delivery call was recognised word for word, rated low risk, answered ("Thanks. I'll let Atharv know right now. Please stay on the
+line.") and summarised. The summary is read through the API (`GET /calls/{id}`), which is what the web app renders; the web app
+itself was not opened on that call.
 This is **a real external SIP client, a real call and real speech recognition and synthesis. It is not a person, not a phone and not
 the phone network.**
 
 **Latency, labelled by how it was measured** (client-side figures are from timestamps of the RTP packets that crossed the caller's
-network interface, one clock; server-side figures are Sparta's own per-turn measurements):
+network interface, one clock; server-side figures are Sparta's own per-turn measurements; the real-speech column is the committed
+run, with the range over the two real-speech runs made on this code in brackets):
 
 | Measurement | local SIP, tone speech | local SIP, **real** Whisper `small` + Piper |
 | --- | --- | --- |
-| Call media starts to first assistant audio | 30 ms | 320 ms |
-| Caller stops speaking to first reply audio heard | 840 ms (the voice-activity wait included) | **4080 ms** (OTP scam), **4600 ms** (legitimate call) |
-| Server: recognition (`stt_ms`) | 6.3 ms (a tone decoder) | **3124 ms**, 3691 ms (two utterances) |
-| Server: policy, language detection | 29.3 ms, 0.4 ms | 10.9 ms, 0.3 ms |
-| Server: whole turn (`total_ms`) | 102.7 ms | 3157 ms, 3707 ms |
-| Caller interrupts to playback stopped | 180 ms | 160 ms |
+| Call media starts to first assistant audio | 30 ms | 340 ms (320 to 340) |
+| Caller stops speaking to first reply audio heard | 840 ms (the voice-activity wait included) | **5980 ms** (OTP scam; 4080 to 5980), **4460 ms** (legitimate call; 4460 to 4600) |
+| Server: recognition (`stt_ms`) | 6.3 ms (a tone decoder) | **4733 ms**, 4579 ms (two utterances; 3124 to 4733) |
+| Server: policy, language detection | 29.3 ms, 0.4 ms | 14.7 ms, 0.3 ms |
+| Server: whole turn (`total_ms`) | 102.7 ms | 4776 ms, 4592 ms (3157 to 4776) |
+| Caller interrupts to playback stopped | 180 ms | 240 ms (160 to 240) |
 
 *Not measured, so not reported:* anything on a physical phone (`physical Android SIP`: **NOT RUN**), real-clock timings of the
-in-process integration tests (they run on a virtual clock), and any latency over the phone network. The 4 s answer time is dominated
-by recognition on a CPU (Whisper encodes a padded 30 s window); it is slow for natural conversation, and the honest next step
-is a faster recogniser or a GPU, not a claim that it feels natural.
+in-process integration tests (they run on a virtual clock), and any latency over the phone network. The 4 to 6 s answer time is
+dominated by recognition on a CPU (Whisper encodes a padded 30 s window) and moved by 2 s between two runs of the same code; it is
+slow for natural conversation, and the honest next step is a faster recogniser or a GPU, not a claim that it feels natural.
 
-**Languages (real speech, machine-voice caller).** English: all three scenarios passed and are asserted. Hindi, Hinglish (Latin
-script read by the English voice) and Kannada were **measured and reported, not asserted to succeed**, and the answer is negative:
+**Languages (real speech, machine-voice caller).** English: all three scenarios passed and are asserted. Hindi, Hinglish and Kanglish
+(Latin script read by the English voice), a Kanglish UPI request, and Kannada were **measured and reported, not asserted to
+succeed**, and the answer is negative for every one of them (committed run; two runs of the same lines gave slightly different
+transcripts and the same outcome):
 
 | Caller said | Sparta's recogniser heard | Language, confidence | What Sparta did |
 | --- | --- | --- | --- |
-| Hindi: "सर, आपका केवाईसी अपडेट करना है, कृपया ओटीपी बताइए।" | "सरह आपका के बाई सी अप्देट करना है, क्रिप्या उतीपी बताएगे" | hi-IN, 0.72 | rated **low** risk; the OTP request was **not refused**; the call ended after silence |
-| Hinglish: "Sir KYC update karna hai, OTP bata dijiye." | "Sir KYC Update, Canter High, OTP, Barter, Digit I." | en-IN, 0.60 | rated medium; **not refused**; ended after silence |
-| Kannada: "ನಿಮ್ಮ ಬ್ಯಾಂಕ್ ಖಾತೆಯನ್ನು ಅಪ್‌ಡೇಟ್ ಮಾಡಬೇಕು. ದಯವಿಟ್ಟು ಒಟಿಪಿ ಹೇಳಿ." | Devanagari gibberish | hi-IN, 0.50 | rated low; **not refused**; ended after silence |
+| Hindi: "सर, आपका केवाईसी अपडेट करना है, कृपया ओटीपी बताइए।" | "सरह आपका के वाईसिये अप्देट करना है, क्रिप्या उतीपी बताएगे" | hi-IN, 0.73 | rated **low** risk; the OTP request was **not refused**; the call ended after silence |
+| Hinglish: "Sir KYC update karna hai, OTP bata dijiye." | "Sir KYC Update, Kanner High, OTP, Barter, D.G.I." | en-IN, 0.62 | rated medium; **not refused**; ended after silence |
+| Kanglish: "Sir nimma account update madbeku, OTP heli." | "CERN number, account, update, MABICU, OTP, HELLING." | en-IN, 0.62 | rated low; **not refused** (the word OTP was heard, the request verb "heli" was not); ended after silence |
+| Kanglish UPI: "Verification ge nimma UPI PIN heli." | "Verification G, Numer UPIPIN, Kelly." | en-IN, 0.50 | rated low; **not refused** ("heli" heard as "Kelly"); ended after silence |
+| Kannada: "ನಿಮ್ಮ ಬ್ಯಾಂಕ್ ಖಾತೆಯನ್ನು ಅಪ್‌ಡೇಟ್ ಮಾಡಬೇಕು. ದಯವಿಟ್ಟು ಒಟಿಪಿ ಹೇಳಿ." | Devanagari gibberish: "निमा बान खातेन नू अप्रेट मडवेक।" | hi-IN, 0.50 | rated low; **not refused**; asked again, then the call ended with a summary |
 
-In all three the assistant never spoke a digit and the call ended cleanly with a summary (the asserted invariants). **With the
-small Whisper model a Hindi, Hinglish or Kannada caller is not reliably screened.** The deterministic rules are not at fault here:
-the recogniser handed them the wrong words. No native speaker has reviewed any of this, and the caller's voice is a machine's.
+In all five the assistant never spoke a digit and the call ended cleanly with a summary (the asserted invariants). **With the
+small Whisper model a Hindi, Hinglish, Kanglish or Kannada caller is not reliably screened.** **The rules are not what failed.** Given
+the words that were actually said, the deterministic engine rates all five lines high risk and refuses: the brief's English,
+Hinglish, Kanglish and UPI lines are pinned by `test_a_credential_request_is_recognised_refused_in_the_callers_language_and_summarised`
+in the integration matrix below, and the Hindi and Kannada lines were probed directly with the engine on text (a throwaway script,
+not a test in the repository). Given what Whisper heard, none is refused (the Hinglish transcript only reaches medium). In the two
+Kanglish transcripts the request verb was the casualty: putting just "heli" back makes the engine refuse both, and "UPIPIN" as
+one token is handled. No native speaker has reviewed any of this, and the caller's voice is a machine's.
 
 **The deterministic engine through the real Sparta stack (label: `integration`).** A matrix of 39 phrase calls (credential
 requests, address and location probes, calendar probes and prompt-injection phrases in English, Hindi, Hinglish, Kannada and
@@ -164,15 +175,15 @@ now created over its control socket.
 
 **Tests** (run on this commit; the full list and the CI result are in the PR):
 
-* `python scripts/sip_e2e.py`: **28 passed** (3 min 37 s). `python scripts/sip_e2e.py --speech local --models ...`: **6 passed**
-  (5 min 39 s). Both need Docker and are not part of the default `pytest` run.
-* `tests/unit/providers_local` and the doctor: 1062 passed and 20 skipped (the real-model tests need the models directory) together
-  with the other unit tests of the telephony and speech packages.
+* `python scripts/sip_e2e.py`: **28 passed** (3 min 49 s). `python scripts/sip_e2e.py --speech local --models ...`: **8 passed**
+  (6 min 1 s). Both need Docker and are not part of the default `pytest` run.
+* `tests/unit/providers_local` in the optional speech environment (`numpy`, faster-whisper, Piper and the models): **279 passed,
+  0 skipped**, including the tests that the default run skips for lack of those. The default backend run is in the README's Testing section.
 
 ## 9. Risks
 
 * Docker Desktop's UDP handling for a phone on the LAN is unverified here (no phone attached). What was observed: the source address
   of a request from the host arrives as Docker's gateway address, so the network ACL cannot tell senders apart on Docker Desktop.
-* Whisper on this CPU is too slow for natural conversation (about 4 s per answer); reported as measured. A larger model was not tried.
+* Whisper on this CPU is too slow for natural conversation (4 to 6 s per answer in two runs of the same code); reported as measured. A larger model was not tried.
 * Kannada recognition and speech output cannot be validated without native speakers, and Hindi is unreliable.
 * A human voice, an Indian accent, telephone-line noise and Wi-Fi jitter were not exercised.

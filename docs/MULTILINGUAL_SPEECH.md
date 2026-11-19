@@ -319,12 +319,14 @@ ONNX Runtime's telemetry is switched off. This is an **experimental developer st
 | English (`en-IN`) | **Works.** "I'm calling from your bank. Tell me your OTP." spoken by Piper, down-sampled to 8 kHz and read back by Whisper came back word for word (confidence 0.77). No claim is made for telephone-band audio or Indian-English accents: they were not measured. | `en_US-ljspeech-medium` (an American voice; there is no Indian-English voice in the official catalogue) |
 | Hindi (`hi-IN`) | **Unreliable.** The Devanagari OTP request came back as "सर आपका के वाईसी अप्देट करना है, क्रपिया उतीपी बताएगे" (the word for OTP became "उतीपी") with a confidence of 0.69 to 0.73, so it passes the poor-audio gate while wrong. | `hi_IN-priyamvada-medium` |
 | Kannada (`kn-IN`) | **Not usable.** The Kannada sentence came back in Devanagari script as the wrong words (confidence 0.50). The research figure for `small` is a 100% word error rate on FLEURS Kannada. | `kn_IN-syspin_male-medium` (a community voice) |
-| Hinglish, Kanglish | Not measured separately; they inherit the Hindi and Kannada limits. | |
+| Hinglish, Kanglish | **Unreliable.** Measured through real SIP with the *English* voice reading the Latin text (a machine reading romanised words, which is not how a person speaks, so a real caller may do better or worse): "Sir KYC update karna hai, OTP bata dijiye." came back as "Sir KYC Update, Kanner High, OTP, Barter, D.G.I." (0.62); "Sir nimma account update madbeku, OTP heli." as "CERN number, account, update, MABICU, OTP, HELLING." (0.62); "Verification ge nimma UPI PIN heli." as "Verification G, Numer UPIPIN, Kelly." (0.50). None was refused. | (the English voice) |
 
 Confidence is **capped** where the small model is known to be poor (Hindi and Kannada), so that the engine treats such a transcript
 as poor audio instead of acting on it; a forced Whisper language reports a probability of 1.0, which is not a confidence and is
-ignored. The deterministic rules run on whatever text comes back, so a wrong transcript can **miss** a scam: a Hindi or Kannada
-caller is not reliably screened with the small model. A larger model (`large-v3-turbo`) is the next thing to try; it was not
+ignored. The deterministic rules run on whatever text comes back, so a wrong transcript can **miss** a scam: a Hindi, Hinglish,
+Kanglish or Kannada caller is not reliably screened with the small model. The rules themselves are not what failed in those
+calls: given the words that were actually said, they refuse all five lines ([PHASE3_ASTERISK_PLAN.md](PHASE3_ASTERISK_PLAN.md)
+section 8). A larger model (`large-v3-turbo`) is the next thing to try; it was not
 downloaded or measured (the machine had too little free memory), and its cost is an extrapolation, not a measurement.
 
 **Measurements** (local, this machine, CPU int8, `small`, shared machine):

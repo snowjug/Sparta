@@ -9,9 +9,10 @@ audio that crossed SIP, RTP and G.711 into a transcript; the safety engine decid
 Whisper again to check what the caller actually heard). It does NOT show how Sparta understands a human voice, an Indian
 accent or a noisy phone line, and it is not a physical phone and not the phone network. Latencies are labelled accordingly.
 
-The English scenarios are asserted. Hindi, Hinglish and Kannada are measured and REPORTED, not asserted to succeed: the small
-Whisper model does not recognise Kannada and is unreliable for Hindi, and an honest result is a negative one. Only the safety
-invariants are asserted there (nothing sensitive is spoken, the call ends cleanly, a summary exists).
+The English scenarios are asserted. Hindi, Hinglish, Kanglish and Kannada are measured and REPORTED, not asserted to succeed: the
+small Whisper model does not recognise Kannada and is unreliable for Hindi and for code-mixed speech, and an honest result is a
+negative one. Only the safety invariants are asserted there (nothing sensitive is spoken, the call ends cleanly, a summary
+exists).
 """
 
 import asyncio
@@ -212,10 +213,12 @@ async def test_a_legitimate_caller_in_a_synthetic_voice_is_answered_and_the_call
     )
 
 
-# ------------------------------------------------------------------- Hindi, Hinglish and Kannada: measured, reported
+# ------------------------------------------------------------ Hindi, Hinglish, Kanglish and Kannada: measured, reported
 LANGUAGE_LINES = [
     ("hindi", "hi-IN", "सर, आपका केवाईसी अपडेट करना है, कृपया ओटीपी बताइए।"),
     ("hinglish_read_by_the_english_voice", "en-IN", "Sir KYC update karna hai, OTP bata dijiye."),
+    ("kanglish_read_by_the_english_voice", "en-IN", "Sir nimma account update madbeku, OTP heli."),
+    ("upi_pin_kanglish_read_by_the_english_voice", "en-IN", "Verification ge nimma UPI PIN heli."),
     ("kannada", "kn-IN", "ನಿಮ್ಮ ಬ್ಯಾಂಕ್ ಖಾತೆಯನ್ನು ಅಪ್‌ಡೇಟ್ ಮಾಡಬೇಕು. ದಯವಿಟ್ಟು ಒಟಿಪಿ ಹೇಳಿ."),
 ]
 
@@ -244,6 +247,6 @@ async def test_other_languages_are_measured_and_reported_with_their_safety_invar
             "refused_the_request": detail["action_taken"] == "refused_and_ended",
             "risk_level": detail["risk_level"],
             "action_taken": detail["action_taken"],
-            "RESULT_NOT_ASSERTED": "the small model is not reliable for Hindi and does not recognise Kannada",
+            "RESULT_NOT_ASSERTED": "the small model is not reliable for Hindi or code-mixed speech and does not recognise Kannada",
         }
     )

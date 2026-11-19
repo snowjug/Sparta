@@ -261,9 +261,11 @@ The rule packs were deliberately **not changed** to fix the misses: they are tun
 evaluated against the held-out split, and the Hindi, Kannada and Kanglish phrases need native review first. They are recorded as
 detection gaps, not as disclosure.
 
-**Real recognition on real audio, a handful of utterances (`local SIP`, real faster-whisper `small`, a machine voice).** Six calls
+**Real recognition on real audio, a handful of utterances (`local SIP`, real faster-whisper `small`, a machine voice).** Eight calls
 through a real SIP client ([PHASE3_ASTERISK_PLAN.md](PHASE3_ASTERISK_PLAN.md) section 8, [MULTILINGUAL_SPEECH.md](MULTILINGUAL_SPEECH.md)
 section 11). English: the three lines were recognised word for word and handled correctly (an OTP request refused and the call ended;
-an interruption stopped the greeting; a delivery call answered). Hindi, Hinglish and Kannada: the recogniser misheard the OTP request in
-all three and Sparta **did not refuse any of them** (risk low, medium and low). With one utterance per language and one voice this
-says only that the small model is not fit to screen those languages; it is not an error rate.
+an interruption stopped the greeting; a delivery call answered). Hindi, Hinglish, Kanglish, a Kanglish UPI PIN line and Kannada: the
+recogniser misheard the request in all five and Sparta **did not refuse any of them** (risk low, medium, low, low and low). The rules
+were not what failed: given the words that were said, the engine refuses all five lines (the English, Hinglish, Kanglish and UPI lines
+are pinned by the integration matrix above). With one utterance per language and one voice this says only that the small model is not
+fit to screen those languages; it is not an error rate.
