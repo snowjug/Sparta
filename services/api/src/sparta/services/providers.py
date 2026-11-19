@@ -5,6 +5,7 @@ misconfigured selection fails at startup with an actionable message instead of a
 """
 
 import importlib
+import importlib.util
 import logging
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
@@ -55,6 +56,18 @@ def _load_plugin(spec: str) -> Callable[..., TelephonyProvider]:
     return factory  # type: ignore[no-any-return]
 
 
+def _require_local_package(module: str, package: str, setting: str) -> None:
+    """Fail at startup, with the fix, when an optional local-speech engine is not installed (like the Azure SDK check)."""
+    try:
+        present = importlib.util.find_spec(module) is not None
+    except (ImportError, ValueError):
+        present = False
+    if not present:
+        raise ConfigurationError(
+            [f"{setting}=local requires the {package} package: pip install 'sparta-api[local-speech]'"]
+        )
+
+
 def build_providers(settings: Settings, *, clock: Clock, metrics: Metrics) -> ProviderSet:
     """Instantiate the configured adapters. The simulator telephony adapter is always present (Simulator Lab)."""
     closers: list[Callable[[], Awaitable[None]]] = []
@@ -86,6 +99,11 @@ def build_providers(settings: Settings, *, clock: Clock, metrics: Metrics) -> Pr
         from sparta.providers.stt.fake import FakeToneSpeechToText
 
         stt = FakeToneSpeechToText()
+    elif settings.stt_provider == "local":
+        _require_local_package("faster_whisper", "faster-whisper", "SPARTA_STT_PROVIDER")
+        from sparta.providers.stt.local import LocalSpeechToText
+
+        stt = register(LocalSpeechToText(settings, metrics=metrics))
     else:
         stt = SimulatedSpeechToText()
 
@@ -98,6 +116,11 @@ def build_providers(settings: Settings, *, clock: Clock, metrics: Metrics) -> Pr
         from sparta.providers.tts.fake import FakeToneTextToSpeech
 
         tts = FakeToneTextToSpeech()
+    elif settings.tts_provider == "local":
+        _require_local_package("piper", "piper-tts", "SPARTA_TTS_PROVIDER")
+        from sparta.providers.tts.local import LocalTextToSpeech
+
+        tts = register(LocalTextToSpeech(settings, metrics=metrics))
     else:
         tts = SimulatedTextToSpeech()
 

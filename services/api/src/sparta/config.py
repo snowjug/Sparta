@@ -8,6 +8,7 @@ import ipaddress
 import re
 from enum import StrEnum
 from functools import lru_cache
+from pathlib import Path
 from typing import Annotated, Literal
 
 from pydantic import AliasChoices, Field, SecretStr, field_validator, model_validator
@@ -33,14 +34,20 @@ MIN_ASTERISK_SECRET_CHARS = 24
 
 
 def _peer_problem(entry: str) -> str | None:
-    """Why ``entry`` is not an acceptable media peer (an address, a network narrower than the whole internet, a host)."""
+    """Why ``entry`` is not an acceptable media peer: an address, a network, or a host. Never (nearly) the whole internet."""
     try:
         network = ipaddress.ip_network(entry, strict=False)
     except ValueError:
         if _BARE_HOST.fullmatch(entry):
             return None
         return f"'{entry}' is neither an IP address, a CIDR range nor a host name"
-    return f"'{entry}' would allow every address" if network.prefixlen == 0 else None
+    if network.prefixlen == 0:
+        return f"'{entry}' would allow every address"
+    if network.prefixlen < (
+        8 if network.version == 4 else 7
+    ):  # a private /8 (or an IPv6 ULA /7) is the widest that makes sense
+        return f"'{entry}' is far too wide for one PBX: list its address, or the small network it sits on"
+    return None
 
 
 def _split_csv(value: object) -> object:
@@ -55,6 +62,26 @@ def _module_available(name: str) -> bool:
         return importlib.util.find_spec(name) is not None
     except (ImportError, ValueError):
         return False
+
+
+_VOICE_ENTRY = re.compile(r"([A-Za-z]{2,3})-([A-Za-z0-9]{2,8})=([A-Za-z0-9][A-Za-z0-9_.-]{0,63})")
+
+
+def _voice_map(entries: list[str]) -> tuple[dict[str, str], list[str]]:
+    """``locale=voice_id`` entries as ``{"en-IN": voice_id}`` and the entries that are malformed or repeat a locale."""
+    voices: dict[str, str] = {}
+    bad: list[str] = []
+    for entry in entries:
+        match = _VOICE_ENTRY.fullmatch(entry.strip())
+        if match is None:
+            bad.append(entry)
+            continue
+        locale = f"{match.group(1).lower()}-{match.group(2).upper() if len(match.group(2)) == 2 else match.group(2)}"
+        if locale in voices:
+            bad.append(entry)
+        else:
+            voices[locale] = match.group(3)
+    return voices, bad
 
 
 class Settings(BaseSettings):
@@ -246,6 +273,42 @@ class Settings(BaseSettings):
     estimated_llm_per_million_completion_tokens_usd: float = 0.0
     estimated_telephony_per_minute_usd: float = 0.0
 
+    # --- local speech: free, open-source, on this machine (optional extra `sparta-api[local-speech]`) ------------------
+    local_model_dir: str = Field(
+        default="./var/models",
+        description="Where `python -m sparta models fetch` puts the speech models. The providers only read from here and "
+        "never download anything themselves.",
+    )
+    local_stt_model: str = Field(
+        default="small",
+        description="faster-whisper model: a name from `python -m sparta models list` (small, large-v3-turbo) or the "
+        "path of an existing CTranslate2 model directory",
+    )
+    local_stt_device: Literal["cpu", "cuda", "auto"] = "cpu"
+    local_stt_compute_type: str = Field(default="int8", description="CTranslate2 quantisation, e.g. int8, int8_float16")
+    local_stt_cpu_threads: int = Field(default=4, ge=1, le=32)
+    local_tts_voices: Annotated[list[str], NoDecode] = Field(
+        default_factory=lambda: [
+            "en-IN=en_US-ljspeech-medium",
+            "hi-IN=hi_IN-priyamvada-medium",
+            "kn-IN=kn_IN-syspin_male-medium",
+        ],
+        description="Piper voice per locale, comma separated `locale=voice_id`. A locale without an installed voice is "
+        "refused, never spoken in another language.",
+    )
+    local_tts_fallback_locale: str | None = Field(
+        default="en-IN",
+        description="Reserved for a labelled English fallback: it is used only when a speech request carries an English "
+        "rendering, which it does not yet, so today a locale without a voice is always refused. Blank disables it.",
+    )
+    local_max_concurrent_inference: int = Field(
+        default=1,
+        ge=1,
+        le=4,
+        description="Recognitions (and, separately, syntheses) running at once. Each uses SPARTA_LOCAL_STT_CPU_THREADS "
+        "cores, so raise it only on a machine with cores to spare.",
+    )
+
     # --- limits and guardrails -----------------------------------------------------
     rate_limit_per_minute: int = 240
     call_create_rate_limit_per_minute: int = 20
@@ -291,11 +354,22 @@ class Settings(BaseSettings):
         "provider_only_hosts",
         "oidc_algorithms",
         "asterisk_media_peers",
+        "local_tts_voices",
         mode="before",
     )
     @classmethod
     def _csv(cls, value: object) -> object:
         return _split_csv(value)
+
+    @field_validator("local_tts_fallback_locale", mode="before")
+    @classmethod
+    def _blank_is_none(cls, value: object) -> object:
+        return None if isinstance(value, str) and not value.strip() else value
+
+    @property
+    def local_tts_voice_map(self) -> dict[str, str]:
+        """``local_tts_voices`` as ``{locale: voice_id}`` (malformed entries are left out; ``problems()`` reports them)."""
+        return _voice_map(self.local_tts_voices)[0]
 
     @property
     def is_production(self) -> bool:
@@ -321,6 +395,34 @@ class Settings(BaseSettings):
     @property
     def ws_origins(self) -> list[str]:
         return self.allowed_ws_origins or self.cors_origins
+
+    def _local_speech_problems(self) -> list[str]:
+        """Why ``SPARTA_STT_PROVIDER=local`` / ``SPARTA_TTS_PROVIDER=local`` cannot work with this configuration."""
+        out: list[str] = []
+        install = "pip install 'sparta-api[local-speech]'"
+        if self.stt_provider == "local":
+            if not _module_available("faster_whisper"):
+                out.append(f"SPARTA_STT_PROVIDER=local requires the faster-whisper package ({install})")
+            from sparta.providers.local_models import STT_MODELS
+
+            model = self.local_stt_model.strip()
+            if model not in STT_MODELS and not (model and Path(model).expanduser().is_dir()):
+                out.append(
+                    f"SPARTA_LOCAL_STT_MODEL must be one of {', '.join(STT_MODELS)} or the path of an existing "
+                    f"CTranslate2 model directory, got '{model[:60]}'"
+                )
+        if self.tts_provider == "local":
+            if not _module_available("piper"):
+                out.append(f"SPARTA_TTS_PROVIDER=local requires the piper-tts package ({install})")
+            voices, bad = _voice_map(self.local_tts_voices)
+            out.extend(
+                f"SPARTA_LOCAL_TTS_VOICES entry '{entry[:60]}' must look like 'en-IN=en_US-ljspeech-medium' and name "
+                "each locale once"
+                for entry in bad
+            )
+            if not voices:
+                out.append("SPARTA_LOCAL_TTS_VOICES must name at least one 'locale=voice_id' entry")
+        return out
 
     def problems(self) -> list[str]:
         """Every reason this configuration is unsafe or incomplete for the selected environment."""
@@ -387,6 +489,7 @@ class Settings(BaseSettings):
                 "SPARTA_AZURE_SPEECH_STREAMING=on requires the azure-cognitiveservices-speech package "
                 "(pip install 'sparta-api[azure]'); use 'auto' to fall back to per-utterance recognition"
             )
+        out.extend(self._local_speech_problems())
         if self.llm_provider == "azure_openai" and not (
             self.azure_openai_endpoint and self.azure_openai_key and self.azure_openai_deployment
         ):

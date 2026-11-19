@@ -1,8 +1,8 @@
 """Command line entry point: ``python -m sparta <command>`` (or the ``sparta`` script).
 
 Commands: ``serve`` (HTTP API), ``migrate`` (database schema), ``seed`` (development owner), ``openapi`` (export the API
-contract), ``evaluate`` (run the evaluation dataset), ``keygen`` (generate secrets for ``.env``) and ``doctor`` (provider
-preflight: can a real call work with this configuration?).
+contract), ``evaluate`` (run the evaluation dataset), ``keygen`` (generate secrets for ``.env``), ``doctor`` (provider
+preflight: can a real call work with this configuration?) and ``models`` (list, fetch and verify the local speech models).
 """
 
 import argparse
@@ -164,6 +164,132 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     return report.exit_code()
 
 
+def _size(n: int) -> str:
+    if n >= 1e9:
+        return f"{n / 1e9:.1f} GB"
+    if n >= 1e6:
+        return f"{n / 1e6:.0f} MB"
+    return f"{n / 1e3:.0f} KB" if n >= 1e3 else f"{n} B"
+
+
+def _wrapped(text: str, indent: str) -> str:
+    import textwrap
+
+    return textwrap.fill(text, width=100, initial_indent=indent, subsequent_indent=indent)
+
+
+def cmd_models_list(args: argparse.Namespace) -> int:
+    """The manifest of local speech models and what is installed (no network, no hashing)."""
+    from sparta.providers.local_models import ENGINE_NOTE, STT_MODELS, VOICES, model_root, model_status
+
+    settings = _settings()
+    root = model_root(settings, args.dir)
+    statuses = {(s.kind, s.name): s for s in model_status(settings, root=root)}
+    print(f"Local speech models in {root}")
+    print(f"{ENGINE_NOTE} Install the engines with: pip install 'sparta-api[local-speech]'")
+    print("'*' marks what the current settings use (SPARTA_LOCAL_STT_MODEL, SPARTA_LOCAL_TTS_VOICES).")
+    print("\nSpeech-to-text (faster-whisper)")
+    for spec in STT_MODELS.values():
+        status = statuses[("stt", spec.key)]
+        print(f" {'*' if status.selected else ' '} {spec.key:<16}{_size(spec.total_bytes):>8}  {status.detail}")
+        print(_wrapped(f"{spec.summary}. Licence: {spec.licence}. {spec.caveat}", "      "))
+    custom = [s for s in statuses.values() if s.kind == "stt" and s.name not in STT_MODELS]
+    for status in custom:
+        print(f" * {status.name:<16}{'':>8}  {status.detail}")
+    print("\nText-to-speech voices (Piper)")
+    for spec in VOICES.values():
+        status = statuses[("tts", spec.key)]
+        where = f" [{status.locale}]" if status.locale else ""
+        print(f" {'*' if status.selected else ' '} {spec.key:<26}{_size(spec.total_bytes):>8}  {status.detail}{where}")
+        print(_wrapped(f"{spec.summary}. Licence: {spec.licence}. {spec.caveat}", "      "))
+    for status in (s for s in statuses.values() if s.kind == "tts" and s.name not in VOICES):
+        print(f" * {status.name:<26}{'':>8}  {status.detail} [{status.locale}]")
+    return 0
+
+
+def cmd_models_verify(args: argparse.Namespace) -> int:
+    """Hash every installed model file and compare it with the pinned SHA-256. Exit status 1 when one does not match."""
+    from sparta.providers.local_models import model_root, model_status
+
+    settings = _settings()
+    root = model_root(settings, args.dir)
+    print(f"Verifying installed speech models in {root} (reads every file once)")
+    failed = False
+    seen = False
+    for status in model_status(settings, verify=True, root=root):
+        if status.verified is True:
+            seen = True
+            print(f"  OK       {status.name}: {status.detail}")
+        elif status.verified is False or (not status.installed and "not installed" not in status.detail):
+            seen = failed = True
+            print(f"  FAILED   {status.name}: {status.detail}")
+        elif status.installed:
+            seen = True
+            print(f"  skipped  {status.name}: {status.detail}")
+    if not seen:
+        print("  nothing is installed yet: run `python -m sparta models fetch`")
+    return 1 if failed else 0
+
+
+def cmd_models_fetch(args: argparse.Namespace) -> int:
+    """Download pinned speech models (HTTPS, Hugging Face only, SHA-256 verified). The only code that downloads."""
+    from sparta.providers.local_models import (
+        ENGINE_NOTE,
+        ModelFetchError,
+        default_selection,
+        fetch_models,
+        model_root,
+        pending_bytes,
+        resolve_stt,
+        resolve_voices,
+    )
+
+    settings = _settings()
+    root = model_root(settings, args.dir)
+    try:
+        stt, voices = default_selection(settings)
+        if args.stt is not None:
+            stt = resolve_stt(args.stt)
+        if args.voices is not None:
+            voices = resolve_voices([part for item in args.voices for part in item.split(",")])
+    except ModelFetchError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
+    chosen = [*stt, *voices]
+    if not chosen:
+        print("Nothing to fetch: name a model with --stt small|large-v3-turbo and/or voices with --voices en,hi,kn.")
+        return 0
+    print(f"Fetching into {root}")
+    print(f"{ENGINE_NOTE}")
+    for spec in chosen:
+        todo = pending_bytes(spec, root)
+        print(f"  {spec.key}: {_size(todo) + ' to download' if todo else 'already complete'}")
+        print(_wrapped(f"Licence: {spec.licence}. {spec.caveat}", "      "))
+    last: dict[str, int] = {}
+
+    def progress(label: str, done: int, total: int) -> None:
+        step = done * 10 // total
+        if step > last.get(label, -1):
+            last[label] = step
+            print(f"    {label}: {done * 100 // total}% ({_size(done)} of {_size(total)})", flush=True)
+
+    try:
+        results = fetch_models(chosen, root, progress=progress)
+    except (ModelFetchError, OSError) as exc:
+        message = (
+            exc
+            if isinstance(exc, ModelFetchError)
+            else f"could not write to {root} ({exc.strerror or type(exc).__name__})"
+        )
+        print(f"error: {message}", file=sys.stderr)
+        return 1
+    for key, files in results.items():
+        fresh = sum(1 for _, how in files if how == "downloaded")
+        print(f"  {key}: {fresh} file(s) downloaded, {len(files) - fresh} already present, all SHA-256 verified")
+    print("Done. Check any time with `python -m sparta models verify`.")
+    return 0
+
+
 def cmd_keygen(_: argparse.Namespace) -> int:
     from sparta.db.crypto import generate_key
 
@@ -220,11 +346,17 @@ def build_parser() -> argparse.ArgumentParser:
     doctor.add_argument(
         "--provider",
         action="append",
-        choices=("azure", "twilio", "simulator", "all"),
+        choices=("azure", "twilio", "asterisk", "simulator", "all"),
         default=None,
-        help="telephony provider to check (repeatable; default: azure). Speech and the language model are Azure's either way",
+        help="telephony provider to check (repeatable; default: azure). Azure and Twilio use Azure speech and the language "
+        "model; asterisk (free local SIP, no phone number) uses the speech that SPARTA_STT_PROVIDER and "
+        "SPARTA_TTS_PROVIDER select (local or azure)",
     )
-    doctor.add_argument("--online", action="store_true", help="also make free network requests (health, keys, voices)")
+    doctor.add_argument(
+        "--online",
+        action="store_true",
+        help="also make free network requests (health, keys, voices; for asterisk one SIP OPTIONS over UDP and one TCP connect)",
+    )
     doctor.add_argument(
         "--allow-billable",
         action="store_true",
@@ -234,6 +366,38 @@ def build_parser() -> argparse.ArgumentParser:
     doctor.add_argument("--timeout", type=float, default=8.0, help="seconds per network request (default 8)")
     doctor.add_argument("--json", action="store_true", help="machine-readable output")
     doctor.set_defaults(func=cmd_doctor)
+
+    models = sub.add_parser(
+        "models",
+        help="list, download and verify the local (free, open-source) speech models",
+        description="The local speech providers (SPARTA_STT_PROVIDER=local, SPARTA_TTS_PROVIDER=local) never download "
+        "anything at run time: `models fetch` is the only command that does, from Hugging Face over HTTPS, pinned to a "
+        "commit and a SHA-256 per file.",
+    )
+    models_sub = models.add_subparsers(dest="models_command", required=True)
+    models_list = models_sub.add_parser("list", help="what the manifest offers and what is installed")
+    models_list.add_argument("--dir", default=None, help="model directory (default: SPARTA_LOCAL_MODEL_DIR)")
+    models_list.set_defaults(func=cmd_models_list)
+    models_fetch = models_sub.add_parser("fetch", help="download pinned models (default: those the settings use)")
+    models_fetch.add_argument(
+        "--stt",
+        action="append",
+        default=None,
+        metavar="MODEL",
+        help="speech-to-text model: small or large-v3-turbo (repeatable; 'none' skips it)",
+    )
+    models_fetch.add_argument(
+        "--voices",
+        action="append",
+        default=None,
+        metavar="LIST",
+        help="voices as languages or ids, e.g. en,hi,kn (or 'all' / 'none')",
+    )
+    models_fetch.add_argument("--dir", default=None, help="model directory (default: SPARTA_LOCAL_MODEL_DIR)")
+    models_fetch.set_defaults(func=cmd_models_fetch)
+    models_verify = models_sub.add_parser("verify", help="check every installed file against its pinned SHA-256")
+    models_verify.add_argument("--dir", default=None, help="model directory (default: SPARTA_LOCAL_MODEL_DIR)")
+    models_verify.set_defaults(func=cmd_models_verify)
     return parser
 
 

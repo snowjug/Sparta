@@ -271,8 +271,9 @@ def test_the_sdk_checks_report_a_missing_or_old_sdk(monkeypatch):
 
 
 def test_provider_names_are_validated():
-    assert normalise_providers(["all"]) == ("azure", "twilio", "simulator")
+    assert normalise_providers(["all"]) == ("azure", "twilio", "asterisk", "simulator")
     assert normalise_providers(["azure", "azure"]) == ("azure",)
+    assert normalise_providers(["asterisk"]) == ("asterisk",)
     with pytest.raises(ValueError, match="unknown provider"):
         normalise_providers(["plivo"])
 

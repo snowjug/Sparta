@@ -23,6 +23,7 @@ from sparta.services.numbers import mask_number
 CORE = "Core"
 ACS = "Azure Communication Services (telephony)"
 TWILIO = "Twilio (telephony)"
+ASTERISK = "Asterisk (local SIP telephony)"
 SPEECH = "Azure Speech"
 OPENAI = "Azure OpenAI"
 LIMITS = "Limits and estimated cost"
@@ -49,6 +50,8 @@ def callback_base(settings: Settings, override: str | None = None) -> str | None
     """The configured public origin of whichever telephony provider is selected (or the override)."""
     if override:
         return override
+    if settings.telephony_provider == "asterisk":
+        return None  # local SIP: Asterisk calls the API over the local network, no provider needs a public URL
     return (
         settings.twilio_callback_base_url if settings.telephony_provider == "twilio" else settings.acs_callback_base_url
     )
@@ -899,6 +902,19 @@ def speech_sdk_check(settings: Settings) -> Check:
 
 def media_format_check(telephony: str = "azure") -> Check:
     """What the media socket code expects from the provider. It is a statement about this code, not about a live call."""
+    if telephony == "asterisk":
+        from sparta.telephony.asterisk.protocol import FRAME_BYTES, FRAME_MS, SAMPLE_RATE
+
+        return Check(
+            "media.format",
+            ASTERISK,
+            "Expected media format",
+            Status.PASS,
+            f"mono 16-bit linear PCM, little-endian, at {SAMPLE_RATE // 1000} kHz both ways over AudioSocket "
+            f"({FRAME_MS} ms frames of {FRAME_BYTES} bytes, paced by Sparta). The SIP leg is G.711 (ulaw or alaw), which "
+            "Asterisk converts. Whether a live SIP call carries exactly this is listed under 'Not provable from here'.",
+            keep_numbers=True,
+        )
     if telephony == "twilio":
         from sparta.telephony.twilio import FRAME_BYTES, SAMPLE_RATE
 

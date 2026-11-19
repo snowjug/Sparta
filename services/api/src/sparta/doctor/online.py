@@ -3,7 +3,8 @@
 Rules: free metadata requests only (token, voice list, model list, health probes, a signed read of the ACS number list);
 anything that costs money lives in :mod:`sparta.doctor.billable` and needs ``--allow-billable``. Redirects are never
 followed (the requests carry keys), response bodies are read with a hard cap, and no message contains a URL, a response
-body or a key: only static, hand-written reasons.
+body or a key: only static, hand-written reasons. The Asterisk probes (one SIP OPTIONS over UDP, one TCP connect) are not
+HTTP and live in :mod:`sparta.doctor.asterisk_online`.
 """
 
 import asyncio
@@ -765,24 +766,32 @@ async def run_online(
     *,
     azure: bool,
     twilio: bool = False,
+    asterisk: bool = False,
     callback_url: str | None,
     http: httpx.AsyncClient,
     timeout_s: float,
+    rtp_range: tuple[int, int] | None = None,
 ) -> list[Check]:
     """Every free network check, run concurrently. A failing probe becomes a check, never an exception."""
     jobs: list[asyncio.Future[list[Check]] | asyncio.Task[list[Check]]] = [
         asyncio.ensure_future(stores_online(settings)),
         asyncio.ensure_future(oidc_online(settings, http, timeout_s)),
     ]
-    if azure or twilio:
+    # Speech is Azure's for azure and twilio; for asterisk only when SPARTA_STT_PROVIDER or SPARTA_TTS_PROVIDER say so
+    azure_speech = azure or twilio or (asterisk and "azure" in (settings.stt_provider, settings.tts_provider))
+    if azure_speech:
         jobs.append(asyncio.ensure_future(speech_online(settings, http, timeout_s)))
-        if settings.llm_provider == "azure_openai":
-            jobs.append(asyncio.ensure_future(openai_online(settings, http, timeout_s)))
+    if (azure or twilio or asterisk) and settings.llm_provider == "azure_openai":
+        jobs.append(asyncio.ensure_future(openai_online(settings, http, timeout_s)))
     if azure:
         jobs.append(asyncio.ensure_future(callback_online(settings, http, timeout_s, callback_url, "azure")))
     if twilio:
         jobs.append(asyncio.ensure_future(callback_online(settings, http, timeout_s, callback_url, "twilio")))
         jobs.append(asyncio.ensure_future(twilio_online(settings, http, timeout_s, callback_url)))
+    if asterisk:
+        from sparta.doctor.asterisk_online import asterisk_online
+
+        jobs.append(asyncio.ensure_future(asterisk_online(settings, timeout_s, rtp_range)))
     results = await asyncio.gather(*jobs, return_exceptions=True)
     out: list[Check] = []
     for result in results:

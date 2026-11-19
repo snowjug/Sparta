@@ -32,6 +32,21 @@ azure = [
 otlp = [
   "opentelemetry-exporter-otlp-proto-http>=1.27",
 ]
+# Free, open-source speech on this machine (no cloud): faster-whisper (MIT) recognises, Piper (GPL-3.0-or-later) speaks.
+# Piper's licence is copyleft, so this extra is never part of the default dependencies, locks or image: choose it on
+# purpose. The pins were install-tested on Python 3.12: pip on Windows x64, and on Linux x86-64 through
+# requirements-local-speech.lock (the optional SPARTA_LOCAL_SPEECH=1 image build). scipy is not needed: resampling is
+# sparta/providers/audio_resample.py. `python -m sparta models fetch` downloads the models; the providers never do.
+local-speech = [
+  "faster-whisper==1.2.1",
+  "ctranslate2==4.9.0",
+  "piper-tts==1.8.0",
+  "onnxruntime==1.32.0",
+  "numpy==2.2.6",
+  "av==19.0.2",
+  "tokenizers==0.23.3",
+  "huggingface-hub==0.36.0",
+]
 
 [dependency-groups]
 dev = [
@@ -74,6 +89,8 @@ addopts = "-ra --strict-markers --strict-config"
 markers = [
   "integration: needs external services (PostgreSQL/Redis); skipped unless SPARTA_TEST_POSTGRES_URL / SPARTA_TEST_REDIS_URL are set",
   "slow: slower end-to-end tests",
+  "local_speech: real faster-whisper / Piper models; skipped unless the local-speech extra is installed and the models are in SPARTA_LOCAL_MODEL_DIR",
+  "sip_e2e: Docker end-to-end test with a real Asterisk and a headless SIP client; skipped unless SPARTA_SIP_E2E=1 (python scripts/sip_e2e.py)",
 ]
 filterwarnings = ["error::DeprecationWarning:sparta.*"]
 
@@ -117,6 +134,11 @@ disallow_untyped_decorators = false
 
 [[tool.mypy.overrides]]
 module = ["azure.*", "alembic.*", "fakeredis.*"]
+ignore_missing_imports = true
+
+# The optional local-speech engines are imported lazily and are not installed in the default environment.
+[[tool.mypy.overrides]]
+module = ["faster_whisper.*", "piper.*", "ctranslate2.*", "onnxruntime.*", "numpy.*", "scipy.*"]
 ignore_missing_imports = true
 
 [tool.bandit]

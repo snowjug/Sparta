@@ -15,6 +15,7 @@ from dataclasses import dataclass, field
 import pytest
 
 from sparta.clock import VirtualClock
+from sparta.config import Settings
 from sparta.observability.metrics import MEDIA_REJECTED, Metrics
 from sparta.telephony.asterisk.pacer import FramePacer
 from sparta.telephony.asterisk.protocol import (
@@ -407,6 +408,30 @@ async def test_closing_with_a_hang_up_tells_asterisk_first_so_its_dialplan_conti
         await w.session.close(hang_up=True)
         assert w.session.closed
         assert await asyncio.wait_for(w.client_reader.read(), 2) == HANGUP_MESSAGE
+
+
+@pytest.mark.parametrize(
+    ("peer", "problem"),
+    [
+        ("127.0.0.1", False),
+        ("10.9.8.7", False),
+        ("172.16.0.0/12", False),
+        ("10.0.0.0/8", False),
+        ("fd00::/8", False),
+        ("asterisk", False),
+        ("0.0.0.0/0", True),
+        ("::/0", True),
+        ("0.0.0.0/1", True),
+        ("128.0.0.0/4", True),
+        ("2000::/3", True),
+        ("not an address!", True),
+    ],
+)
+def test_a_media_peer_may_not_be_nearly_the_whole_internet(peer: str, problem: bool):
+    settings = Settings(
+        _env_file=None, telephony_provider="asterisk", asterisk_webhook_secret="x" * 32, asterisk_media_peers=[peer]
+    )
+    assert any("SPARTA_ASTERISK_MEDIA_PEERS" in p for p in settings.problems()) is problem
 
 
 # ------------------------------------------------------------------------------------- who may connect

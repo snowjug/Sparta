@@ -22,11 +22,31 @@ from typing import Any
 from sparta.logging_setup import redact_text
 
 _CONTROL = re.compile(r"[\x00-\x08\x0b-\x1f\x7f-\x9f]")  # keeps tab and newline
+_NUMBER = re.compile(r"\d+")
+_HELD_BASE = 0xE000  # the private use area: a character no message contains stands in for a number while it is redacted
+_HELD_COUNT = 0xF8FF - _HELD_BASE + 1
+_HELD = re.compile(f"[{chr(_HELD_BASE)}-{chr(_HELD_BASE + _HELD_COUNT - 1)}]")
 
 
-def _plain(text: str) -> str:
-    """Redacted, with control characters (terminal escape sequences, say) replaced: no check text may drive a terminal."""
-    return _CONTROL.sub("?", redact_text(text))
+def _plain(text: str, keep_numbers: bool = False) -> str:
+    """Redacted, with control characters (terminal escape sequences, say) replaced: no check text may drive a terminal.
+
+    The redaction also masks every run of 4 to 8 digits and every long dotted number, which is right for caller data and
+    wrong for a SIP port or an extension. A check that is written by hand and carries no caller data can ask to keep its
+    numbers: they are set aside before the redaction runs (so ``token=123456`` is still redacted as a whole) and put back.
+    """
+    if not keep_numbers or _HELD.search(text):
+        return _CONTROL.sub("?", redact_text(text))
+    held: list[str] = []
+
+    def hold(match: re.Match[str]) -> str:
+        if len(held) >= _HELD_COUNT:
+            return match.group()
+        held.append(match.group())
+        return chr(_HELD_BASE + len(held) - 1)
+
+    masked = _CONTROL.sub("?", redact_text(_NUMBER.sub(hold, text)))
+    return _HELD.sub(lambda mark: held[ord(mark.group()) - _HELD_BASE], masked)
 
 
 class Status(StrEnum):
@@ -49,10 +69,17 @@ class Check:
     status: Status
     detail: str = ""  # what was found, without any value that could be a secret
     fix: str = ""  # what to do next
+    keep_numbers: bool = False  # ports, extensions and limits are not secrets: do not let the redaction hide them
 
     def safe(self) -> "Check":
         return Check(
-            self.id, self.group, _CONTROL.sub("?", self.title), self.status, _plain(self.detail), _plain(self.fix)
+            self.id,
+            self.group,
+            _CONTROL.sub("?", self.title),
+            self.status,
+            _plain(self.detail, self.keep_numbers),
+            _plain(self.fix, self.keep_numbers),
+            self.keep_numbers,
         )
 
 
