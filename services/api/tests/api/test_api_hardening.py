@@ -2,6 +2,7 @@
 
 import hashlib
 import json
+import logging
 from datetime import timedelta
 
 import pytest
@@ -11,6 +12,7 @@ from sqlalchemy import select
 
 from conftest import SCAM, ApiEnv, running_env
 from sparta.db import models as m
+from sparta.providers.base import ProviderUnavailable
 from sparta.services import retention
 from sparta.services.views import ListNumberRequest
 
@@ -60,6 +62,29 @@ async def test_starting_the_server_builds_the_telephony_owners_matchers(monkeypa
     app = create_app(make_settings())
     async with app.router.lifespan_context(app):
         assert app.state.container.engine.is_warm(OWNER.display_name)
+
+
+async def test_the_start_up_warm_up_loads_what_it_can_and_a_failing_step_does_not_stop_the_others(
+    caplog: pytest.LogCaptureFixture,
+):
+    class Loads:
+        async def warmup(self) -> float:
+            return 0.5
+
+    class Fails:
+        async def warmup(self) -> float:
+            raise ProviderUnavailable("local-piper", "tts", "no voice is installed")
+
+    async with running_container() as c:
+        assert not c.engine.is_warm(OWNER.display_name)
+        c.providers.stt, c.providers.tts = Loads(), Fails()  # type: ignore[assignment]
+        with caplog.at_level(logging.INFO, logger="sparta.container"):
+            await c.warm_up()
+        assert c.engine.is_warm(OWNER.display_name)  # the owner's matchers were still built
+        failed = [r for r in caplog.records if r.getMessage() == "warm-up step failed"]
+        done = [r for r in caplog.records if r.getMessage() == "warm-up step done"]
+        assert [r.step for r in failed] == ["speech synthesis"]  # type: ignore[attr-defined]
+        assert [r.step for r in done] == ["speech recognition"]  # type: ignore[attr-defined]
 
 
 # -------------------------------------------------------------------------- cached request responses

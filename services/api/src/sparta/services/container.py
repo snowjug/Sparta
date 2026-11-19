@@ -5,9 +5,11 @@
 touch the owner's data; the simulator's deterministic replay runs inside one.
 """
 
+import asyncio
 import logging
+from collections.abc import Coroutine
 from dataclasses import dataclass
-from typing import Self
+from typing import Any, Self
 
 from sparta.clock import Clock, SystemClock, VirtualClock
 from sparta.config import ConfigurationError, Settings
@@ -185,6 +187,23 @@ class Container:
             if callable(start_media):
                 await start_media()
         self.started = True
+
+    async def warm_up(self) -> None:
+        """Do the slow one-time work now, so the first call does not wait for it: the telephony owner's matchers (inside a
+        provider's webhook they would outlast what a PBX or carrier waits for the answer) and, when the speech providers are
+        the local ones, their models (seconds to load, much longer on a busy machine). The steps run side by side and are
+        best effort: one that fails is logged, and the first call does that work instead."""
+        steps: list[tuple[str, Coroutine[Any, Any, object]]] = [("owner matchers", self.calls.warm_owner())]
+        for name, provider in (("speech recognition", self.providers.stt), ("speech synthesis", self.providers.tts)):
+            warmup = getattr(provider, "warmup", None)
+            if callable(warmup):
+                steps.append((name, warmup()))
+        outcomes = await asyncio.gather(*(step for _, step in steps), return_exceptions=True)
+        for (name, _), outcome in zip(steps, outcomes, strict=True):
+            if isinstance(outcome, Exception):
+                log.warning("warm-up step failed", extra={"step": name, "error_type": type(outcome).__name__})
+            elif isinstance(outcome, float):
+                log.info("warm-up step done", extra={"step": name, "seconds": round(outcome, 2)})
 
     async def stop(self) -> None:
         if not self.started:
